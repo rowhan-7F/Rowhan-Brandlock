@@ -1,61 +1,45 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-// Initialisation de l'instance Gemini
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
 export async function POST(req: Request) {
-  // 1. TEST DE CONNEXION INITIAL (Diagnostic réseau)
-  try {
-    const testFetch = await fetch("https://www.google.com", { method: "HEAD" });
-    console.log("--- DIAGNOSTIC RÉSEAU ---");
-    console.log("Accès Google.com :", testFetch.ok ? "RÉUSSI ✅" : "ÉCHOUÉ ❌");
-  } catch (e) {
-    console.error("--- ALERTE RÉSEAU ---");
-    console.error("Le serveur ne peut même pas joindre Google.com. Le problème est local (Pare-feu ou DNS).");
-  }
+  // Correctif SSL Windows
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
   try {
-    // 2. Récupération des données du Brand Kit
-    const { prompt, brandName, forbiddenWords } = await req.json();
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) return NextResponse.json({ error: "Clé manquante" }, { status: 500 });
 
-    // 3. Construction du Prompt avec verrouillage de marque
-    const systemPrompt = `
-      Tu es un expert en communication pour la marque "${brandName}".
-      CONSIGNES STRICTES :
-      - Ne jamais mentionner les mots suivants : ${forbiddenWords.join(", ")}.
-      - Adopte un ton professionnel, créatif et percutant.
-      - Le contenu doit être optimisé pour une prévisualisation cinématique HDR.
+    const body = await req.json();
+    const { prompt, brandName, forbiddenWords } = body;
 
-      DEMANDE UTILISATEUR :
-      ${prompt}
-    `;
+    // UTILISATION DU MODÈLE DÉTECTÉ DANS TON TERMINAL
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`;
 
-    // 4. Appel à l'API Gemini
-    const result = await model.generateContent(systemPrompt);
-    const response = await result.response;
-    const text = response.text();
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [{
+            text: `Tu es l'expert branding pour ${brandName || 'BrandLock'}. 
+            Ne jamais utiliser : ${forbiddenWords?.join(", ") || "aucun"}.
+            Demande : ${prompt}`
+          }]
+        }]
+      })
+    });
 
+    const data = await response.json();
+
+    if (data.error) {
+      console.error("ERREUR GOOGLE :", data.error.message);
+      return NextResponse.json({ error: data.error.message }, { status: 500 });
+    }
+
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "Pas de réponse.";
     return NextResponse.json({ text });
 
   } catch (error: any) {
-    // 5. Logging ultra-précis pour ton terminal Cursor
-    console.error("--- ERREUR GEMINI ---");
-    console.error("MESSAGE :", error.message);
-    if (error.cause) {
-      console.error("CAUSE PROFONDE :", error.cause);
-    }
-    
-    return NextResponse.json(
-      { error: "La génération a échoué. Détails dans le terminal." }, 
-      { status: 500 }
-    );
+    console.error("CRASH SERVEUR :", error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
-}
-
-// Log de vérification au démarrage du serveur
-console.log("DEBUG - Clé API détectée ?", !!process.env.GEMINI_API_KEY);
-if (process.env.GEMINI_API_KEY) {
-  console.log("DEBUG - Format de clé valide (AIza...) :", process.env.GEMINI_API_KEY.startsWith("AIza"));
 }
