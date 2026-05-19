@@ -1,12 +1,21 @@
 @import "tailwindcss";
 
-@layer utilities {
-  .animate-fade-in-up {
-    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    opacity: 0;
-  }
+/* 1. CONFIGURATION DE BASE */
+:root {
+  --background: #f7f8fa;
+  --foreground: #1a1a1a;
 }
 
+/* On utilise du CSS standard plutôt que @apply pour éviter les erreurs d'IDE */
+body {
+  background-color: #f7f8fa;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+}
+
+/* 2. ANIMATIONS */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -18,8 +27,37 @@
   }
 }
 
-body {
-  @apply bg-[#F7F8FA] antialiased;
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  opacity: 0;
 }
 
-body { background-color: purple !important; }
+/* 3. DESIGN SYSTEM & FIXES */
+mark {
+  background-color: transparent;
+  color: inherit;
+  font-weight: bold;
+}
+
+/* Neutralisation du LAB pour l'export PNG */
+* {
+  color-interpolation-filters: sRGB !important;
+}
+
+/* 4. SCROLLBAR CUSTOM */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
