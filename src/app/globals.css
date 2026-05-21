@@ -1,21 +1,122 @@
 @import "tailwindcss";
 
-/* 1. CONFIGURATION DE BASE */
+/* ============================================================
+ * PALETTE LUXURY BRANDLOCK — VARIABLES CSS GLOBALES
+ * ============================================================ */
+
 :root {
-  --background: #f7f8fa;
-  --foreground: #1a1a1a;
+  /* ──────────────────────────────────────────────────────── */
+  /*  COULEURS PRIMAIRES                                       */
+  /* ──────────────────────────────────────────────────────── */
+  --brand-bordeaux: #B11E2F;
+  --brand-bordeaux-dark: #7A1320;
+  --brand-bordeaux-light: #D4515F;
+
+  --brand-ink: #181614;
+  --brand-charcoal: #3D3935;
+
+  --brand-cream: #F5F1EA;
+  --brand-cream-dark: #EBE5D8;
+
+  --brand-night-blue: #1A2332;
+  --brand-night-blue-light: #2A3445;
+
+  --brand-gold: #D4AF7A;
+  --brand-gold-dark: #B8945F;
+
+  --brand-warm-gray: #807972;
+
+  /* ──────────────────────────────────────────────────────── */
+  /*  BACKGROUND & FOREGROUND (utilisés par body)              */
+  /* ──────────────────────────────────────────────────────── */
+  --background: var(--brand-cream);     /* Crème LUXURY au lieu du gris froid */
+  --foreground: var(--brand-ink);
+
+  /* ──────────────────────────────────────────────────────── */
+  /*  TOKENS HSL (pour shadcn-ui si tu l'utilises)             */
+  /* ──────────────────────────────────────────────────────── */
+  --primary: 354 73% 41%;             /* bordeaux */
+  --primary-foreground: 30 25% 95%;   /* crème */
+
+  --secondary: 39 49% 65%;            /* gold */
+  --secondary-foreground: 215 38% 15%;/* ink */
+
+  --muted: 36 25% 90%;
+  --muted-foreground: 30 5% 47%;
+
+  --border: 0 0% 92%;
+  --input: 0 0% 92%;
+  --ring: 354 73% 41%;                /* bordeaux focus */
 }
 
-/* On utilise du CSS standard plutôt que @apply pour éviter les erreurs d'IDE */
+/* ============================================================
+ * BODY
+ * ============================================================ */
 body {
-  background-color: #f7f8fa;
-  color: #1a1a1a;
+  background-color: var(--background);
+  color: var(--foreground);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   margin: 0;
 }
 
-/* 2. ANIMATIONS */
+/* ============================================================
+ * SCROLLBAR LUXURY
+ * ============================================================ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--brand-warm-gray);
+  opacity: 0.3;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-bordeaux);
+  opacity: 0.7;
+}
+
+/* ============================================================
+ * SELECTION LUXURY
+ * ============================================================ */
+::selection {
+  background-color: rgba(177, 30, 47, 0.2);
+  color: var(--brand-ink);
+}
+
+/* ============================================================
+ * FOCUS RING LUXURY
+ * ============================================================ */
+*:focus-visible {
+  outline: 2px solid rgba(177, 30, 47, 0.6);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(177, 30, 47, 0.7);
+  outline-offset: 3px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+  border-color: var(--brand-bordeaux) !important;
+  box-shadow: 0 0 0 3px rgba(177, 30, 47, 0.15);
+}
+
+/* ============================================================
+ * ANIMATIONS
+ * ============================================================ */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -32,32 +133,185 @@ body {
   opacity: 0;
 }
 
-/* 3. DESIGN SYSTEM & FIXES */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.2s ease-out;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slideUp {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes pulseRing {
+  0% {
+    box-shadow: 0 0 0 0 rgba(177, 30, 47, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(177, 30, 47, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(177, 30, 47, 0);
+  }
+}
+
+.animate-pulseRing {
+  animation: pulseRing 2s infinite;
+}
+
+/* ============================================================
+ * UTILITIES BRANDLOCK
+ * ============================================================ */
+
+/* Background gradients */
+.bg-brand-bordeaux-gradient {
+  background: linear-gradient(135deg, var(--brand-bordeaux-dark) 0%, var(--brand-bordeaux) 100%);
+}
+
+.bg-brand-night-gradient {
+  background: linear-gradient(135deg, var(--brand-ink) 0%, var(--brand-night-blue) 100%);
+}
+
+/* Text gradients */
+.text-brand-gold-gradient {
+  background: linear-gradient(135deg, var(--brand-gold-dark) 0%, var(--brand-gold) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Card hover luxury */
+.card-luxury-hover {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-luxury-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================
+ * REPLACEMENTS ORANGE → BORDEAUX
+ * (Surcharge les anciennes classes orange éparpillées dans le code)
+ * ============================================================ */
+.text-orange-500,
+.text-orange-600 {
+  color: var(--brand-bordeaux) !important;
+}
+
+.bg-orange-500,
+.bg-orange-600 {
+  background-color: var(--brand-bordeaux) !important;
+}
+
+.bg-orange-50 {
+  background-color: var(--brand-cream) !important;
+}
+
+.bg-orange-100 {
+  background-color: var(--brand-cream-dark) !important;
+}
+
+.border-orange-200,
+.border-orange-300 {
+  border-color: rgba(177, 30, 47, 0.3) !important;
+}
+
+.border-orange-500 {
+  border-color: var(--brand-bordeaux) !important;
+}
+
+.hover\:bg-orange-50:hover {
+  background-color: var(--brand-cream) !important;
+}
+
+.hover\:bg-orange-600:hover {
+  background-color: var(--brand-bordeaux-dark) !important;
+}
+
+.focus\:border-orange-500:focus {
+  border-color: var(--brand-bordeaux) !important;
+}
+
+.text-orange-700,
+.text-orange-800 {
+  color: var(--brand-bordeaux-dark) !important;
+}
+
+/* ============================================================
+ * DESIGN SYSTEM FIXES
+ * ============================================================ */
+
+/* <mark> sans surlignage jaune */
 mark {
   background-color: transparent;
   color: inherit;
   font-weight: bold;
 }
 
-/* Neutralisation du LAB pour l'export PNG */
+/* Neutralisation du LAB pour l'export PNG (html-to-image) */
 * {
   color-interpolation-filters: sRGB !important;
 }
 
-/* 4. SCROLLBAR CUSTOM */
-::-webkit-scrollbar {
-  width: 8px;
+/* Smooth transitions sur les éléments interactifs */
+button,
+a,
+input,
+select,
+textarea {
+  transition-property: color, background-color, border-color, opacity, box-shadow, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+/* ============================================================
+ * REDUCED MOTION (accessibility)
+ * ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

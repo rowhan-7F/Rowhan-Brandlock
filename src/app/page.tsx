@@ -1,807 +1,1182 @@
 "use client";
 
-import { useState, useEffect, useRef, ReactNode } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "../lib/supabase";
 import {
-  X, Check, ArrowRight, Send,
-  ShieldCheck, FileLock2, KeyRound,
-  Lock, Image as ImageIcon, Lightbulb, Database, Users, Zap,
-  Building2, Network, UserSquare,
-  FileSearch, ChevronDown
+  ShieldCheck, Lock, Server, KeyRound, ScrollText, Scale,
+  Sparkles, Layers, Captions, Network, Zap, Megaphone,
+  Users, Briefcase, Eye, FileCheck2, ArrowRight, X, Loader2,
+  Plus, MapPin, MailCheck, ChevronRight,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
-// ============================================
-// Drapeau suisse minuscule (taille du texte BrandLock)
-// ============================================
-const SwissFlag = ({ className = "" }: { className?: string }) => (
-  <svg
-    viewBox="0 0 32 32"
-    xmlns="http://www.w3.org/2000/svg"
-    className={className}
-    aria-label="Suisse"
-  >
-    <rect width="32" height="32" fill="#DA291C" rx="2" />
-    <rect x="13" y="7" width="6" height="18" fill="white" />
-    <rect x="7" y="13" width="18" height="6" fill="white" />
-  </svg>
-);
+// ============================================================
+//  BRANDLOCK — LANDING INSTITUTIONNELLE LUXURY V2
+//  Palette : Bordeaux + Bleu nuit + Or champagne + Crème
+//  Style : Magazine print de luxe × Banque suisse premium
+// ============================================================
 
-// ============================================
-// Wrapper d'animation au scroll (fade-in + translate)
-// ============================================
-function FadeInOnScroll({
-  children,
-  delay = 0,
-  className = ""
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [inView, setInView] = useState(false);
+const COLORS = {
+  bordeaux: "#B11E2F",
+  bordeauxDark: "#7A1320",
+  nightBlue: "#1A2332",
+  nightBlueLight: "#2A3445",
+  gold: "#D4AF7A",
+  goldDark: "#B8945F",
+  cream: "#F5F1EA",
+  creamDark: "#EBE5D8",
+  ink: "#181614",
+  charcoal: "#3D3935",
+  warmGray: "#807972",
+};
 
+export default function LandingPage() {
+  const router = useRouter();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [prospectOpen, setProspectOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  // Auto-redirect si déjà loggé
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    // Respect du prefers-reduced-motion : pas d'animation si l'utilisateur l'a désactivée
-    const reduced =
-      typeof window !== "undefined" &&
-      window.matchMedia &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduced) {
-      setInView(true);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setInView(true);
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.12, rootMargin: "0px 0px -60px 0px" }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("scope, role")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+      if (!profile) return;
+      if (profile.scope === "platform" && profile.role === "super_admin") {
+        router.push("/super-admin");
+      } else if (profile.role === "tenant_admin") {
+        router.push("/admin/tenant");
+      } else if (profile.role === "graphist") {
+        router.push("/studio");
+      }
+    })();
+  }, [router]);
 
   return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-1000 ease-out ${
-        inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-      } ${className}`}
-    >
-      {children}
+    <div style={{ backgroundColor: COLORS.cream, color: COLORS.ink }} className="min-h-screen">
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  NAV STICKY                                              */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <nav
+        className="sticky top-0 z-30 backdrop-blur-md border-b"
+        style={{
+          backgroundColor: `${COLORS.cream}E0`,
+          borderColor: `${COLORS.ink}10`,
+        }}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          {/* Logo + Drapeau en astérix */}
+          <div className="flex items-center gap-3">
+            <img
+              src="/media/logo.png"
+              alt="BrandLock"
+              className="h-10 w-auto object-contain"
+            />
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className="font-black tracking-tighter text-lg italic"
+                style={{ color: COLORS.ink, letterSpacing: "-0.04em" }}
+              >
+                BrandLock
+              </span>
+              {/* Drapeau Suisse — astérix tout petit aligné typo */}
+              <svg
+                viewBox="0 0 32 32"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-3 w-3 shrink-0"
+                aria-label="Suisse"
+                style={{ alignSelf: "center" }}
+              >
+                <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
+                <rect x="13" y="7" width="6" height="18" fill="white" />
+                <rect x="7" y="13" width="18" height="6" fill="white" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Bouton Connexion */}
+          <button
+            type="button"
+            onClick={() => setLoginOpen(true)}
+            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-full transition-all hover:shadow-md flex items-center gap-2"
+            style={{
+              backgroundColor: COLORS.ink,
+              color: COLORS.cream,
+            }}
+          >
+            <Lock size={11} />
+            Connexion
+          </button>
+        </div>
+      </nav>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  HERO — Image de fond + overlay luxe                     */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden">
+        {/* Image de fond */}
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url('/media/bg-header.jpg')`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        {/* Overlay sombre élégant pour lisibilité */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(135deg, ${COLORS.nightBlue}E8 0%, ${COLORS.nightBlue}D0 60%, ${COLORS.bordeaux}90 100%)`,
+          }}
+        />
+        {/* Texture/grain subtil */}
+        <div
+          className="absolute inset-0 opacity-[0.04] pointer-events-none mix-blend-overlay"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          }}
+        />
+
+        <div className="relative max-w-5xl mx-auto px-6 py-24 lg:py-36 text-center">
+          {/* Eyebrow */}
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
+            style={{
+              backgroundColor: "rgba(212, 175, 122, 0.15)",
+              border: `1px solid ${COLORS.gold}40`,
+              color: COLORS.gold,
+            }}
+          >
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.gold }}></span>
+            Édition Institutionnelle Suisse
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.gold }}></span>
+          </div>
+
+          {/* Titre énorme magazine */}
+          <h1
+            className="text-5xl md:text-6xl lg:text-7xl font-black tracking-[-0.04em] leading-[0.95] mb-8 text-white"
+            style={{ fontFeatureSettings: "'ss01'" }}
+          >
+            Le verrou de{" "}
+            <span style={{ color: COLORS.gold, fontStyle: "italic", fontWeight: 500 }}>
+              conformité
+            </span>
+            <br />
+            pour vos contenus<br />numériques.
+          </h1>
+
+          <p
+            className="text-base lg:text-lg leading-[1.7] max-w-2xl mx-auto mb-12"
+            style={{ color: "#EFE9DD" }}
+          >
+            Automatisez le « dernier kilomètre » de votre communication :
+            habillage, sous-titrage et déclinaison multi-formats. BrandLock
+            sécurise la production de vos vidéos et images en forçant le respect
+            strict de vos <em style={{ color: COLORS.gold, fontStyle: "italic" }}>Safe Zones</em> et de votre charte graphique.
+          </p>
+
+          {/* CTA principal */}
+          <button
+            type="button"
+            onClick={() => setProspectOpen(true)}
+            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
+            style={{
+              backgroundColor: COLORS.cream,
+              color: COLORS.ink,
+              boxShadow: "0 20px 50px -20px rgba(0,0,0,0.5)",
+            }}
+          >
+            Demander une présentation technique
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+
+          <div className="mt-6 text-[10px] uppercase tracking-[0.25em]" style={{ color: "#EFE9DD90" }}>
+            Sans engagement · Réponse sous 48h ouvrées
+          </div>
+        </div>
+
+        {/* Ornement bas de hero */}
+        <div className="relative">
+          <svg
+            viewBox="0 0 1440 60"
+            className="block w-full"
+            preserveAspectRatio="none"
+            style={{ height: 60 }}
+          >
+            <path
+              d="M0,30 L1440,30"
+              stroke={COLORS.gold}
+              strokeWidth="0.5"
+              fill="none"
+            />
+            <circle cx="720" cy="30" r="3" fill={COLORS.gold} />
+          </svg>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  TRUST CENTER — 3 colonnes magazine                      */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
+        <div className="max-w-6xl mx-auto">
+          <SectionHeader
+            eyebrow="Trust Center"
+            title="Garanties juridiques & infrastructure IT"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+            <TrustCard
+              icon={<Server size={20} />}
+              title="Hébergement souverain 100% genevois"
+              description="Infrastructures cloud gérées exclusivement par Infomaniak à Genève. Aucune donnée ne transite par des serveurs tiers ou nord-américains."
+            />
+            <TrustCard
+              icon={<Scale size={20} />}
+              title="Conformité stricte nLPD"
+              description="Architecture technique et traitement des flux alignés de manière intransigeante sur les exigences de la nouvelle Loi sur la Protection des Données suisse."
+            />
+            <TrustCard
+              icon={<KeyRound size={20} />}
+              title="Intégration IT transparente (SSO)"
+              description="Connexion fluide à vos environnements institutionnels existants (Single Sign-On / SAML, Active Directory) pour une gestion centralisée des accès."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  6 GARANTIES — Fond bleu nuit pour break                 */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section
+        className="px-6 py-24"
+        style={{
+          backgroundColor: COLORS.nightBlue,
+          color: COLORS.cream,
+        }}
+      >
+        <div className="max-w-6xl mx-auto">
+          <SectionHeader
+            eyebrow="Architecture de confiance"
+            title="Six garanties technologiques"
+            subtitle="Pour répondre aux impératifs de sécurité et d'efficacité du secteur public."
+            invert
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16" style={{ backgroundColor: `${COLORS.gold}25` }}>
+            <GuaranteeCard num="01" icon={<Lock size={18} />} title="Le « Hard Lock » architectural" description="Votre charte graphique n'est plus une simple suggestion, c'est une règle mathématique (JSON). L'outil verrouille les polices, les couleurs institutionnelles et les marges de sécurité (Safe Zones). Vos équipes intègrent leurs médias, le logiciel garantit un rendu parfait pour chaque réseau." />
+            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats sans faille" description="Uploadez une vidéo horizontale, BrandLock la décline instantanément pour vos Stories, Reels ou Carrousels. Les zones mortes des réseaux sociaux (boutons « J'aime », descriptions) sont calculées automatiquement pour que votre message et vos intervenants ne soient jamais masqués." />
+            <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Fini la transcription manuelle. L'intelligence artificielle (technologie Whisper) extrait la voix de vos vidéos et incruste les sous-titres directement dans la typographie et les couleurs exactes de votre institution. Une accessibilité parfaite en un clic." />
+            <GuaranteeCard num="04" icon={<ShieldCheck size={18} />} title="Souveraineté & étanchéité absolue" description="Hébergées chez Infomaniak, vos vidéos brutes, vos discours et vos données métier restent strictement confidentiels. L'IA agit comme un moteur de traitement local et n'utilise jamais vos médias pour entraîner des modèles publics." />
+            <GuaranteeCard num="05" icon={<Network size={18} />} title="Décentralisation sécurisée" description="Déléguez la création de contenu à vos différents départements, partenaires ou agences externes sans aucune crainte. Ils gagnent en autonomie de production, tandis que la Direction de la Communication conserve le contrôle absolu du moteur de rendu." />
+            <GuaranteeCard num="06" icon={<Zap size={18} />} title="Le « dernier kilomètre » accéléré" description="De l'upload de la vidéo brute à l'export du fichier .zip normé, le logiciel élimine les tâches chronophages (ajout de logos, création de bumpers d'intro/outro, recadrage). Vos collaborateurs gagnent des heures chaque semaine et les boucles de validation sont drastiquement réduites." />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  CAS D'USAGE — Crème                                     */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
+        <div className="max-w-6xl mx-auto">
+          <SectionHeader
+            eyebrow="Cas d'usage sectoriels"
+            title="Comment BrandLock sécurise vos départements"
+            subtitle="Une plateforme unique, des gabarits cloisonnés selon vos profils métiers."
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+            <UseCaseCard
+              icon={<Megaphone size={22} />}
+              title="Direction de la Communication"
+              description="Pilotez l'identité cantonale ou institutionnelle depuis une tour de contrôle centrale. Mettez à jour un élément de la charte, la modification s'applique instantanément à tous les futurs exports de vos collaborateurs."
+            />
+            <UseCaseCard
+              icon={<Sparkles size={22} />}
+              title="Community Management & Création"
+              description="Produisez des vignettes d'actualité, des infographies économiques ou des interviews vidéo à la volée. Concentrez-vous sur le message, le logiciel s'occupe de l'habillage aux normes."
+            />
+            <UseCaseCard
+              icon={<Users size={22} />}
+              title="Ressources Humaines"
+              description="Déclinez vos campagnes de recrutement et vidéos « Marque Employeur » avec une garantie d'uniformité absolue, renforçant la crédibilité de l'institution auprès des candidats."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  AUDIT IA — Section éditoriale Or                        */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section
+        className="px-6 py-24 relative overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${COLORS.ink} 0%, ${COLORS.nightBlue} 100%)`,
+          color: COLORS.cream,
+        }}
+      >
+        {/* Ornements décoratifs */}
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-16"
+          style={{ backgroundColor: `${COLORS.gold}80` }}
+        />
+        <div
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-px h-16"
+          style={{ backgroundColor: `${COLORS.gold}80` }}
+        />
+
+        <div className="max-w-3xl mx-auto text-center relative">
+          <div
+            className="inline-flex items-center gap-2 px-3 py-1.5 mb-6 text-[10px] font-bold uppercase tracking-[0.25em]"
+            style={{ color: COLORS.gold }}
+          >
+            <span className="w-6 h-px" style={{ backgroundColor: COLORS.gold }}></span>
+            Audit qualité IA & traçabilité
+            <span className="w-6 h-px" style={{ backgroundColor: COLORS.gold }}></span>
+          </div>
+
+          <h2
+            className="text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-6"
+          >
+            Le <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>check-up</em> avant publication.
+          </h2>
+
+          <p className="text-base leading-[1.75] mb-10" style={{ color: "#EFE9DD" }}>
+            Juste avant l'exportation, notre <strong style={{ color: COLORS.gold }}>« Police IA »</strong> scanne votre rendu final.
+            Elle vérifie le ratio de contraste pour garantir l'accessibilité aux
+            malvoyants (Normes WCAG), alerte sur les dépassements de Safe Zones
+            et valide la structure. Le tableau de bord conserve l'historique des
+            exports pour une traçabilité totale.
+          </p>
+
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <Pill icon={<Eye size={11} />} label="WCAG Accessibility" />
+            <Pill icon={<FileCheck2 size={11} />} label="Safe Zones validées" />
+            <Pill icon={<ScrollText size={11} />} label="Historique complet" />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  PROCESSUS 3 ÉTAPES                                       */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
+        <div className="max-w-5xl mx-auto">
+          <SectionHeader
+            eyebrow="Processus de déploiement"
+            title="Une intégration sans friction"
+            subtitle="Un déploiement sur-mesure en trois étapes."
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+            <StepCard num="01" title="L'encodage de la charte" description="Nous traduisons vos directives graphiques PDF en un fichier de configuration strict (Configuration as Code) qui devient le moteur de vos gabarits." />
+            <StepCard num="02" title="L'intégration des assets" description="Nous connectons vos logos, animations de bumpers d'intro/outro et typographies officielles directement dans l'environnement sécurisé." />
+            <StepCard num="03" title="Le déploiement opérationnel" description="Vos équipes se connectent via leurs identifiants professionnels et commencent immédiatement à décliner leurs médias avec une conformité garantie." />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  FAQ                                                     */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section
+        className="px-6 py-24"
+        style={{ backgroundColor: COLORS.creamDark }}
+      >
+        <div className="max-w-3xl mx-auto">
+          <SectionHeader
+            eyebrow="Foire aux questions"
+            title="Gouvernance & sécurité"
+          />
+
+          <div className="space-y-3 mt-12">
+            <FaqItem
+              isOpen={openFaq === 0}
+              onToggle={() => setOpenFaq(openFaq === 0 ? null : 0)}
+              question="L'IA modifie-t-elle le fond de notre message ?"
+              answer="Non. L'IA de BrandLock est utilisée de manière utilitaire (transcription audio pour les sous-titres, recadrage vidéo, vérification de conformité). Le fond de votre message reste 100% sous le contrôle de vos équipes."
+            />
+            <FaqItem
+              isOpen={openFaq === 1}
+              onToggle={() => setOpenFaq(openFaq === 1 ? null : 1)}
+              question="Que se passe-t-il si les formats des réseaux sociaux (Instagram, LinkedIn) changent ?"
+              answer="Notre équipe technique met à jour les grilles de Safe Zones de manière centralisée. Vos gabarits s'adaptent automatiquement aux nouvelles dimensions sans aucune intervention de votre part."
+            />
+            <FaqItem
+              isOpen={openFaq === 2}
+              onToggle={() => setOpenFaq(openFaq === 2 ? null : 2)}
+              question="Le logiciel remplace-t-il nos agences de création ou logiciels de montage ?"
+              answer="Pas du tout. BrandLock sécurise le « dernier kilomètre ». Vos équipes ou agences continuent d'utiliser leurs outils habituels pour le montage créatif, puis utilisent BrandLock pour l'habillage final, le sous-titrage et la déclinaison multicanale aux normes de l'institution."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  CLOSING CTA — Bordeaux dominant                          */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <section
+        className="px-6 py-28 relative overflow-hidden"
+        style={{
+          background: `linear-gradient(135deg, ${COLORS.bordeauxDark} 0%, ${COLORS.bordeaux} 100%)`,
+          color: COLORS.cream,
+        }}
+      >
+        <div
+          className="absolute inset-0 opacity-[0.05] pointer-events-none"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='0.9'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+          }}
+        />
+        <div className="max-w-3xl mx-auto text-center relative">
+          <h2 className="text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-5">
+            La technologie au service des<br />
+            <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>institutions suisses.</em>
+          </h2>
+          <p className="text-base mb-10" style={{ color: "#EFE9DD" }}>
+            Sécurité, rigueur et fiabilité. Conçu en Suisse, hébergé à Genève.
+          </p>
+          <button
+            type="button"
+            onClick={() => setProspectOpen(true)}
+            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
+            style={{
+              backgroundColor: COLORS.cream,
+              color: COLORS.ink,
+              boxShadow: "0 20px 50px -20px rgba(0,0,0,0.4)",
+            }}
+          >
+            Organiser une présentation technique
+            <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  FOOTER                                                  */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <footer
+        className="px-6 py-10"
+        style={{ backgroundColor: COLORS.ink, color: COLORS.cream }}
+      >
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <img
+              src="/media/logo.png"
+              alt="BrandLock"
+              className="h-8 w-auto object-contain"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+            <div className="flex items-baseline gap-1.5">
+              <span className="font-black tracking-tighter text-base italic">BrandLock</span>
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5">
+                <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
+                <rect x="13" y="7" width="6" height="18" fill="white" />
+                <rect x="7" y="13" width="18" height="6" fill="white" />
+              </svg>
+            </div>
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: "#807972" }}>
+              Édition Institutionnelle
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest" style={{ color: COLORS.gold }}>
+            <MapPin size={11} />
+            Genève · Suisse
+          </div>
+
+          <div className="text-[10px] uppercase tracking-widest" style={{ color: "#807972" }}>
+            © 2026 BrandLock · Tous droits réservés
+          </div>
+        </div>
+      </footer>
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  MODALS                                                  */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {loginOpen && <LoginModal onClose={() => setLoginOpen(false)} />}
+      {prospectOpen && <ProspectModal onClose={() => setProspectOpen(false)} />}
     </div>
   );
 }
 
-// ============================================
-// PAGE
-// ============================================
-export default function HomePage() {
-  const router = useRouter();
+// ============================================================
+//  COMPOSANTS DESIGN
+// ============================================================
 
-  // === Login form ===
+function SectionHeader({
+  eyebrow, title, subtitle, invert,
+}: { eyebrow: string; title: string; subtitle?: string; invert?: boolean }) {
+  const accentColor = invert ? COLORS.gold : COLORS.bordeaux;
+  return (
+    <div className="text-center max-w-3xl mx-auto">
+      <div
+        className="inline-flex items-center gap-3 text-[10px] font-bold uppercase tracking-[0.3em] mb-5"
+        style={{ color: accentColor }}
+      >
+        <span className="w-8 h-px" style={{ backgroundColor: accentColor }}></span>
+        {eyebrow}
+        <span className="w-8 h-px" style={{ backgroundColor: accentColor }}></span>
+      </div>
+      <h2
+        className="text-3xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-4"
+        style={{ color: invert ? COLORS.cream : COLORS.ink }}
+      >
+        {title}
+      </h2>
+      {subtitle && (
+        <p
+          className="text-base lg:text-lg leading-[1.7]"
+          style={{ color: invert ? "#EFE9DD" : COLORS.warmGray }}
+        >
+          {subtitle}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TrustCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div
+      className="p-7 rounded-2xl border transition-all duration-300 hover:-translate-y-1"
+      style={{
+        backgroundColor: "white",
+        borderColor: `${COLORS.ink}10`,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+      }}
+    >
+      <div
+        className="w-11 h-11 rounded-xl flex items-center justify-center mb-5"
+        style={{
+          backgroundColor: COLORS.cream,
+          color: COLORS.bordeaux,
+        }}
+      >
+        {icon}
+      </div>
+      <h3 className="text-base font-black tracking-tight mb-2 leading-snug" style={{ color: COLORS.ink }}>
+        {title}
+      </h3>
+      <p className="text-sm leading-relaxed" style={{ color: COLORS.warmGray }}>
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function GuaranteeCard({ num, icon, title, description }: { num: string; icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div
+      className="p-8 transition-all duration-300 hover:bg-opacity-100 group"
+      style={{
+        backgroundColor: COLORS.nightBlue,
+      }}
+    >
+      <div className="flex items-start gap-4 mb-4">
+        <div
+          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-110"
+          style={{
+            backgroundColor: `${COLORS.gold}15`,
+            color: COLORS.gold,
+            border: `1px solid ${COLORS.gold}30`,
+          }}
+        >
+          {icon}
+        </div>
+        <div className="flex-1">
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] mb-1" style={{ color: COLORS.gold }}>
+            Garantie {num}
+          </div>
+          <h3 className="text-lg font-black tracking-tight leading-snug" style={{ color: COLORS.cream }}>
+            {title}
+          </h3>
+        </div>
+      </div>
+      <p className="text-sm leading-[1.7] pl-14" style={{ color: "#C5BDB0" }}>
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function UseCaseCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div
+      className="p-7 rounded-2xl transition-all duration-300 hover:-translate-y-1 group"
+      style={{
+        backgroundColor: "white",
+        border: `1px solid ${COLORS.ink}10`,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+      }}
+    >
+      <div
+        className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform"
+        style={{
+          background: `linear-gradient(135deg, ${COLORS.bordeaux} 0%, ${COLORS.bordeauxDark} 100%)`,
+          color: "white",
+          boxShadow: `0 8px 20px -8px ${COLORS.bordeaux}80`,
+        }}
+      >
+        {icon}
+      </div>
+      <h3 className="text-base font-black tracking-tight mb-2.5 leading-snug" style={{ color: COLORS.ink }}>
+        {title}
+      </h3>
+      <p className="text-sm leading-relaxed" style={{ color: COLORS.warmGray }}>
+        {description}
+      </p>
+    </div>
+  );
+}
+
+function StepCard({ num, title, description }: { num: string; title: string; description: string }) {
+  return (
+    <div
+      className="relative p-7 rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1"
+      style={{
+        backgroundColor: "white",
+        border: `1px solid ${COLORS.ink}10`,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+      }}
+    >
+      <div
+        className="absolute top-3 right-4 text-7xl font-black tracking-tighter leading-none pointer-events-none"
+        style={{
+          color: COLORS.gold,
+          opacity: 0.15,
+        }}
+      >
+        {num}
+      </div>
+      <div className="relative">
+        <div
+          className="inline-block text-[10px] font-bold uppercase tracking-[0.25em] mb-3"
+          style={{ color: COLORS.bordeaux }}
+        >
+          Étape {num}
+        </div>
+        <h3 className="text-base font-black tracking-tight mb-2.5 leading-snug" style={{ color: COLORS.ink }}>
+          {title}
+        </h3>
+        <p className="text-sm leading-relaxed" style={{ color: COLORS.warmGray }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Pill({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div
+      className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
+      style={{
+        backgroundColor: `${COLORS.gold}15`,
+        border: `1px solid ${COLORS.gold}40`,
+        color: COLORS.gold,
+      }}
+    >
+      {icon}
+      {label}
+    </div>
+  );
+}
+
+function FaqItem({
+  isOpen, onToggle, question, answer,
+}: { isOpen: boolean; onToggle: () => void; question: string; answer: string }) {
+  return (
+    <div
+      className="rounded-2xl overflow-hidden transition-all duration-300"
+      style={{
+        backgroundColor: "white",
+        border: `1px solid ${isOpen ? COLORS.bordeaux + "40" : COLORS.ink + "10"}`,
+        boxShadow: isOpen ? `0 8px 25px -8px ${COLORS.bordeaux}20` : "none",
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        className="w-full px-6 py-5 flex items-center justify-between gap-3 text-left transition"
+      >
+        <span className="text-base font-bold tracking-tight" style={{ color: COLORS.ink }}>
+          {question}
+        </span>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-300"
+          style={{
+            backgroundColor: isOpen ? COLORS.bordeaux : COLORS.cream,
+            color: isOpen ? "white" : COLORS.bordeaux,
+            transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
+          }}
+        >
+          <Plus size={16} />
+        </div>
+      </button>
+      {isOpen && (
+        <div className="px-6 pb-6 -mt-1">
+          <p className="text-sm leading-[1.7]" style={{ color: COLORS.warmGray }}>
+            {answer}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+//  MODAL LOGIN
+// ============================================================
+
+function LoginModal({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mobileLoginOpen, setMobileLoginOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // === Demo form ===
-  const [demoOpen, setDemoOpen] = useState(false);
-  const [demoForm, setDemoForm] = useState({ name: "", company: "", email: "", phone: "", message: "" });
-  const [submittingDemo, setSubmittingDemo] = useState(false);
-  const [demoSuccess, setDemoSuccess] = useState(false);
-  const [demoError, setDemoError] = useState("");
-
-  // === FAQ accordion ===
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
-
-  const ADMIN_EMAIL = "admin@rowhan.com";
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     setLoading(true);
-    setError("");
+
     try {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim(),
-        password
+        password,
       });
-      if (authError) throw authError;
-      const loggedInEmail = data.user?.email?.toLowerCase();
-      if (loggedInEmail === ADMIN_EMAIL.toLowerCase()) router.push("/admin");
-      else router.push("/generate");
-    } catch {
-      setError("Accès refusé. Vérifiez vos identifiants.");
-    } finally {
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!data.user) {
+        setError("Connexion impossible");
+        setLoading(false);
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("user_profiles")
+        .select("scope, role")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      if (!profile) {
+        setError("Compte non configuré. Contactez l'administrateur.");
+        setLoading(false);
+        return;
+      }
+
+      if (profile.scope === "platform" && profile.role === "super_admin") {
+        router.push("/super-admin");
+      } else if (profile.role === "tenant_admin") {
+        router.push("/admin/tenant");
+      } else if (profile.role === "graphist") {
+        router.push("/studio");
+      } else {
+        setError("Rôle non reconnu");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError(err.message);
       setLoading(false);
     }
   };
 
-  const handleDemoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setDemoError("");
-    if (!demoForm.name.trim() || !demoForm.email.trim() || !demoForm.message.trim()) {
-      setDemoError("Nom, email et message sont obligatoires.");
-      return;
-    }
-    setSubmittingDemo(true);
-    try {
-      const res = await fetch("/api/prospects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(demoForm)
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setDemoError(data.error || "Erreur lors de l'envoi. Réessayez.");
-        return;
-      }
-      setDemoSuccess(true);
-      setDemoForm({ name: "", company: "", email: "", phone: "", message: "" });
-    } catch {
-      setDemoError("Erreur réseau. Réessayez dans un instant.");
-    } finally {
-      setSubmittingDemo(false);
-    }
-  };
-
-  const closeDemoModal = () => {
-    setDemoOpen(false);
-    setTimeout(() => {
-      setDemoSuccess(false);
-      setDemoError("");
-    }, 300);
-  };
-
-  // ============================================
-  // CONTENU DES SECTIONS
-  // ============================================
-
-  const trustCenter = [
-    {
-      Icon: ShieldCheck,
-      title: "Hébergement Souverain",
-      text: "Hébergé exclusivement en Suisse. Aucune donnée ne transite par des serveurs cloud publics nord-américains."
-    },
-    {
-      Icon: FileLock2,
-      title: "Conformité nLPD",
-      text: "Architecture strictement alignée sur les exigences de la nouvelle Loi sur la Protection des Données suisse."
-    },
-    {
-      Icon: KeyRound,
-      title: "Intégration IT Transparente (SSO)",
-      text: "Compatible avec vos environnements institutionnels sécurisés (Single Sign-On / SAML, Active Directory)."
-    }
-  ];
-
-  const piliers = [
-    {
-      Icon: Lock,
-      number: "01",
-      title: "Maîtrise Visuelle et Sémantique",
-      text: "L'outil intègre vos directives officielles (codes couleurs, typographies, termes prohibés) comme un cadre de travail strict. Vos collaborateurs créent avec agilité, mais le résultat final reste systématiquement fidèle à votre charte graphique."
-    },
-    {
-      Icon: ImageIcon,
-      number: "02",
-      title: "Valorisation de votre Patrimoine Photographique",
-      text: "Afin d'éviter les visuels stéréotypés, l'outil puise uniquement dans vos propres banques d'images validées. Vos photographies existantes servent de référence pour illustrer vos communications, préservant ainsi toute l'authenticité de votre institution."
-    },
-    {
-      Icon: Lightbulb,
-      number: "03",
-      title: "Assistance à la Réflexion et Idéation",
-      text: "Face à la page blanche, l'outil analyse vos thématiques et vous suggère des angles de communication pertinents. Il agit comme un partenaire de réflexion qui apporte de nouvelles idées, tout en formulant ses propositions dans le strict respect du ton et de la mesure de votre administration. Vos équipes ne partent plus jamais de zéro."
-    },
-    {
-      Icon: Database,
-      number: "04",
-      title: "Souveraineté des Données",
-      text: "Vos informations restent strictement confidentielles et ne sont jamais exploitées pour entraîner des algorithmes externes. L'infrastructure garantit la protection de vos droits et répond aux normes suisses en matière de sécurité de l'information."
-    },
-    {
-      Icon: Users,
-      number: "05",
-      title: "Collaboration Encadrée",
-      text: "Mettez une solution de création sécurisée à la disposition de vos différents services ou partenaires locaux. Ils gagnent en autonomie, tandis que la direction de la communication conserve le contrôle exclusif des paramètres identitaires."
-    },
-    {
-      Icon: Zap,
-      number: "06",
-      title: "Accélération de la Chaîne de Production",
-      text: "De la conceptualisation à l'exportation du visuel, le logiciel fluidifie chaque étape. En garantissant une conformité technique et éditoriale dès le premier jet, il élimine les interminables boucles de validation. Vos collaborateurs gagnent un temps de production précieux et se recentrent sur la valeur ajoutée de leurs missions."
-    }
-  ];
-
-  const casUsage = [
-    {
-      Icon: Building2,
-      title: "Direction de la Communication",
-      text: "Mettez à jour la charte graphique en un clic. La règle s'applique instantanément à tous les utilisateurs du réseau, garantissant une cohérence cantonale absolue."
-    },
-    {
-      Icon: Network,
-      title: "Entités Partenaires & Réseaux",
-      text: "Offrez à vos influenceurs, sous-traitants et partenaires un accès pour générer des contenus promotionnels qui intègrent nativement et obligatoirement vos polices et logos officiels."
-    },
-    {
-      Icon: UserSquare,
-      title: "Ressources Humaines",
-      text: "Rédigez des offres d'emploi ou des notes internes automatisées, avec la garantie technologique que le ton reste neutre, inclusif et conforme aux directives de l'État."
-    }
-  ];
-
-  const deploiement = [
-    {
-      number: "01",
-      title: "L'Audit Initial",
-      text: "Nous numérisons vos directives graphiques et sémantiques (Brand Guidelines) pour les intégrer au cœur de notre algorithme."
-    },
-    {
-      number: "02",
-      title: "Le Verrouillage du DAM",
-      text: "Nous connectons vos archives photographiques officielles pour en faire la matière première exclusive de l'IA."
-    },
-    {
-      number: "03",
-      title: "Le Déploiement Encadré",
-      text: "Vos équipes accèdent à l'interface de création métier via leurs identifiants institutionnels habituels, prêtes à produire en toute sécurité."
-    }
-  ];
-
-  const faq = [
-    {
-      q: "Nos documents internes servent-ils à entraîner l'IA ?",
-      a: "Non. L'architecture est totalement cloisonnée. Vos données et requêtes ne nourrissent aucun modèle public."
-    },
-    {
-      q: "Que se passe-t-il si notre charte évolue ?",
-      a: "La mise à jour est centralisée. Une modification d'une typographie ou d'un terme interdit par l'administrateur s'applique immédiatement à tous les gabarits et pour tous les utilisateurs."
-    },
-    {
-      q: "Qui détient les droits des images générées ?",
-      a: "L'utilisation exclusive de vos archives photographiques internes (Bring Your Own Assets) couplée à notre système de génération fermé vous garantit une exploitation sans aucun risque de violation de droits d'auteur."
-    }
-  ];
-
-  // ============================================
-  // RENDU
-  // ============================================
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 antialiased overflow-x-hidden">
-      {/* =================== HEADER STICKY =================== */}
-      <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-slate-200/60">
-        <div className="max-w-7xl mx-auto px-6 lg:px-12 h-20 flex items-center justify-between gap-6">
+    <div
+      className="fixed inset-0 z-50 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+      style={{ backgroundColor: `${COLORS.ink}E0` }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl overflow-hidden animate-scaleIn"
+        style={{
+          backgroundColor: COLORS.cream,
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+        }}
+      >
+        <div
+          className="px-6 py-5 border-b flex items-center justify-between"
+          style={{ borderColor: `${COLORS.ink}10` }}
+        >
           <div className="flex items-center gap-3">
-            <img src="/media/logo.png" alt="BrandLock" className="h-9 w-auto" />
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span className="text-[11px] font-bold tracking-[0.3em] uppercase text-slate-900">
-                BrandLock
-              </span>
-              <SwissFlag className="w-3 h-3 shrink-0" />
+            <div
+              className="w-10 h-10 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: COLORS.bordeaux, color: "white" }}
+            >
+              <Lock size={16} />
+            </div>
+            <div>
+              <h2 className="text-base font-black tracking-tight" style={{ color: COLORS.ink }}>
+                Connexion
+              </h2>
+              <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: COLORS.warmGray }}>
+                Édition Institutionnelle Suisse
+              </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg transition hover:opacity-70"
+            style={{ color: COLORS.warmGray }}
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-          <form onSubmit={handleLogin} className="hidden md:flex items-center gap-2">
+        <form onSubmit={handleLogin} className="p-6 space-y-4">
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: COLORS.warmGray }}>
+              Adresse email
+            </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="vous@institution.ch"
               required
-              placeholder="Email"
-              className="px-4 py-2.5 rounded-lg bg-slate-100 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 focus:bg-white transition w-48"
+              autoFocus
+              autoComplete="email"
+              className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+              style={{
+                backgroundColor: "white",
+                border: `1px solid ${COLORS.ink}15`,
+              }}
             />
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: COLORS.warmGray }}>
+              Mot de passe
+            </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
-              placeholder="Mot de passe"
-              className="px-4 py-2.5 rounded-lg bg-slate-100 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-400 focus:bg-white transition w-44"
+              autoComplete="current-password"
+              className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+              style={{
+                backgroundColor: "white",
+                border: `1px solid ${COLORS.ink}15`,
+              }}
             />
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition disabled:opacity-50"
+          </div>
+
+          {error && (
+            <div
+              className="px-3 py-2.5 rounded-lg text-xs"
+              style={{
+                backgroundColor: `${COLORS.bordeaux}10`,
+                border: `1px solid ${COLORS.bordeaux}30`,
+                color: COLORS.bordeauxDark,
+              }}
             >
-              {loading ? "..." : "Connexion"}
-            </button>
-          </form>
+              {error}
+            </div>
+          )}
 
           <button
-            onClick={() => setMobileLoginOpen(true)}
-            className="md:hidden px-4 py-2 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-widest"
+            type="submit"
+            disabled={loading || !email.trim() || !password.trim()}
+            className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5"
+            style={{
+              backgroundColor: COLORS.ink,
+              color: COLORS.cream,
+              boxShadow: `0 10px 25px -10px ${COLORS.ink}80`,
+            }}
           >
-            Connexion
-          </button>
-        </div>
-
-        {error && (
-          <div className="hidden md:block bg-red-50 border-t border-red-100 px-6 py-2">
-            <p className="text-xs text-red-600 font-medium text-center">{error}</p>
-          </div>
-        )}
-      </header>
-
-      {/* =================== MOBILE LOGIN =================== */}
-      {mobileLoginOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-[100] bg-slate-950/50 backdrop-blur-sm flex items-end animate-in fade-in duration-300"
-          onClick={() => setMobileLoginOpen(false)}
-        >
-          <div
-            className="w-full bg-white rounded-t-3xl p-8 space-y-5 shadow-2xl animate-in slide-in-from-bottom duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-black tracking-tight">Connexion</h3>
-              <button onClick={() => setMobileLoginOpen(false)} className="p-2 hover:bg-slate-100 rounded-lg transition">
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleLogin} className="space-y-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="Email"
-                className="w-full px-4 py-3.5 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-              />
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Mot de passe"
-                className="w-full px-4 py-3.5 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-              />
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 bg-slate-900 text-white rounded-lg font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition disabled:opacity-50"
-              >
-                {loading ? "Vérification..." : "Entrer"}
-              </button>
-              {error && <p className="text-xs text-red-600 font-medium text-center">{error}</p>}
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =================== HERO =================== */}
-      <section className="relative min-h-[88vh] flex items-center justify-center overflow-hidden">
-        <img src="/media/bg-header.jpg" alt="" className="absolute inset-0 w-full h-full object-cover scale-105" />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/80 via-slate-950/70 to-slate-950/90"></div>
-
-        <div className="relative z-10 max-w-5xl mx-auto px-6 lg:px-12 py-32 text-center">
-          <FadeInOnScroll>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full mb-10">
-              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/90">
-                Édition Institutionnelle Suisse
-              </span>
-              <SwissFlag className="w-2.5 h-2.5 ml-1 shrink-0" />
-            </div>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={100}>
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.05] mb-8">
-              Le verrou de conformité <br className="hidden md:block" />
-              entre <span className="text-orange-500">l&apos;IA</span> et{" "}
-              <span className="text-white/95">votre image</span> de marque.
-            </h1>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={200}>
-            <p className="max-w-3xl mx-auto text-base md:text-lg text-white/85 leading-relaxed mb-12 font-medium">
-              Intégrez l&apos;intelligence artificielle dans vos processus internes avec une maîtrise absolue. BrandLock
-              sécurise la production de vos contenus en forçant le respect de vos codes visuels et de votre lexique
-              institutionnel. <span className="text-white">Une technologie fiable et souveraine</span>, pensée pour les
-              exigences du secteur public.
-            </p>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={300}>
-            <button
-              onClick={() => setDemoOpen(true)}
-              className="group inline-flex items-center gap-3 px-8 py-4 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-2xl shadow-orange-500/30 hover:bg-orange-600 hover:shadow-orange-500/50 hover:-translate-y-0.5 transition-all active:scale-95"
-            >
-              Demander une présentation technique
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </FadeInOnScroll>
-        </div>
-      </section>
-
-      {/* =================== SECTION 1 : TRUST CENTER =================== */}
-      <section className="py-24 lg:py-32 bg-white">
-        <div className="max-w-6xl mx-auto px-6 lg:px-12">
-          <FadeInOnScroll>
-            <div className="text-center mb-16 lg:mb-20">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-500 mb-4">
-                Trust Center
-              </p>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[1.1]">
-                Garanties Juridiques<br className="hidden md:block" /> et Infrastructure IT
-              </h2>
-            </div>
-          </FadeInOnScroll>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {trustCenter.map((item, i) => {
-              const Icon = item.Icon;
-              return (
-                <FadeInOnScroll key={i} delay={i * 120}>
-                  <div className="h-full p-8 lg:p-10 rounded-3xl bg-white border border-slate-200 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                    <div className="w-14 h-14 rounded-2xl bg-orange-50 border border-orange-100 flex items-center justify-center mb-6 group-hover:bg-orange-100 transition">
-                      <Icon size={24} className="text-orange-500" strokeWidth={1.8} />
-                    </div>
-                    <h3 className="text-lg font-black tracking-tight mb-3 leading-tight">{item.title}</h3>
-                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{item.text}</p>
-                  </div>
-                </FadeInOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* =================== SECTION 2 : 6 PILIERS =================== */}
-      <section className="py-24 lg:py-32 bg-slate-50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-20%,rgba(249,115,22,0.06),transparent_60%)]"></div>
-        <div className="max-w-6xl mx-auto px-6 lg:px-12 relative">
-          <FadeInOnScroll>
-            <div className="text-center mb-16 lg:mb-20">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-500 mb-4">
-                Architecture de Confiance
-              </p>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[1.1] mb-5">
-                Six garanties technologiques
-              </h2>
-              <p className="text-base md:text-lg text-slate-600 font-medium max-w-2xl mx-auto">
-                Pour répondre aux impératifs de sécurité du secteur public et parapublic.
-              </p>
-            </div>
-          </FadeInOnScroll>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
-            {piliers.map((p, i) => {
-              const Icon = p.Icon;
-              return (
-                <FadeInOnScroll key={i} delay={(i % 2) * 100}>
-                  <div className="h-full p-8 lg:p-10 rounded-3xl bg-white border border-slate-200 hover:border-orange-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-500">
-                    <div className="flex items-start gap-5">
-                      <div className="w-12 h-12 rounded-xl bg-slate-900 flex items-center justify-center shrink-0">
-                        <Icon size={20} className="text-orange-500" strokeWidth={1.8} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black tracking-[0.3em] text-slate-400 mb-2">{p.number}</p>
-                        <h3 className="text-lg font-black tracking-tight mb-3 leading-tight">{p.title}</h3>
-                        <p className="text-sm text-slate-600 leading-relaxed font-medium">{p.text}</p>
-                      </div>
-                    </div>
-                  </div>
-                </FadeInOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* =================== SECTION 3 : CAS D'USAGE =================== */}
-      <section className="py-24 lg:py-32 bg-slate-950 text-white">
-        <div className="max-w-6xl mx-auto px-6 lg:px-12">
-          <FadeInOnScroll>
-            <div className="text-center mb-16 lg:mb-20">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-500 mb-4">
-                Cas d&apos;Usage Sectoriels
-              </p>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1] mb-5">
-                Comment BrandLock sécurise<br className="hidden md:block" /> vos départements
-              </h2>
-              <p className="text-base md:text-lg text-white/70 font-medium max-w-2xl mx-auto">
-                Une plateforme unique, des espaces de travail cloisonnés selon vos profils métiers.
-              </p>
-            </div>
-          </FadeInOnScroll>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-            {casUsage.map((c, i) => {
-              const Icon = c.Icon;
-              return (
-                <FadeInOnScroll key={i} delay={i * 120}>
-                  <div className="h-full p-8 lg:p-10 rounded-3xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-orange-500/40 hover:-translate-y-1 transition-all duration-500">
-                    <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex items-center justify-center mb-6">
-                      <Icon size={24} className="text-orange-500" strokeWidth={1.8} />
-                    </div>
-                    <h3 className="text-lg font-black tracking-tight mb-3 leading-tight text-white">{c.title}</h3>
-                    <p className="text-sm text-white/70 leading-relaxed font-medium">{c.text}</p>
-                  </div>
-                </FadeInOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* =================== SECTION 4 : AUDIT & TRAÇABILITÉ =================== */}
-      <section className="py-24 lg:py-32 bg-white">
-        <div className="max-w-5xl mx-auto px-6 lg:px-12">
-          <FadeInOnScroll>
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 p-10 md:p-16 lg:p-20 text-white shadow-2xl shadow-slate-900/20">
-              <div className="absolute -top-20 -right-20 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl"></div>
-              <div className="absolute -bottom-20 -left-20 w-72 h-72 bg-orange-500/5 rounded-full blur-3xl"></div>
-
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center mb-8">
-                  <FileSearch size={28} className="text-orange-500" strokeWidth={1.8} />
-                </div>
-
-                <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-400 mb-4">
-                  Registre d&apos;Audit & Traçabilité
-                </p>
-
-                <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1] mb-6">
-                  Traçabilité Totale :<br /> Le Registre d&apos;Audit Intégré
-                </h2>
-
-                <p className="text-base md:text-lg text-white/80 leading-relaxed font-medium max-w-3xl">
-                  Chaque génération, approbation et exportation est consignée dans un registre d&apos;audit inaltérable.
-                  La direction conserve une visibilité totale sur l&apos;historique de création de chaque partenaire ou
-                  département, garantissant la responsabilisation des acteurs et une protection absolue face au risque
-                  de crise réputationnelle.
-                </p>
-              </div>
-            </div>
-          </FadeInOnScroll>
-        </div>
-      </section>
-
-      {/* =================== SECTION 5 : DÉPLOIEMENT =================== */}
-      <section className="py-24 lg:py-32 bg-slate-50">
-        <div className="max-w-6xl mx-auto px-6 lg:px-12">
-          <FadeInOnScroll>
-            <div className="text-center mb-16 lg:mb-20">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-500 mb-4">
-                Processus de Déploiement
-              </p>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[1.1] mb-5">
-                Une intégration sans friction<br className="hidden md:block" /> pour vos équipes
-              </h2>
-              <p className="text-base md:text-lg text-slate-600 font-medium max-w-2xl mx-auto">
-                Un déploiement sur-mesure et encadré en 3 étapes.
-              </p>
-            </div>
-          </FadeInOnScroll>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-4 relative">
-            {/* Ligne de connexion entre les étapes */}
-            <div className="hidden md:block absolute top-10 left-[16%] right-[16%] h-px bg-gradient-to-r from-transparent via-orange-300 to-transparent"></div>
-
-            {deploiement.map((d, i) => (
-              <FadeInOnScroll key={i} delay={i * 150}>
-                <div className="text-center p-6 relative">
-                  <div className="w-20 h-20 rounded-full bg-white border-2 border-orange-500 mx-auto mb-6 flex items-center justify-center font-black text-2xl text-orange-500 shadow-xl shadow-orange-500/10 relative z-10">
-                    {d.number}
-                  </div>
-                  <h3 className="text-lg font-black tracking-tight mb-3 text-slate-900">{d.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed font-medium">{d.text}</p>
-                </div>
-              </FadeInOnScroll>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* =================== SECTION 6 : FAQ =================== */}
-      <section className="py-24 lg:py-32 bg-white">
-        <div className="max-w-3xl mx-auto px-6 lg:px-12">
-          <FadeInOnScroll>
-            <div className="text-center mb-16 lg:mb-20">
-              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-orange-500 mb-4">
-                Foire Aux Questions
-              </p>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-[1.1]">
-                Gouvernance<br className="hidden md:block" /> & Sécurité
-              </h2>
-            </div>
-          </FadeInOnScroll>
-
-          <div className="space-y-3">
-            {faq.map((item, i) => {
-              const isOpen = openFaq === i;
-              return (
-                <FadeInOnScroll key={i} delay={i * 80}>
-                  <div
-                    className={`bg-slate-50 rounded-2xl border transition-all duration-500 overflow-hidden ${
-                      isOpen ? "border-orange-300 shadow-lg shadow-orange-500/5" : "border-slate-200 hover:border-slate-300"
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setOpenFaq(isOpen ? null : i)}
-                      className="w-full p-6 lg:p-7 text-left flex items-center justify-between gap-4"
-                    >
-                      <span className="text-base lg:text-lg font-black tracking-tight text-slate-900">{item.q}</span>
-                      <ChevronDown
-                        size={20}
-                        className={`text-slate-400 shrink-0 transition-transform duration-500 ${
-                          isOpen ? "rotate-180 text-orange-500" : ""
-                        }`}
-                      />
-                    </button>
-                    <div
-                      className={`grid transition-all duration-500 ease-in-out ${
-                        isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                      }`}
-                    >
-                      <div className="overflow-hidden">
-                        <p className="px-6 lg:px-7 pb-6 lg:pb-7 text-sm text-slate-600 leading-relaxed font-medium">
-                          {item.a}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </FadeInOnScroll>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* =================== FOOTER + CTA FINAL =================== */}
-      <footer className="bg-slate-950 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(249,115,22,0.12),transparent_50%)]"></div>
-
-        <div className="relative max-w-5xl mx-auto px-6 lg:px-12 py-24 lg:py-32 text-center">
-          <FadeInOnScroll>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight leading-[1.1] mb-8 max-w-3xl mx-auto">
-              La technologie au service<br /> des institutions suisses.
-            </h2>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={100}>
-            <p className="text-base md:text-lg text-white/70 font-medium mb-12 max-w-2xl mx-auto">
-              Sécurité, rigueur et fiabilité. Conçu en Suisse, pour la Suisse.
-            </p>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={200}>
-            <button
-              onClick={() => setDemoOpen(true)}
-              className="group inline-flex items-center gap-3 px-8 py-4 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase tracking-[0.2em] shadow-2xl shadow-orange-500/30 hover:bg-orange-600 hover:shadow-orange-500/50 hover:-translate-y-0.5 transition-all active:scale-95"
-            >
-              Organiser une présentation technique
-              <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </FadeInOnScroll>
-
-          <FadeInOnScroll delay={300}>
-            <div className="flex items-center justify-center gap-2 mt-20 pt-10 border-t border-white/10">
-              <img src="/media/logo.png" alt="BrandLock" className="h-7 w-auto opacity-80" />
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-bold tracking-[0.3em] uppercase text-white/70">BrandLock</span>
-                <SwissFlag className="w-2.5 h-2.5 shrink-0" />
-              </div>
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/50 mt-4">
-              © 2026 BrandLock · Édition Institutionnelle · Tous droits réservés
-            </p>
-          </FadeInOnScroll>
-        </div>
-      </footer>
-
-      {/* =================== MODAL DEMO REQUEST =================== */}
-      {demoOpen && (
-        <div
-          className="fixed inset-0 z-[200] bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300"
-          onClick={closeDemoModal}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {demoSuccess ? (
-              <div className="text-center py-10 space-y-5">
-                <div className="w-20 h-20 rounded-3xl bg-green-100 mx-auto flex items-center justify-center">
-                  <Check size={36} className="text-green-600" />
-                </div>
-                <h3 className="text-2xl font-black tracking-tight">Demande reçue</h3>
-                <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                  Nous revenons vers vous dans les 24 heures ouvrées pour planifier votre présentation technique.
-                </p>
-                <button
-                  onClick={closeDemoModal}
-                  className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-800 transition"
-                >
-                  Fermer
-                </button>
-              </div>
+            {loading ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Connexion...
+              </>
             ) : (
               <>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <h3 className="text-xl font-black tracking-tight">Présentation technique</h3>
-                    <p className="text-xs text-slate-500 font-medium mt-1">Réponse sous 24h ouvrées</p>
-                  </div>
-                  <button
-                    onClick={closeDemoModal}
-                    className="p-2 hover:bg-slate-100 rounded-lg transition shrink-0"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <form onSubmit={handleDemoSubmit} className="space-y-3">
-                  <input
-                    type="text"
-                    placeholder="Nom complet *"
-                    value={demoForm.name}
-                    onChange={(e) => setDemoForm({ ...demoForm, name: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Institution / Organisation"
-                    value={demoForm.company}
-                    onChange={(e) => setDemoForm({ ...demoForm, company: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email professionnel *"
-                    value={demoForm.email}
-                    onChange={(e) => setDemoForm({ ...demoForm, email: e.target.value })}
-                    required
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Téléphone (facultatif)"
-                    value={demoForm.phone}
-                    onChange={(e) => setDemoForm({ ...demoForm, phone: e.target.value })}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition"
-                  />
-                  <textarea
-                    placeholder="Décrivez votre besoin en quelques mots *"
-                    value={demoForm.message}
-                    onChange={(e) => setDemoForm({ ...demoForm, message: e.target.value })}
-                    required
-                    rows={4}
-                    className="w-full px-4 py-3 rounded-lg bg-slate-50 border border-slate-200 text-sm outline-none focus:border-slate-400 transition resize-none"
-                  />
-
-                  {demoError && (
-                    <p className="text-xs text-red-600 font-medium bg-red-50 px-4 py-2 rounded-lg">{demoError}</p>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={submittingDemo}
-                    className="w-full py-3.5 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-orange-600 transition disabled:opacity-50 flex items-center justify-center gap-2 active:scale-95"
-                  >
-                    <Send size={14} />
-                    {submittingDemo ? "Envoi en cours..." : "Envoyer la demande"}
-                  </button>
-                </form>
+                <Lock size={12} />
+                Se connecter
               </>
             )}
-          </div>
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+//  MODAL PROSPECT
+// ============================================================
+
+function ProspectModal({ onClose }: { onClose: () => void }) {
+  const [name, setName] = useState("");
+  const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = ""; };
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !email.trim() || !message.trim()) {
+      setError("Nom, email et message sont obligatoires");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      const res = await fetch("/api/super-admin/prospects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          company: company.trim() || null,
+          email: email.trim(),
+          phone: phone.trim() || null,
+          message: message.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Erreur lors de l'envoi");
+        setSubmitting(false);
+        return;
+      }
+
+      setSubmitted(true);
+      setSubmitting(false);
+      setTimeout(onClose, 3500);
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 backdrop-blur-md overflow-y-auto animate-fadeIn"
+      style={{ backgroundColor: `${COLORS.ink}E0` }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="min-h-full flex items-start justify-center p-4 py-8">
+        <div
+          className="w-full max-w-lg rounded-2xl overflow-hidden animate-scaleIn my-auto"
+          style={{
+            backgroundColor: COLORS.cream,
+            boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {submitted ? (
+            <div className="p-12 text-center">
+              <div
+                className="w-16 h-16 rounded-full mx-auto mb-5 flex items-center justify-center"
+                style={{ backgroundColor: COLORS.bordeaux, color: COLORS.cream }}
+              >
+                <MailCheck size={28} />
+              </div>
+              <h3 className="text-xl font-black tracking-tight mb-3" style={{ color: COLORS.ink }}>
+                Demande envoyée
+              </h3>
+              <p className="text-sm mb-2" style={{ color: COLORS.charcoal }}>
+                Merci pour votre confiance.
+              </p>
+              <p className="text-xs" style={{ color: COLORS.warmGray }}>
+                Notre équipe revient vers vous sous <strong>48h ouvrées</strong>.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div
+                className="px-6 py-5 border-b flex items-center justify-between sticky top-0 z-10"
+                style={{
+                  backgroundColor: COLORS.cream,
+                  borderColor: `${COLORS.ink}10`,
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: COLORS.bordeaux, color: "white" }}
+                  >
+                    <Briefcase size={16} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-black tracking-tight" style={{ color: COLORS.ink }}>
+                      Présentation technique
+                    </h2>
+                    <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: COLORS.warmGray }}>
+                      Réponse sous 48h ouvrées
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg transition hover:opacity-70"
+                  style={{ color: COLORS.warmGray }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Field label="Nom complet *">
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      autoFocus
+                      placeholder="Marie Dupont"
+                      className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+                      style={{ backgroundColor: "white", border: `1px solid ${COLORS.ink}15` }}
+                    />
+                  </Field>
+
+                  <Field label="Institution">
+                    <input
+                      type="text"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="Canton de Genève"
+                      className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+                      style={{ backgroundColor: "white", border: `1px solid ${COLORS.ink}15` }}
+                    />
+                  </Field>
+                </div>
+
+                <Field label="Email professionnel *">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="vous@institution.ch"
+                    className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+                    style={{ backgroundColor: "white", border: `1px solid ${COLORS.ink}15` }}
+                  />
+                </Field>
+
+                <Field label="Téléphone">
+                  <input
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+41 22 ..."
+                    className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition"
+                    style={{ backgroundColor: "white", border: `1px solid ${COLORS.ink}15` }}
+                  />
+                </Field>
+
+                <Field label="Votre besoin *">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    required
+                    rows={4}
+                    placeholder="Quel est votre cas d'usage ? Combien de collaborateurs ? Quelles plateformes visées ?"
+                    className="w-full px-4 py-3 rounded-lg text-sm focus:outline-none transition resize-none"
+                    style={{ backgroundColor: "white", border: `1px solid ${COLORS.ink}15` }}
+                  />
+                </Field>
+
+                {error && (
+                  <div
+                    className="px-3 py-2.5 rounded-lg text-xs"
+                    style={{
+                      backgroundColor: `${COLORS.bordeaux}10`,
+                      border: `1px solid ${COLORS.bordeaux}30`,
+                      color: COLORS.bordeauxDark,
+                    }}
+                  >
+                    {error}
+                  </div>
+                )}
+
+                <div
+                  className="text-[10px] flex items-start gap-2 px-3 py-2.5 rounded-lg"
+                  style={{
+                    backgroundColor: `${COLORS.gold}10`,
+                    border: `1px solid ${COLORS.gold}30`,
+                    color: COLORS.charcoal,
+                  }}
+                >
+                  <ShieldCheck size={12} className="shrink-0 mt-0.5" style={{ color: COLORS.goldDark }} />
+                  <span>
+                    Vos données sont traitées en conformité avec la <strong>nLPD suisse</strong>.
+                    Hébergement Infomaniak (Genève) · Zéro transfert hors Suisse.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5"
+                  style={{
+                    backgroundColor: COLORS.bordeaux,
+                    color: "white",
+                    boxShadow: `0 10px 25px -10px ${COLORS.bordeaux}80`,
+                  }}
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" />
+                      Envoi...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight size={14} />
+                      Envoyer ma demande
+                    </>
+                  )}
+                </button>
+              </form>
+            </>
+          )}
         </div>
-      )}
-    </main>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label
+        className="block text-[10px] font-bold uppercase tracking-widest mb-1.5"
+        style={{ color: COLORS.warmGray }}
+      >
+        {label}
+      </label>
+      {children}
+    </div>
   );
 }

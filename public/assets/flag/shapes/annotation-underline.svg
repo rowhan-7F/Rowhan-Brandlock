@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 30" preserveAspectRatio="none">
+  <path
+    d="M 5 18 Q 30 22 55 17 T 105 18 T 155 19 T 195 17"
+    fill="none"
+    stroke="#F26522"
+    stroke-width="5"
+    stroke-linecap="round"
+    style="filter: drop-shadow(0 0 0.5px #F26522);"
+  />
+</svg>
