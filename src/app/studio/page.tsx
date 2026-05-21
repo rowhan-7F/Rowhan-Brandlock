@@ -7,13 +7,17 @@ import { supabase } from "../../lib/supabase";
 import TasksCapsule from "@/components/studio/TasksCapsule";
 import {
   Plus, Loader2, FileText, Clock, CheckCircle2,
-  AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X,
+  AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X, Film,
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import NotificationsBell from "@/components/NotificationsBell";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
+// ⭐ Module vidéo
+import NewVideoProjectModal from "@/components/studio/video/NewVideoProjectModal";
+import VideoProjectCard from "@/components/studio/video/VideoProjectCard";
+import type { VideoProject } from "@/lib/video/types";
 
 type ProjectRow = {
   id: string;
@@ -48,6 +52,10 @@ export default function StudioHomePage() {
   const [projects, setProjects] = useState<ProjectRow[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [creating, setCreating] = useState(false);
+  // ⭐ Module vidéo
+  const [videoProjects, setVideoProjects] = useState<VideoProject[]>([]);
+  const [loadingVideos, setLoadingVideos] = useState(true);
+  const [showNewVideoModal, setShowNewVideoModal] = useState(false);
 
   useEffect(() => {
     if (tenantState.status === "unauthenticated") {
@@ -70,22 +78,51 @@ export default function StudioHomePage() {
     let cancelled = false;
     (async () => {
       setLoadingProjects(true);
-      const { data, error } = await supabase
+      setLoadingVideos(true);
+
+      // Carrousels
+      const carrouselsPromise = supabase
         .from("studio_projects")
         .select("*")
         .eq("tenant_id", tenantState.user.tenantId!)
         .neq("status", "archived")
         .order("updated_at", { ascending: false });
 
+      // ⭐ Vidéos
+      const videosPromise = supabase
+        .from("studio_video_projects")
+        .select("*")
+        .eq("tenant_id", tenantState.user.tenantId!)
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false });
+
+      const [carrouselsRes, videosRes] = await Promise.all([carrouselsPromise, videosPromise]);
+
       if (!cancelled) {
-        if (error) console.error("Erreur chargement projets:", error);
-        else setProjects((data as ProjectRow[]) || []);
+        if (carrouselsRes.error) console.error("Erreur chargement projets:", carrouselsRes.error);
+        else setProjects((carrouselsRes.data as ProjectRow[]) || []);
         setLoadingProjects(false);
+
+        if (videosRes.error) console.error("Erreur chargement vidéos:", videosRes.error);
+        else setVideoProjects((videosRes.data as VideoProject[]) || []);
+        setLoadingVideos(false);
       }
     })();
 
     return () => { cancelled = true; };
   }, [tenantState.status, tenantState.status === "ready" ? tenantState.user.tenantId : null]);
+
+  // ⭐ Fonction de reload des vidéos (utilisée après suppression card)
+  const reloadVideos = async () => {
+    if (tenantState.status !== "ready") return;
+    const { data } = await supabase
+      .from("studio_video_projects")
+      .select("*")
+      .eq("tenant_id", tenantState.user.tenantId!)
+      .is("archived_at", null)
+      .order("updated_at", { ascending: false });
+    setVideoProjects((data as VideoProject[]) || []);
+  };
 
   const handleCreate = async () => {
     if (tenantState.status !== "ready") return;
@@ -197,16 +234,45 @@ export default function StudioHomePage() {
             Gère tes contenus visuels en respectant la charte de {config.tenant.name}
           </p>
 
-          <button
-            onClick={handleCreate}
-            disabled={creating}
-            className="text-white text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl transition flex items-center gap-2 disabled:opacity-40 shadow-sm hover:shadow-md"
-            style={{ backgroundColor: brandColor }}
-          >
-            {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            {creating ? "Création..." : "Nouveau projet"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleCreate}
+              disabled={creating}
+              className="text-white text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl transition flex items-center gap-2 disabled:opacity-40 shadow-sm hover:shadow-md"
+              style={{ backgroundColor: brandColor }}
+            >
+              {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
+              {creating ? "Création..." : "Nouveau carrousel"}
+            </button>
+
+            {/* ⭐ NOUVEAU bouton vidéo */}
+            <button
+              onClick={() => setShowNewVideoModal(true)}
+              className="inline-flex items-center gap-2 px-6 py-3.5 bg-white border-2 text-sm font-bold uppercase tracking-wider rounded-xl transition shadow-sm hover:shadow-md"
+              style={{ borderColor: brandColor, color: brandColor }}
+            >
+              <Film size={16} />
+              Nouveau projet vidéo
+            </button>
+          </div>
         </div>
+
+        {/* ⭐ SECTION VIDÉOS */}
+        {!loadingVideos && videoProjects.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-purple-100 text-purple-700">
+                <Film size={11} /> Mes vidéos
+              </span>
+              <span className="text-[11px] text-neutral-400">{videoProjects.length}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {videoProjects.map((vp) => (
+                <VideoProjectCard key={vp.id} project={vp} onDelete={reloadVideos} />
+              ))}
+            </div>
+          </section>
+        )}
 
         {loadingProjects ? (
           <div className="text-center py-16">
@@ -262,6 +328,13 @@ export default function StudioHomePage() {
 
       {/* ⭐ FEEDBACK WIDGET — Visible pour tenant_admin + graphist uniquement */}
       <FeedbackWidget />
+
+      {/* ⭐ MODAL création vidéo */}
+      <NewVideoProjectModal
+        open={showNewVideoModal}
+        onClose={() => setShowNewVideoModal(false)}
+        brandColor={brandColor}
+      />
     </div>
   );
 }

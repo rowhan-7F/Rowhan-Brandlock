@@ -1,0 +1,21 @@
+{
+  "name": "brandlock-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Worker Node.js pour transcription + render video BrandLock",
+  "scripts": {
+    "dev": "node --use-system-ca --import tsx/esm --watch src/index.ts",
+    "start": "node --use-system-ca --import tsx/esm src/index.ts",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
