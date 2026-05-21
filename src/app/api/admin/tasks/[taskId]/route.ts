@@ -104,7 +104,7 @@ export async function PATCH(
     // ============================================================
     if (body.action === "create_project") {
       if (user.role !== "graphist" && user.role !== "super_admin") {
-        return NextResponse.json({ error: "Action réservée aux graphistes" }, { status: 403 });
+        return NextResponse.json({ error: "Action réservée au studio" }, { status: 403 });
       }
 
       console.log("[PATCH task] create_project");
@@ -191,7 +191,7 @@ export async function PATCH(
     // ============================================================
     if (body.action === "claim") {
       if (user.role !== "graphist" && user.role !== "super_admin") {
-        return NextResponse.json({ error: "Action réservée aux graphistes" }, { status: 403 });
+        return NextResponse.json({ error: "Action réservée au studio" }, { status: 403 });
       }
       const { data, error } = await supabase
         .from("studio_tasks")

@@ -159,7 +159,7 @@ function TenantCard({ tenant }: { tenant: Tenant }) {
           <span>·</span>
           <span className="flex items-center gap-1">
             <Users size={11} />
-            {tenant.admins_count} admin{tenant.admins_count > 1 ? "s" : ""} · {tenant.graphists_count} graphiste{tenant.graphists_count > 1 ? "s" : ""}
+            {tenant.admins_count} admin{tenant.admins_count > 1 ? "s" : ""} · {tenant.graphists_count} membre studio{tenant.graphists_count > 1 ? "s" : ""}
           </span>
           <span>·</span>
           <span>Créé le {new Date(tenant.created_at).toLocaleDateString("fr-CH")}</span>

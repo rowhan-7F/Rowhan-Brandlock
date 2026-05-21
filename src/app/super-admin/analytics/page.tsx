@@ -350,7 +350,7 @@ export default function SuperAdminAnalyticsPage() {
             </Card>
 
             {/* Performance graphistes */}
-            <Card title="Top graphistes">
+            <Card title="Top membres studio">
               {charts.graphistesPerf.length > 0 ? (
                 <div className="space-y-2">
                   {charts.graphistesPerf.map((g: any, i: number) => {

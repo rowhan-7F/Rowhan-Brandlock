@@ -103,7 +103,7 @@ function getGradientStyle(filter: string): React.CSSProperties | null {
       bottom: 0, left: 0, right: 0,
       height: "80%",
       background:
-        "linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.85) 30%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%)",
+        "linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0.25) 70%, rgba(0,0,0,0) 100%)",
     };
   }
   return null;

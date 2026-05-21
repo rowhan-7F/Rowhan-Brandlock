@@ -4,14 +4,18 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  ArrowLeft, Plus, Loader2, AlertCircle, CheckCircle2, Clock,
+  Plus, Loader2, AlertCircle, CheckCircle2, Clock,
   Calendar, X, Eye, Trash2, ChevronDown, ChevronUp,
   FileText, Send, Library, Paperclip, ImagePlus, Download,
   File as FileIcon,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
-import LogoutButton from "@/components/LogoutButton";
+import AppHeader from "@/components/AppHeader";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
+
+// ⚠ SUPPRIMÉ : import LogoutButton, ArrowLeft (logout intégré dans AppHeader, back arrow via prop)
 
 // ============================================================
 //  TYPES
@@ -197,21 +201,11 @@ export default function AdminTenantPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <header className="bg-white border-b border-neutral-200 px-6 py-4 flex items-center justify-between sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-neutral-400 hover:text-neutral-700 transition">
-            <ArrowLeft size={18} />
-          </Link>
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-              Administration
-            </div>
-            <h1 className="text-base font-bold text-neutral-900">
-              Tableau de bord
-            </h1>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
+      {/* ⭐ NOUVEAU AppHeader unifié */}
+      <AppHeader
+        eyebrow="ADMINISTRATION"
+        title="Tableau de bord"
+        rightSlot={
           <Link
             href="/admin/tenant/library"
             className="px-3 py-2 rounded-lg border border-neutral-200 bg-white text-xs font-bold text-neutral-700 hover:bg-orange-50 hover:border-orange-300 transition flex items-center gap-1.5 relative"
@@ -225,11 +219,8 @@ export default function AdminTenantPage() {
               </span>
             )}
           </Link>
-
-          <div className="text-xs text-neutral-500">{user?.email}</div>
-          <LogoutButton variant="full" />
-        </div>
-      </header>
+        }
+      />
 
       <div className="max-w-6xl mx-auto p-6">
         <div className="grid grid-cols-3 gap-4 mb-6">
@@ -273,6 +264,9 @@ export default function AdminTenantPage() {
           }}
         />
       )}
+
+      {/* ⭐ FEEDBACK WIDGET */}
+      <FeedbackWidget />
     </div>
   );
 }
@@ -336,7 +330,7 @@ function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-neutral-900">Vos briefs</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">Les graphistes verront automatiquement les briefs ouverts</p>
+          <p className="text-xs text-neutral-500 mt-0.5">Le studio verra automatiquement les briefs ouverts</p>
         </div>
         <button
           type="button"
@@ -384,11 +378,44 @@ function TaskCard({ task, onChange, user }: any) {
   };
 
   const statusLabels: Record<string, { label: string; color: string }> = {
-    open: { label: "Ouvert", color: "text-amber-600 bg-amber-50" },
-    in_progress: { label: "En cours", color: "text-blue-600 bg-blue-50" },
+    open: { label: "En attente…", color: "text-amber-600 bg-amber-50" },
+    in_progress: { label: "En production", color: "text-blue-600 bg-blue-50" },
     completed: { label: "Terminé", color: "text-green-600 bg-green-50" },
     cancelled: { label: "Annulé", color: "text-neutral-400 bg-neutral-50" },
   };
+
+  // ⭐ Statut du projet lié (pour afficher "À valider" quand soumis)
+  const [linkedProjectStatus, setLinkedProjectStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!task.linked_project_id) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("studio_projects")
+        .select("status")
+        .eq("id", task.linked_project_id)
+        .maybeSingle();
+      if (!cancelled && data) {
+        setLinkedProjectStatus(data.status);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [task.linked_project_id]);
+
+  // ⭐ Statut effectif affiché (combine task.status + project.status)
+  const effectiveStatus = (() => {
+    if (linkedProjectStatus === "pending_approval") {
+      return { label: "À valider", color: "text-purple-600 bg-purple-50" };
+    }
+    if (linkedProjectStatus === "approved" || linkedProjectStatus === "published") {
+      return { label: "Approuvé", color: "text-green-600 bg-green-50" };
+    }
+    if (linkedProjectStatus === "rejected") {
+      return { label: "À retravailler", color: "text-red-600 bg-red-50" };
+    }
+    return statusLabels[task.status];
+  })();
 
   // Charger PDF + images quand on expand
   useEffect(() => {
@@ -425,7 +452,12 @@ function TaskCard({ task, onChange, user }: any) {
   }, [expanded, task.id]);
 
   const handleDelete = async () => {
-    if (!confirm(`Supprimer le brief "${task.title}" ?`)) return;
+    const ok = await confirmDialog(`Supprimer le brief "${task.title}" ?`, {
+      description: "Le brief sera définitivement supprimé.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -434,9 +466,10 @@ function TaskCard({ task, onChange, user }: any) {
         headers: { Authorization: `Bearer ${session?.access_token}` },
       });
       if (!res.ok) throw new Error("Erreur suppression");
+      toast.success("Brief supprimé");
       onChange();
     } catch (err: any) {
-      alert(err.message);
+      toast.error("Suppression impossible", { description: err.message });
     } finally {
       setDeleting(false);
     }
@@ -450,8 +483,8 @@ function TaskCard({ task, onChange, user }: any) {
             <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${priorityColors[task.priority]}`}>
               {task.priority}
             </span>
-            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${statusLabels[task.status].color}`}>
-              {statusLabels[task.status].label}
+            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${effectiveStatus.color}`}>
+              {effectiveStatus.label}
             </span>
             {task.deadline && (
               <span className="text-[10px] text-neutral-500 flex items-center gap-1">
@@ -476,7 +509,7 @@ function TaskCard({ task, onChange, user }: any) {
           </button>
           {task.linked_project_id && (
             <Link
-              href={`/studio/${task.linked_project_id}`}
+              href={`/admin/tenant/projects/${task.linked_project_id}`}
               className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition"
               title="Voir le projet"
             >
@@ -875,7 +908,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Images à utiliser
             </label>
             <p className="text-[10px] text-neutral-500 mb-2">
-              Les images que vous ajoutez sont automatiquement validées et visibles en priorité pour le graphiste.
+              Les images que vous ajoutez sont automatiquement validées et visibles en priorité pour le studio.
             </p>
             <input
               ref={imageInputRef}

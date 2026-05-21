@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCurrentTenant } from "../../../lib/useCurrentTenant";
 import { supabase } from "../../../lib/supabase";
@@ -11,16 +11,19 @@ import {
 } from "../../../lib/useStudioProject";
 import {
   ArrowLeft, Loader2, AlertCircle, ChevronDown, ChevronRight,
-  Plus, Trash2, Check, Send, Download,
+  Plus, Trash2, Check, Send, Download, LogOut, Clock,
   Image as ImageIcon, X, CheckCircle2, Pencil,
 } from "lucide-react";
 import SlideRenderer from "../../../components/studio/SlideRenderer";
 import MediaPicker, { SelectedImage } from "../../../components/studio/MediaPicker";
 import { exportCarouselAsZip, downloadBlob, ExportProgress } from "../../../lib/exportCarousel";
-import LogoutButton from "@/components/LogoutButton";
 import NotificationsBell from "@/components/NotificationsBell";
 import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
+
+// ⚠ SUPPRIMÉ : import LogoutButton (remplacé par icône custom directement dans le header)
 
 type UserRole = "tenant_admin" | "graphist" | "super_admin" | "viewer";
 
@@ -34,6 +37,7 @@ function generateId(): string {
 
 export default function StudioEditorPage() {
   const params = useParams();
+  const router = useRouter();
   const projectId = params?.projectId as string;
   const tenantState = useCurrentTenant();
 
@@ -51,6 +55,13 @@ export default function StudioEditorPage() {
   const [localTitle, setLocalTitle] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<ExportProgress | null>(null);
+
+  // ⭐ GUARD : Tenant admin ne doit JAMAIS accéder au studio editor
+  useEffect(() => {
+    if (tenantState.status === "ready" && tenantState.user.role === "tenant_admin") {
+      router.replace(`/admin/tenant/projects/${projectId}`);
+    }
+  }, [tenantState.status, projectId, router]);
 
   useEffect(() => {
     if (hasInitialized) return;
@@ -70,10 +81,33 @@ export default function StudioEditorPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectState.status, tenantState.status, hasInitialized]);
 
+  // ⭐ Handler logout (remplace l'ancien LogoutButton, même comportement qu'AppHeader)
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se déconnecter ?", {
+      description: "Tu vas être redirigé vers la page d'accueil.",
+      confirmLabel: "Déconnexion",
+    });
+    if (!ok) return;
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
   if (tenantState.status === "loading" || projectState.status === "loading") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+
+  // ⭐ Écran de redirection pour admin (évite le flash de contenu studio)
+  if (tenantState.status === "ready" && tenantState.user.role === "tenant_admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="text-center">
+          <Loader2 className="w-6 h-6 animate-spin text-neutral-400 mx-auto mb-3" />
+          <p className="text-xs text-neutral-500">Redirection vers la page de validation...</p>
+        </div>
       </div>
     );
   }
@@ -109,8 +143,13 @@ export default function StudioEditorPage() {
     setOpenSlideId(newSlide.id);
   };
 
-  const deleteSlide = (slideId: string) => {
-    if (!window.confirm("Supprimer cette slide ?")) return;
+  const deleteSlide = async (slideId: string) => {
+    const ok = await confirmDialog("Supprimer cette slide ?", {
+      description: "Le contenu de cette slide sera perdu.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     updateStateJson((prev) => ({ ...prev, slides: prev.slides.filter((s) => s.id !== slideId) }));
     if (openSlideId === slideId) {
       const remaining = slides.filter((s) => s.id !== slideId);
@@ -145,7 +184,9 @@ export default function StudioEditorPage() {
 
   const handleSubmit = async () => {
     if (slides.length === 0) {
-      alert("Ajoute au moins une slide avant de soumettre.");
+      toast.error("Aucune slide à soumettre", {
+        description: "Ajoute au moins une slide avant de soumettre.",
+      });
       return;
     }
     setSubmitting(true);
@@ -161,10 +202,15 @@ export default function StudioEditorPage() {
         body: JSON.stringify({ state_json: stateJsonForSubmit, status: "pending_approval" }),
       });
       if (!res.ok) throw new Error("Erreur soumission");
-      alert("Projet soumis pour approbation");
-      window.location.href = "/studio";
+      const isResubmit = project.status === "pending_approval";
+      toast.success(isResubmit ? "Version mise à jour ✓" : "Projet soumis ✓", {
+        description: isResubmit
+          ? "L'admin verra la nouvelle version dès son prochain refresh."
+          : "L'admin va le valider et te transmettre ses retours.",
+      });
+      setTimeout(() => { window.location.href = "/studio"; }, 1200);
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      toast.error("Soumission impossible", { description: err.message });
     } finally {
       setSubmitting(false);
     }
@@ -172,7 +218,9 @@ export default function StudioEditorPage() {
 
   const handleExport = async () => {
     if (slides.length === 0) {
-      alert("Ajoute au moins une slide avant d'exporter.");
+      toast.error("Aucune slide à exporter", {
+        description: "Ajoute au moins une slide avant d'exporter.",
+      });
       return;
     }
     setExporting(true);
@@ -200,7 +248,7 @@ export default function StudioEditorPage() {
         setExportProgress(null);
       }, 2000);
     } catch (err: any) {
-      alert("Erreur lors de l'export : " + (err.message || err));
+      toast.error("Export impossible", { description: err.message || String(err) });
       setExporting(false);
       setExportProgress(null);
     }
@@ -208,17 +256,69 @@ export default function StudioEditorPage() {
 
   return (
     <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden">
+      {/* ⭐ HEADER UNIFIÉ — Style identique à AppHeader, mais avec features éditeur */}
       <header className="bg-white border-b border-neutral-200 px-5 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link href="/studio" className="text-neutral-400 hover:text-neutral-700 transition shrink-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+
+          {/* Back arrow vers /studio */}
+          <Link
+            href="/studio"
+            className="text-neutral-400 hover:text-neutral-700 transition shrink-0"
+            title="Retour à mes projets"
+          >
             <ArrowLeft size={18} />
           </Link>
+
+          {/* Logo BrandLock + drapeau astérix (style AppHeader) */}
+          <Link href="/" className="flex items-center gap-2 shrink-0 group" title="Accueil">
+            <img
+              src="/media/logo.png"
+              alt="BrandLock"
+              className="h-7 w-auto object-contain transition-opacity group-hover:opacity-70"
+            />
+            <div className="flex items-baseline gap-1">
+              <span
+                className="font-black tracking-tighter text-sm italic hidden lg:inline text-[#181614]"
+                style={{ letterSpacing: "-0.04em" }}
+              >
+                BrandLock
+              </span>
+              <svg
+                viewBox="0 0 32 32"
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-2 w-2 shrink-0 hidden lg:block"
+                aria-label="Suisse"
+              >
+                <rect width="32" height="32" fill="#B11E2F" rx="3" />
+                <rect x="13" y="7" width="6" height="18" fill="white" />
+                <rect x="7" y="13" width="18" height="6" fill="white" />
+              </svg>
+            </div>
+          </Link>
+
+          {/* Séparateur vertical */}
+          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden sm:block" />
+
+          {/* Eyebrow STUDIO */}
+          <div className="hidden md:block shrink-0">
+            <div className="text-[9px] font-black uppercase tracking-widest text-[#B11E2F]">
+              STUDIO
+            </div>
+            <div className="text-[10px] text-neutral-400 -mt-0.5">{config.tenant.name}</div>
+          </div>
+
+          {/* Séparateur vertical */}
+          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden md:block" />
+
+          {/* Brand color square (compact) */}
           <div
-            className="w-7 h-7 rounded-md flex items-center justify-center text-white font-black text-[10px] shrink-0"
+            className="w-6 h-6 rounded-md flex items-center justify-center text-white font-black text-[10px] shrink-0"
             style={{ backgroundColor: brandColor }}
           >
             {config.tenant.name.charAt(0)}
           </div>
+
+          {/* Titre éditable + save indicator */}
           <div className="min-w-0 flex-1">
             <EditableProjectTitle
               title={effectiveTitle}
@@ -231,16 +331,35 @@ export default function StudioEditorPage() {
               }}
             />
             <div className="text-[10px] text-neutral-400 flex items-center gap-2">
-              <span>{config.tenant.name}</span>
               <SaveIndicator status={projectState.saveStatus} />
+              {/* ⭐ Badge de statut projet */}
+              {project.status === "pending_approval" && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-black uppercase tracking-widest text-amber-700">
+                  <Clock size={8} />
+                  En attente de validation
+                </span>
+              )}
+              {project.status === "approved" && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 border border-green-200 rounded text-[9px] font-black uppercase tracking-widest text-green-700">
+                  <CheckCircle2 size={8} />
+                  Approuvé
+                </span>
+              )}
+              {project.status === "rejected" && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-black uppercase tracking-widest text-red-700">
+                  <AlertCircle size={8} />
+                  À retravailler
+                </span>
+              )}
             </div>
           </div>
         </div>
 
+        {/* DROITE — Actions + Logout isolé */}
         <div className="flex items-center gap-2 shrink-0">
           <ProjectMessagesIcon projectId={projectId} brandColor={brandColor} />
           <NotificationsBell brandColor={brandColor} />
-          <LogoutButton variant="full" />
+
           <button
             onClick={handleExport}
             disabled={exporting || slides.length === 0}
@@ -254,15 +373,47 @@ export default function StudioEditorPage() {
                 : exportProgress?.step === "zipping" ? "ZIP..." : "Export..."
               : "Exporter"}
           </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || slides.length === 0}
-            className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40"
-            style={{ backgroundColor: brandColor }}
-          >
-            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-            {submitting ? "..." : "Soumettre"}
-          </button>
+
+          {/* ⭐ Bouton Soumettre / Re-soumettre selon statut */}
+          {(() => {
+            const isPending = project.status === "pending_approval";
+            const isApproved = project.status === "approved";
+            const isRejected = project.status === "rejected";
+
+            const cfg = isApproved
+              ? { label: "Approuvé", bgColor: "#16a34a", disabled: true, title: "Ce projet a été approuvé par l'admin" }
+              : isPending
+              ? { label: "Re-soumettre", bgColor: "#f59e0b", disabled: false, title: "Mettre à jour la version envoyée à l'admin" }
+              : isRejected
+              ? { label: "Re-soumettre", bgColor: brandColor, disabled: false, title: "Soumettre une nouvelle version" }
+              : { label: "Soumettre", bgColor: brandColor, disabled: false, title: "Soumettre pour validation" };
+
+            return (
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || slides.length === 0 || cfg.disabled}
+                title={cfg.title}
+                className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                style={{ backgroundColor: cfg.bgColor }}
+              >
+                {submitting ? <Loader2 size={12} className="animate-spin" /> : isApproved ? <CheckCircle2 size={12} /> : <Send size={12} />}
+                {submitting ? "..." : cfg.label}
+              </button>
+            );
+          })()}
+
+          {/* ⭐ BOUTON DÉCONNEXION — Isolé avec séparateur (style AppHeader) */}
+          <div className="border-l border-neutral-200 pl-3 ml-1">
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 transition group"
+              title="Se déconnecter"
+              aria-label="Déconnexion"
+            >
+              <LogOut size={15} className="group-hover:rotate-12 transition-transform" />
+            </button>
+          </div>
         </div>
       </header>
 
@@ -416,7 +567,7 @@ function EditableProjectTitle({
       setDraft(trimmed);
       setIsEditing(false);
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      toast.error("Renommage impossible", { description: err.message });
       setDraft(title);
     } finally {
       setSaving(false);
@@ -454,11 +605,11 @@ function EditableProjectTitle({
     <button
       type="button"
       onClick={() => setIsEditing(true)}
-      className="text-sm font-bold text-neutral-900 truncate text-left hover:text-orange-600 transition flex items-center gap-1.5 group max-w-full"
+      className="text-sm font-bold text-neutral-900 truncate text-left hover:text-[#B11E2F] transition flex items-center gap-1.5 group max-w-full"
       title="Cliquer pour renommer"
     >
       <span className="truncate">{title}</span>
-      <Pencil size={11} className="text-neutral-300 group-hover:text-orange-500 transition shrink-0" />
+      <Pencil size={11} className="text-neutral-300 group-hover:text-[#B11E2F] transition shrink-0" />
     </button>
   );
 }
@@ -526,7 +677,37 @@ function SlideAccordion({
         </button>
       </div>
 
-      {reviewStatus === "needs_changes" && reviewComment && (
+      {/* ⭐ Slide approuvée (status ok) */}
+      {reviewStatus === "ok" && (
+        <div className="mx-3 mb-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded flex items-center gap-1.5">
+          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
+          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
+            Slide approuvée
+          </span>
+        </div>
+      )}
+      {/* Feedback admin (status needs_changes + commentaire) */}
+      {/* ⭐ Slide approuvée (status ok) */}
+      {reviewStatus === "ok" && (
+        <div className="mx-3 mb-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded flex items-center gap-1.5">
+          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
+          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
+            Slide approuvée
+          </span>
+        </div>
+      )}
+      {/* Feedback admin (status needs_changes + commentaire) */}
+      {/* ⭐ Slide approuvée (status ok) */}
+      {reviewStatus === "ok" && (
+        <div className="mx-3 mb-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded flex items-center gap-1.5">
+          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
+          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
+            Slide approuvée
+          </span>
+        </div>
+      )}
+      {/* Feedback admin (status needs_changes + commentaire) */}
+      {reviewStatus === "needs_changes" && reviewComment?.trim() && (
         <div className="mx-3 mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-900">
           <div className="font-bold uppercase tracking-wider text-[9px] text-amber-700 mb-0.5">
             ⚠ Feedback admin
@@ -909,7 +1090,17 @@ function SlidePreview({
         templateKey={templateKey}
         scale={SCALE}
       />
-      {review?.status === "needs_changes" && review.comment && (
+      {/* ⭐ Slide approuvée (status ok) */}
+      {review?.status === "ok" && (
+        <div className="px-3 py-2 bg-green-50 border-t border-green-200 flex items-center gap-1.5">
+          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
+          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
+            Slide approuvée
+          </span>
+        </div>
+      )}
+      {/* À corriger (status needs_changes + commentaire) */}
+      {review?.status === "needs_changes" && review.comment?.trim() && (
         <div className="px-3 py-2 bg-amber-50 border-t border-amber-200 text-[10px] text-amber-900">
           <div className="font-bold uppercase tracking-wider text-[9px] text-amber-700 mb-0.5">
             ⚠ À corriger

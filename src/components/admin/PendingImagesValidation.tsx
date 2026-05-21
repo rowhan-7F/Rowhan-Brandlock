@@ -268,7 +268,7 @@ export default function PendingImagesValidation({
       </div>
 
       <div className="mt-3 text-[10px] text-orange-700/80">
-        💡 Ces images ont été uploadées par le graphiste et nécessitent ta validation.
+        💡 Ces images ont été uploadées par le studio et nécessitent ta validation.
       </div>
     </section>
   );

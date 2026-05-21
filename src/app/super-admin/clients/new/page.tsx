@@ -374,7 +374,7 @@ export default function CreateTenantPage() {
       <Section
         number="3"
         title="Utilisateurs"
-        description="Au moins 1 admin obligatoire. Tu peux ajouter plusieurs admins ou graphistes."
+        description="Au moins 1 admin obligatoire. Tu peux ajouter plusieurs admins ou membres studio."
       >
         <div className="space-y-3">
           {users.map((u, idx) => (
@@ -404,7 +404,7 @@ export default function CreateTenantPage() {
             className="flex-1 px-3 py-2 border border-dashed border-neutral-300 rounded-lg text-xs font-bold text-neutral-600 hover:border-orange-300 hover:bg-orange-50/30 transition flex items-center justify-center gap-1.5"
           >
             <Plus size={13} />
-            Ajouter un graphiste
+            Ajouter un membre studio
           </button>
         </div>
       </Section>
@@ -522,7 +522,7 @@ function UserRow({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border ${roleColors}`}>
-            {user.role === "tenant_admin" ? "Admin client" : "Graphiste"}
+            {user.role === "tenant_admin" ? "Admin client" : "Studio"}
           </span>
           <span className="text-[10px] text-neutral-400">Utilisateur #{index + 1}</span>
         </div>
@@ -700,7 +700,7 @@ function CredentialCard({ email, password, role }: { email: string; password: st
               ? "bg-blue-50 text-blue-700 border-blue-200"
               : "bg-purple-50 text-purple-700 border-purple-200"
           }`}>
-            {role === "tenant_admin" ? "Admin" : "Graphiste"}
+            {role === "tenant_admin" ? "Admin" : "Studio"}
           </span>
         </div>
         <div className="text-sm font-mono text-neutral-900 truncate">{email}</div>

@@ -9,9 +9,11 @@ import {
   Plus, Loader2, FileText, Clock, CheckCircle2,
   AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X,
 } from "lucide-react";
-import LogoutButton from "@/components/LogoutButton";
+import AppHeader from "@/components/AppHeader";
 import NotificationsBell from "@/components/NotificationsBell";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 type ProjectRow = {
   id: string;
@@ -22,7 +24,7 @@ type ProjectRow = {
   created_at: string;
   updated_at: string;
   approved_at: string | null;
-  task_id: string | null; // ⭐ lien vers le brief
+  task_id: string | null;
 };
 
 type BriefAttachment = {
@@ -54,6 +56,13 @@ export default function StudioHomePage() {
       }
     }
   }, [tenantState.status]);
+
+  // ⭐ GUARD : Tenant admin ne doit JAMAIS accéder au studio
+  useEffect(() => {
+    if (tenantState.status === "ready" && tenantState.user.role === "tenant_admin") {
+      router.replace("/admin/tenant");
+    }
+  }, [tenantState.status, router]);
 
   useEffect(() => {
     if (tenantState.status !== "ready") return;
@@ -95,11 +104,12 @@ export default function StudioHomePage() {
       if (!res.ok) throw new Error(data.error || "Erreur création");
       router.push(`/studio/${data.project.id}`);
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      toast.error("Impossible de créer le projet", { description: err.message });
       setCreating(false);
     }
   };
 
+  // Conservé pour l'état d'erreur (fallback déconnexion)
   const handleLogout = async () => {
     await supabase.auth.signOut();
     if (typeof window !== "undefined") {
@@ -119,6 +129,18 @@ export default function StudioHomePage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-neutral-50">
         <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+
+  // ⭐ Écran de redirection pour admin (évite le flash de contenu studio)
+  if (tenantState.status === "ready" && tenantState.user.role === "tenant_admin") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-50">
+        <div className="text-center">
+          <Loader2 className="w-6 h-6 animate-spin text-neutral-400 mx-auto mb-3" />
+          <p className="text-xs text-neutral-500">Redirection vers le tableau de bord admin...</p>
+        </div>
       </div>
     );
   }
@@ -150,35 +172,17 @@ export default function StudioHomePage() {
   const rejected = projects.filter((p) => p.status === "rejected");
   const brandColor = config.brandIdentity.colors.brandPrimary;
 
+  // ⭐ Eyebrow dynamique selon le rôle
+  const roleLabel = user.role === "tenant_admin" ? "DIRECTION" : "CRÉATION";
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      <header className="bg-white border-b border-neutral-200">
-        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-white font-black text-sm"
-              style={{ backgroundColor: brandColor }}
-            >
-              {config.tenant.name.charAt(0)}
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-neutral-900">{config.tenant.name}</h1>
-              <p className="text-[11px] text-neutral-500">
-                Studio · {user.role === "tenant_admin" ? "Direction" : "Création"}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <NotificationsBell brandColor={brandColor} />
-            <div className="text-right">
-              <div className="text-xs font-medium text-neutral-700">{user.displayName || user.email}</div>
-              <div className="text-[10px] text-neutral-400">{user.email}</div>
-            </div>
-            <LogoutButton variant="full" />
-          </div>
-        </div>
-      </header>
+      {/* ⭐ NOUVEAU AppHeader unifié */}
+      <AppHeader
+        eyebrow={`STUDIO · ${roleLabel}`}
+        title={config.tenant.name}
+        rightSlot={<NotificationsBell brandColor={brandColor} />}
+      />
 
       <main className="max-w-6xl mx-auto px-8 py-8">
         {user.role === "graphist" && (
@@ -324,6 +328,12 @@ function ProjectSection({
 function ProjectCard({ project, brandColor }: { project: ProjectRow; brandColor: string }) {
   const router = useRouter();
   const slidesCount = project.state_json?.slides?.length || 0;
+
+  // ⭐ Détecter les retours admin (slides marquées "à corriger")
+  const slidesNeedingWork = project.state_json?.slides?.filter(
+    (s: any) => s?.review?.status === "needs_changes"
+  ).length || 0;
+  const hasAdminFeedback = slidesNeedingWork > 0;
   const [attachments, setAttachments] = useState<BriefAttachment[]>([]);
   const [briefImages, setBriefImages] = useState<BriefImage[]>([]);
   const [showImagesPopover, setShowImagesPopover] = useState(false);
@@ -365,12 +375,18 @@ function ProjectCard({ project, brandColor }: { project: ProjectRow; brandColor:
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm(`Supprimer le projet "${project.title}" ?`)) return;
+    const ok = await confirmDialog(`Supprimer "${project.title}" ?`, {
+      description: "Cette action est définitive et ne peut pas être annulée.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
     const res = await fetch(`/api/studio/projects/${project.id}`, { method: "DELETE" });
     if (res.ok) {
+      toast.success("Projet supprimé");
       window.location.reload();
     } else {
-      alert("Erreur suppression");
+      toast.error("Suppression impossible", { description: "Réessaye dans un instant." });
     }
   };
 
@@ -396,8 +412,18 @@ function ProjectCard({ project, brandColor }: { project: ProjectRow; brandColor:
           handleClick();
         }
       }}
-      className="bg-white rounded-xl border border-neutral-200 hover:border-neutral-300 hover:shadow-sm transition p-4 text-left group relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-300"
+      className={`rounded-xl border hover:shadow-sm transition p-4 text-left group relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-neutral-300 ${
+        hasAdminFeedback
+          ? "bg-amber-50/40 border-amber-300 ring-2 ring-amber-100 hover:border-amber-400"
+          : "bg-white border-neutral-200 hover:border-neutral-300"
+      }`}
     >
+      {hasAdminFeedback && (
+        <div className="mb-2 inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500 text-white rounded text-[9px] font-black uppercase tracking-widest animate-pulse">
+          <AlertCircle size={9} strokeWidth={3} />
+          Retours admin · {slidesNeedingWork} à corriger
+        </div>
+      )}
       <div className="flex items-start justify-between mb-3">
         <h4 className="text-sm font-bold text-neutral-900 line-clamp-2 pr-6">{project.title}</h4>
         <button

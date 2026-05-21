@@ -4,13 +4,17 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Loader2, AlertCircle, Search, ImageIcon,
+  Loader2, AlertCircle, Search, ImageIcon,
   CheckCircle2, XCircle, Trash2, ShieldCheck, ShieldAlert,
   Library, Filter,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import LogoutButton from "@/components/LogoutButton";
+import AppHeader from "@/components/AppHeader";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
+
+// ⚠ SUPPRIMÉ : import LogoutButton, ArrowLeft (gérés par AppHeader)
 
 type LibraryImage = {
   id: string;
@@ -96,8 +100,22 @@ export default function AdminLibraryPage() {
     imageId: string,
     action: "approve" | "reject" | "delete"
   ) => {
-    if (action === "reject" && !confirm("Refuser et supprimer cette image ?")) return;
-    if (action === "delete" && !confirm("Supprimer définitivement cette image ?")) return;
+    if (action === "reject") {
+      const ok = await confirmDialog("Refuser cette image ?", {
+        description: "Elle sera retirée définitivement de la bibliothèque.",
+        confirmLabel: "Refuser",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+    if (action === "delete") {
+      const ok = await confirmDialog("Supprimer définitivement ?", {
+        description: "Cette action est irréversible.",
+        confirmLabel: "Supprimer",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
 
     setActionLoading(imageId);
     try {
@@ -119,11 +137,15 @@ export default function AdminLibraryPage() {
         throw new Error(j.error || "Erreur");
       }
 
-      // Refetch
+      const successMsg =
+        action === "approve" ? "Image approuvée ✓"
+        : action === "reject" ? "Image refusée"
+        : "Image supprimée";
+      toast.success(successMsg);
       await fetchImages();
       setSelectedImage(null);
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      toast.error("Action impossible", { description: err.message });
     } finally {
       setActionLoading(null);
     }
@@ -134,29 +156,12 @@ export default function AdminLibraryPage() {
   // ============================================================
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* HEADER */}
-      <header className="bg-white border-b border-neutral-200 px-6 py-4 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/admin/tenant"
-              className="text-neutral-400 hover:text-neutral-700 transition shrink-0"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-            <Library size={18} className="text-orange-500" />
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                Admin
-              </div>
-              <h1 className="text-base font-bold text-neutral-900">
-                Bibliothèque d&apos;images
-              </h1>
-            </div>
-          </div>
-          <LogoutButton variant="full" />
-        </div>
-      </header>
+      {/* ⭐ NOUVEAU AppHeader unifié */}
+      <AppHeader
+        eyebrow="ADMINISTRATION"
+        title="Bibliothèque d'images"
+        backHref="/admin/tenant"
+      />
 
       <div className="max-w-7xl mx-auto p-6">
         {/* FILTRES + RECHERCHE */}
@@ -245,6 +250,9 @@ export default function AdminLibraryPage() {
           actionLoading={actionLoading === selectedImage.id}
         />
       )}
+
+      {/* ⭐ FEEDBACK WIDGET */}
+      <FeedbackWidget />
     </div>
   );
 }
@@ -396,7 +404,7 @@ function EmptyState({ filter }: { filter: FilterStatus }) {
         {filter === "all" && "Bibliothèque vide"}
       </h3>
       <p className="text-sm text-neutral-500">
-        {filter === "pending" && "Tout est à jour ! Les graphistes n'ont pas d'image en attente."}
+        {filter === "pending" && "Tout est à jour ! Le studio n'a pas d'image en attente."}
         {filter === "approved" && "Aucune image n'a encore été validée."}
         {filter === "all" && "Aucune image n'a été uploadée pour ce tenant."}
       </p>

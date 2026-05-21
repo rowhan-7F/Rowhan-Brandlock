@@ -133,7 +133,7 @@ export default function SuperAdminDashboard() {
                 color="blue"
               />
               <StatCard
-                label="Graphistes"
+                label="Studio"
                 value={stats.totalGraphists}
                 icon={<Users size={18} />}
                 color="purple"

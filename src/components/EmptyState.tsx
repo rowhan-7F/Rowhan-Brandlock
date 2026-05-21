@@ -134,7 +134,7 @@ export function EmptyPendingValidation() {
     <EmptyState
       icon={<Sparkles size={22} />}
       title="Tout est à jour ! 🎉"
-      description="Aucune image en attente de validation. Tes graphistes sont efficaces, ou il n'y a rien de nouveau."
+      description="Aucune image en attente de validation. Ton studio est efficace, ou il n'y a rien de nouveau."
       variant="subtle"
     />
   );

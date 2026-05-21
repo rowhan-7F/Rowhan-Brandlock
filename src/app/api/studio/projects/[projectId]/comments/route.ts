@@ -174,7 +174,7 @@ export async function POST(
               userId: a.user_id,
               tenantId: project.tenant_id,
               type: "comment_added",
-              title: "💬 Nouveau commentaire graphiste",
+              title: "💬 Nouveau commentaire du studio",
               message: content.trim().slice(0, 100),
               relatedProjectId: projectId,
               relatedCommentId: data.id,

@@ -106,7 +106,7 @@ export default function ProjectCommentsSection({
   const roleLabels: Record<string, string> = {
     tenant_admin: "Admin",
     super_admin: "Super admin",
-    graphist: "Graphiste",
+    graphist: "Studio",
   };
 
   return (

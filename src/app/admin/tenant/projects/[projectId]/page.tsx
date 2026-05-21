@@ -4,15 +4,19 @@ import { useState, useEffect, useCallback, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft, Loader2, AlertCircle, CheckCircle2, XCircle,
+  Loader2, AlertCircle, CheckCircle2, XCircle,
   RefreshCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import LogoutButton from "@/components/LogoutButton";
+import AppHeader from "@/components/AppHeader";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
 import SlideRenderer from "@/components/studio/SlideRenderer";
 import PendingImagesValidation from "@/components/admin/PendingImagesValidation";
 import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
+
+// ⚠ SUPPRIMÉ : import LogoutButton, ArrowLeft (gérés par AppHeader)
 
 // ============================================================
 //  TYPES
@@ -170,6 +174,8 @@ export default function AdminProjectReviewPage({
       [slideId]: {
         ...slideReviews[slideId],
         status,
+        // ⭐ Clear le commentaire si on passe à "ok" (sinon il reste affiché côté studio)
+        comment: status === "ok" ? "" : slideReviews[slideId]?.comment,
         reviewedAt: new Date().toISOString(),
       },
     };
@@ -215,9 +221,18 @@ export default function AdminProjectReviewPage({
         throw new Error(j.error || "Erreur");
       }
       setShowApproveModal(false);
+      const successMsg =
+        action === "approve" ? "Projet approuvé ✓"
+        : action === "reject" ? "Projet refusé"
+        : "Corrections demandées ✓";
+      const successDesc =
+        action === "approve" ? "Le studio est notifié."
+        : action === "reject" ? "Le studio en est informé."
+        : "Le studio peut maintenant retravailler les slides.";
+      toast.success(successMsg, { description: successDesc });
       await fetchAll();
     } catch (err: any) {
-      alert("Erreur : " + err.message);
+      toast.error("Action impossible", { description: err.message });
     } finally {
       setActionLoading(null);
     }
@@ -231,7 +246,12 @@ export default function AdminProjectReviewPage({
   };
 
   const handleReject = async () => {
-    if (!confirm("Refuser définitivement ce projet ?")) return;
+    const ok = await confirmDialog("Refuser ce projet ?", {
+      description: "Le studio devra repartir de zéro. Cette action est définitive.",
+      confirmLabel: "Refuser",
+      destructive: true,
+    });
+    if (!ok) return;
     await handleAction("reject", "");
   };
 
@@ -280,35 +300,20 @@ export default function AdminProjectReviewPage({
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* HEADER */}
-      <header className="bg-white border-b border-neutral-200 px-6 py-4 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <Link
-              href="/admin/tenant"
-              className="text-neutral-400 hover:text-neutral-700 transition shrink-0"
-            >
-              <ArrowLeft size={18} />
-            </Link>
-            <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">
-                Validation
-              </div>
-              <h1 className="text-base font-bold text-neutral-900 truncate">
-                {project.title}
-              </h1>
-            </div>
-          </div>
-          <div className="flex items-center gap-3 shrink-0">
+      {/* ⭐ NOUVEAU AppHeader unifié */}
+      <AppHeader
+        eyebrow="VALIDATION"
+        title={project.title}
+        backHref="/admin/tenant"
+        rightSlot={
+          <div className="flex items-center gap-3">
             <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded ${statusBadge[project.status].color}`}>
               {statusBadge[project.status].label}
             </span>
-            {/* ⭐ Icône Messages dans le header */}
-            <ProjectMessagesIcon projectId={projectId} brandColor="#F26522" />
-            <LogoutButton variant="full" />
+            <ProjectMessagesIcon projectId={projectId} brandColor="#B11E2F" />
           </div>
-        </div>
-      </header>
+        }
+      />
 
       <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
         {/* MAIN */}
@@ -317,7 +322,7 @@ export default function AdminProjectReviewPage({
           <section className="bg-white border border-neutral-200 rounded-xl p-4 mb-6">
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div>
-                <div className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Graphiste</div>
+                <div className="text-[9px] font-black uppercase tracking-widest text-neutral-400">Studio</div>
                 <div className="font-bold text-neutral-900 mt-0.5">{creatorEmail}</div>
               </div>
               <div>
@@ -356,7 +361,7 @@ export default function AdminProjectReviewPage({
               <PendingImagesValidation
                 projectId={projectId}
                 slides={slides}
-                brandColor="#F26522"
+                brandColor="#B11E2F"
                 onImagesValidated={fetchAll}
               />
             </section>
@@ -467,7 +472,7 @@ export default function AdminProjectReviewPage({
               </div>
 
               <div className="text-[10px] text-neutral-500 bg-neutral-50 p-2 rounded">
-                💡 Besoin d'ajouter un message au graphiste ? Utilise l'icône 💬 dans le header.
+                💡 Besoin d'ajouter un message au studio ? Utilise l'icône 💬 dans le header.
               </div>
             </section>
           )}
@@ -477,7 +482,7 @@ export default function AdminProjectReviewPage({
               <div className="text-xs text-neutral-500">
                 {project.status === "approved" && "Ce projet a déjà été approuvé."}
                 {project.status === "rejected" && "Ce projet a été refusé."}
-                {project.status === "draft" && "Le graphiste travaille encore sur ce projet."}
+                {project.status === "draft" && "Le studio travaille encore sur ce projet."}
                 {project.status === "published" && "Ce projet est publié."}
                 {project.status === "archived" && "Ce projet est archivé."}
               </div>
@@ -490,7 +495,7 @@ export default function AdminProjectReviewPage({
       {showApproveModal && (
         <ActionModal
           title="Approuver ce projet ?"
-          description="Le graphiste sera notifié. Message d'encouragement optionnel."
+          description="Le studio sera notifié. Message d'encouragement optionnel."
           color="green"
           icon={<CheckCircle2 size={20} />}
           confirmLabel="Approuver"
@@ -499,6 +504,9 @@ export default function AdminProjectReviewPage({
           loading={actionLoading === "approve"}
         />
       )}
+
+      {/* ⭐ FEEDBACK WIDGET */}
+      <FeedbackWidget />
     </div>
   );
 }

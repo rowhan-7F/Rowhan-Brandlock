@@ -339,7 +339,7 @@ export default function AdminAnalytics() {
 
           <div className="bg-white rounded-3xl border border-neutral-100 p-8 shadow-sm">
             <h3 className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mb-6">Coût quotidien (USD)</h3>
-            <ResponsiveContainer width="100%" height={280}>
+            <ResponsiveContainer minWidth={0} width="100%" height={280}>
               <LineChart data={costByDayArray}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                 <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#9ca3af" />

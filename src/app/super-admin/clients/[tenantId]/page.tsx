@@ -172,7 +172,7 @@ export default function TenantDetailPage({
         />
         <StatBox
           icon={<Users size={16} />}
-          label="Graphistes"
+          label="Studio"
           value={users.filter((u) => u.role === "graphist").length}
           color="purple"
         />
@@ -228,7 +228,7 @@ export default function TenantDetailPage({
                       ? "bg-blue-50 text-blue-700 border-blue-200"
                       : "bg-purple-50 text-purple-700 border-purple-200"
                   }`}>
-                    {u.role === "tenant_admin" ? "Admin" : "Graphiste"}
+                    {u.role === "tenant_admin" ? "Admin" : "Studio"}
                   </span>
                   <div className="min-w-0">
                     <div className="text-sm font-bold text-neutral-900 truncate">
