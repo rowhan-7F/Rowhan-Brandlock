@@ -61,6 +61,10 @@ export type VideoProject = {
   output_srt_url: string | null;
   output_size_bytes: number | null;
 
+  // ⭐ Phase 4+5 — rendu final
+  final_video_url: string | null;
+  render_settings: Record<string, unknown> | null;
+
   task_id: string | null;
 
   created_at: string;
@@ -80,6 +84,11 @@ export type VideoStateJson = {
     raw?: string;
     edited?: string;
     segments?: TranscriptSegment[];
+    language?: string;
+    duration_seconds?: number;
+    sanitized_at?: string;
+    applied_replacements_count?: number;
+    edited_at?: string;
   };
 
   slides?: VoiceOffSlide[];

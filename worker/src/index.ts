@@ -8,6 +8,7 @@
 import { config, supabase } from "./config.js";
 import { log } from "./logger.js";
 import { processTranscribeJob } from "./jobs/transcribe.js";
+import { processRenderJob } from "./jobs/renderSubs.js";
 
 let isRunning = true;
 let activeJobId: string | null = null;
@@ -29,7 +30,7 @@ async function pollLoop() {
       // Claim le prochain job dispo
       const { data: jobs, error } = await supabase.rpc("claim_video_job", {
         p_worker_id: config.workerId,
-        p_job_types: ["transcribe"],
+        p_job_types: ["transcribe", "render_final"],
         p_lock_minutes: 30,
       });
 
@@ -59,6 +60,12 @@ async function pollLoop() {
       try {
         if (job.job_type === "transcribe") {
           await processTranscribeJob({
+            jobId: job.job_id,
+            projectId: job.project_id,
+            payload: job.payload,
+          });
+        } else if (job.job_type === "render_final") {
+          await processRenderJob({
             jobId: job.job_id,
             projectId: job.project_id,
             payload: job.payload,

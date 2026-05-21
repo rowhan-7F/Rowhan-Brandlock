@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import AppHeader from "@/components/AppHeader";
 import VideoDropzone from "@/components/studio/video/VideoDropzone";
 import TranscriptPanel from "@/components/studio/video/TranscriptPanel";
+import RenderPanel from "@/components/studio/video/RenderPanel";
 import {
   VideoProject,
   VIDEO_MODE_INFO,
@@ -273,6 +274,12 @@ export default function StudioVideoPage() {
 
             {/* ⭐ Phase 2b — Panneau transcription */}
             <TranscriptPanel
+              project={project}
+              onProjectUpdated={loadAll}
+            />
+
+            {/* ⭐ Phase 4+5 — Panneau rendu vidéo avec subs burned */}
+            <RenderPanel
               project={project}
               onProjectUpdated={loadAll}
             />

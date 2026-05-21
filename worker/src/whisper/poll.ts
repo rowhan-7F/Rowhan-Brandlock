@@ -2,17 +2,24 @@ import { config } from "../config.js";
 import { log } from "../logger.js";
 
 type WhisperSegment = {
-  start: number;
-  end: number;
-  text: string;
-};
+    start: number;
+    end: number;
+    text: string;
+  };
+  
+  type WhisperWord = {
+    word: string;
+    start: number;
+    end: number;
+  };
 
 type WhisperPollResult = {
-  text: string;
-  segments?: WhisperSegment[];
-  language?: string;
-  durationSeconds?: number;
-};
+    text: string;
+    segments?: WhisperSegment[];
+    words?: WhisperWord[];
+    language?: string;
+    durationSeconds?: number;
+  };
 
 type WhisperPollResponse = {
   result?: string;
@@ -22,12 +29,13 @@ type WhisperPollResponse = {
 };
 
 type WhisperResultData = {
-  text?: string;
-  transcript?: string;
-  segments?: WhisperSegment[];
-  language?: string;
-  duration?: number;
-};
+    text?: string;
+    transcript?: string;
+    segments?: WhisperSegment[];
+    words?: WhisperWord[];
+    language?: string;
+    duration?: number;
+  };
 
 type ProgressCallback = (elapsedSeconds: number) => Promise<void>;
 
@@ -38,11 +46,12 @@ export async function pollWhisper(
   if (batchId.startsWith("instant:")) {
     const result = JSON.parse(batchId.slice("instant:".length)) as WhisperResultData;
     return {
-      text: result.text || "",
-      segments: result.segments,
-      language: result.language,
-      durationSeconds: result.duration,
-    };
+        text: result.text || "",
+        segments: result.segments,
+        words: result.words,
+        language: result.language,
+        durationSeconds: result.duration,
+      };
   }
 
   const startTime = Date.now();
@@ -93,10 +102,12 @@ export async function pollWhisper(
         throw new Error(`Whisper result vide: ${JSON.stringify(result).slice(0, 300)}`);
       }
 
-      log.whisper(`Transcript received (${text.length} chars)`);
+      const wordsCount = parsed.words?.length || 0;
+      log.whisper(`Transcript received (${text.length} chars, ${wordsCount} words)`);
       return {
         text,
         segments: parsed.segments,
+        words: parsed.words,
         language: parsed.language,
         durationSeconds: parsed.duration,
       };

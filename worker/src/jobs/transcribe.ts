@@ -1,7 +1,8 @@
 // ============================================================
 //  Job handler: TRANSCRIBE
-//  Orchestre toute la chaîne :
-//  download → extract audio → upload audio → Whisper → sanitizer → save
+//  Pipeline complet :
+//  download → extract audio → VAD → upload → Whisper → sanitizer
+//  → ANCHORS BINARY SEARCH → save
 // ============================================================
 
 import path from "node:path";
@@ -10,6 +11,8 @@ import { log } from "../logger.js";
 import { downloadFromStorage, cleanupJobTmp } from "../storage/download.js";
 import { uploadToStorage } from "../storage/upload.js";
 import { extractAudio } from "../ffmpeg/extractAudio.js";
+import { detectSpeechStart } from "../ffmpeg/detectSpeechStart.js";
+import { findSpeechAnchors } from "../whisper/findSpeechAnchors.js";
 import { submitToWhisper } from "../whisper/client.js";
 import { pollWhisper } from "../whisper/poll.js";
 import { applySanitizer } from "../sanitizer/apply.js";
@@ -34,7 +37,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 
   try {
     // ====================================
-    //  ÉTAPE 1/9 — Charger le projet
+    //  ÉTAPE 1/10 — Charger le projet
     // ====================================
     await updateProgress(jobId, 5, "Récupération du projet...");
 
@@ -57,7 +60,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     log.project(project.title, project.tenant_id);
 
     // ====================================
-    //  ÉTAPE 2/9 — Download source MP4
+    //  ÉTAPE 2/10 — Download source MP4
     // ====================================
     await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
 
@@ -70,7 +73,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ÉTAPE 3/9 — Extract audio
+    //  ÉTAPE 3/10 — Extract audio
     // ====================================
     await updateProgress(jobId, 25, "Extraction de la piste audio (FFmpeg)...");
 
@@ -81,7 +84,22 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ÉTAPE 4/9 — Upload audio MP3
+    //  ⭐ ÉTAPE 4/10 — VAD (fallback rapide, info seulement)
+    // ====================================
+    await updateProgress(jobId, 30, "Pré-analyse audio...");
+
+    let vadSpeechStart = 0;
+    try {
+      const vadResult = await detectSpeechStart({ audioPath });
+      vadSpeechStart = vadResult.speechStartSeconds;
+      log.info(`VAD (fallback): voix à ${vadSpeechStart.toFixed(2)}s`);
+    } catch (vadErr) {
+      const msg = vadErr instanceof Error ? vadErr.message : String(vadErr);
+      log.warn(`VAD failed (non-fatal): ${msg}`);
+    }
+
+    // ====================================
+    //  ÉTAPE 5/10 — Upload audio MP3
     // ====================================
     await updateProgress(jobId, 40, "Upload de l'audio extrait...");
 
@@ -93,7 +111,6 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
       contentType: "audio/mpeg",
     });
 
-    // Update DB avec l'URL audio
     const audioPublicPath = `${config.supabaseUrl}/storage/v1/object/video-sources/${audioStoragePath}`;
     await supabase
       .from("studio_video_projects")
@@ -101,7 +118,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
       .eq("id", projectId);
 
     // ====================================
-    //  ÉTAPE 5/9 — POST Whisper Infomaniak
+    //  ÉTAPE 6/10 — POST Whisper Infomaniak
     // ====================================
     await updateProgress(jobId, 50, "Envoi à Whisper Infomaniak...");
 
@@ -111,13 +128,12 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ÉTAPE 6/9 — Poll Whisper jusqu'à completion
+    //  ÉTAPE 7/10 — Poll Whisper jusqu'à completion
     // ====================================
     await updateProgress(jobId, 55, "Transcription en cours...");
 
     const whisperResult = await pollWhisper(batchId, async (elapsed) => {
-      // Update progress entre 55% et 95% en fonction du temps
-      const progressInRange = Math.min(40, (elapsed / 60) * 30);
+      const progressInRange = Math.min(25, (elapsed / 60) * 20);
       const percent = Math.floor(55 + progressInRange);
       await updateProgress(
         jobId,
@@ -132,9 +148,9 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  ÉTAPE 7/9 — Apply sanitizer (lexique tenant)
+    //  ÉTAPE 8/10 — Apply sanitizer (lexique tenant)
     // ====================================
-    await updateProgress(jobId, 95, "Application du lexique tenant...");
+    await updateProgress(jobId, 80, "Application du lexique tenant...");
 
     const { sanitized, appliedReplacements } = await applySanitizer(
       project.tenant_id,
@@ -142,17 +158,64 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     );
 
     // ====================================
-    //  ÉTAPE 8/9 — Save transcript en DB
+    //  ⭐ ÉTAPE 8.5/10 — ANCHORS BINARY SEARCH (cerveau précision)
+    //  Détecte le timing EXACT de la voix via Whisper sur des chunks
     // ====================================
-    await updateProgress(jobId, 99, "Sauvegarde du transcript...");
+    await updateProgress(jobId, 85, "Calibration précise des sous-titres...");
+
+    const whisperStart = whisperResult.segments?.[0]?.start || 0;
+    const whisperEnd = whisperResult.segments?.[0]?.end
+                       || whisperResult.durationSeconds
+                       || 30;
+
+    let speechAnchors: Array<{ whisperTime: number; realTime: number; textSnippet: string }> = [];
+    let computedOffset = 0;
+
+    try {
+      const anchorResult = await findSpeechAnchors({
+        audioPath,
+        outputDir: jobTmpDir,
+        audioDurationSeconds: whisperResult.durationSeconds || 30,
+        whisperFullText: whisperResult.text,
+        whisperStart,
+        whisperEnd,
+        precisionSeconds: 0.2,
+      });
+
+      speechAnchors = anchorResult.anchors;
+
+      if (speechAnchors.length > 0) {
+        const startAnchor = speechAnchors[0];
+        computedOffset = startAnchor.realTime - startAnchor.whisperTime;
+        log.info(
+          `Anchors: ${anchorResult.totalCallsMade} appels en ${anchorResult.totalTimeSeconds.toFixed(1)}s, offset_start=${computedOffset.toFixed(2)}s`
+        );
+      }
+    } catch (anchorErr) {
+      const msg = anchorErr instanceof Error ? anchorErr.message : String(anchorErr);
+      log.warn(`Anchors failed (using VAD fallback): ${msg}`);
+
+      // Fallback sur VAD si anchors plantent
+      computedOffset = vadSpeechStart > 0
+        ? Math.max(0, vadSpeechStart - whisperStart)
+        : 0;
+    }
+
+    // ====================================
+    //  ÉTAPE 9/10 — Save transcript en DB
+    // ====================================
+    await updateProgress(jobId, 95, "Sauvegarde du transcript...");
     log.save();
 
     const updatedStateJson = {
       ...(project.state_json || {}),
+      auto_subtitle_offset_seconds: computedOffset,
+      speech_anchors: speechAnchors,
       transcript: {
         raw: whisperResult.text,
         edited: sanitized,
         segments: whisperResult.segments || [],
+        words: whisperResult.words || [],
         language: whisperResult.language || "fr",
         duration_seconds: whisperResult.durationSeconds,
         sanitized_at: new Date().toISOString(),
@@ -174,7 +237,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  ÉTAPE 9/9 — Mark job completed
+    //  ÉTAPE 10/10 — Mark job completed
     // ====================================
     await supabase.rpc("complete_video_job", {
       p_job_id: jobId,
@@ -185,10 +248,11 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
         segments_count: whisperResult.segments?.length || 0,
         language: whisperResult.language || "fr",
         audio_size_bytes: audioSizeBytes,
+        auto_subtitle_offset_seconds: computedOffset,
+        speech_anchors_count: speechAnchors.length,
       },
     });
   } finally {
-    // Cleanup tmp dans tous les cas (succès OU échec)
     await cleanupJobTmp(jobId);
   }
 }
