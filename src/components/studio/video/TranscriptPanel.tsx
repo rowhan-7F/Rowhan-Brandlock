@@ -223,7 +223,7 @@ export default function TranscriptPanel({ project, onProjectUpdated }: Props) {
         </div>
 
         <div className="mt-4 text-[11px] text-neutral-400">
-          Whisper Infomaniak (cloud souverain 🇨🇭) · Tentative {job.attempts}/{job.max_attempts}
+        Whisper.cpp local (large-v3, souverain 🇨🇭) · Tentative {job.attempts}/{job.max_attempts}
         </div>
       </div>
     );

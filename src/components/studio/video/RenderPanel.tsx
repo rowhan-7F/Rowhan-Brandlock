@@ -27,11 +27,7 @@ export default function RenderPanel({ project, onProjectUpdated }: Props) {
     const [activeJobId, setActiveJobId] = useState<string | null>(null);
     const [isStarting, setIsStarting] = useState(false);
     const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-    const [subtitleOffset, setSubtitleOffset] = useState<number>(
-      typeof (project.state_json as any)?.subtitle_offset_seconds === "number"
-        ? (project.state_json as any).subtitle_offset_seconds
-        : 0
-    );
+    
 
   const { job } = useJobStatus({
     jobId: activeJobId,
@@ -87,9 +83,7 @@ export default function RenderPanel({ project, onProjectUpdated }: Props) {
             Authorization: `Bearer ${session.access_token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            subtitle_offset_seconds: subtitleOffset,
-          }),
+          body: JSON.stringify({}),
         }
       );
 
@@ -188,35 +182,6 @@ export default function RenderPanel({ project, onProjectUpdated }: Props) {
           </div>
         )}
 
-        {/* ⭐ Plan B : Slider de calibration */}
-        <div className="mb-5 p-4 bg-neutral-50 rounded-xl border border-neutral-200">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-600">
-              Décalage des sous-titres
-            </label>
-            <span className="text-sm font-bold tabular-nums text-[#B11E2F]">
-              {subtitleOffset > 0 ? "+" : ""}{subtitleOffset.toFixed(1)}s
-            </span>
-          </div>
-          <input
-            type="range"
-            min="-3"
-            max="3"
-            step="0.1"
-            value={subtitleOffset}
-            onChange={(e) => setSubtitleOffset(Number(e.target.value))}
-            className="w-full accent-[#B11E2F]"
-          />
-          <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
-            <span>-3.0s</span>
-            <span>0</span>
-            <span>+3.0s</span>
-          </div>
-          <p className="text-[11px] text-neutral-500 mt-2">
-            💡 Si les subs sont en avance, mets une valeur positive (+0.5s).
-            Si en retard, négative (-0.5s). Re-génère pour appliquer.
-          </p>
-        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {downloadUrl ? (
@@ -274,33 +239,6 @@ export default function RenderPanel({ project, onProjectUpdated }: Props) {
         (style luxury Helvetica Bold blanc, ombre noire, position bas-centre).
       </p>
 
-      {/* ⭐ Plan B : Slider de calibration (visible avant 1er render aussi) */}
-      {canRender && (
-        <div className="max-w-sm mx-auto mb-5 p-4 bg-neutral-50 rounded-xl border border-neutral-200 text-left">
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-600">
-              Décalage subs (optionnel)
-            </label>
-            <span className="text-sm font-bold tabular-nums text-[#B11E2F]">
-              {subtitleOffset > 0 ? "+" : ""}{subtitleOffset.toFixed(1)}s
-            </span>
-          </div>
-          <input
-            type="range"
-            min="-3"
-            max="3"
-            step="0.1"
-            value={subtitleOffset}
-            onChange={(e) => setSubtitleOffset(Number(e.target.value))}
-            className="w-full accent-[#B11E2F]"
-          />
-          <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
-            <span>-3s</span>
-            <span>0</span>
-            <span>+3s</span>
-          </div>
-        </div>
-      )}
 
       <button
         type="button"
