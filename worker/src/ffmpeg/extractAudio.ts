@@ -1,9 +1,12 @@
 // ============================================================
-//  Extraction audio MP3 depuis une vidéo source via FFmpeg
-//  Optimisé pour Whisper Infomaniak :
-//  - Bitrate 64 kbps (suffisant pour la parole)
-//  - Mono (Whisper sample mieux)
-//  - 16 kHz (sample rate optimal pour modèles speech)
+//  Extraction audio WAV depuis une video source via FFmpeg
+//  Optimise pour Whisper.cpp :
+//  - Format WAV PCM 16-bit (lecture native, pas de re-decode)
+//  - 16 kHz mono (sample rate optimal pour Whisper)
+//  - Non compresse (qualite parfaite pour transcription)
+//
+//  Migration 2026-05-22 : MP3 64kbps -> WAV 16kHz PCM
+//  Suite au switch Infomaniak -> Whisper.cpp self-hosted (souverain Suisse).
 // ============================================================
 
 import { spawn } from "node:child_process";
@@ -17,28 +20,34 @@ type ExtractAudioInput = {
 };
 
 type ExtractAudioResult = {
-  audioPath: string;  // chemin de l'audio.mp3 généré
+  audioPath: string;          // chemin du audio.wav genere
   sizeBytes: number;
   durationSeconds?: number;
 };
 
-const MAX_AUDIO_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB - limite Whisper Infomaniak
+// 500 MB = couvre ~4h de video (WAV 16kHz mono ~= 32 KB/s)
+// Avant : 25 MB (limite Whisper Infomaniak)
+const MAX_AUDIO_SIZE_BYTES = 500 * 1024 * 1024;
 
 export async function extractAudio(input: ExtractAudioInput): Promise<ExtractAudioResult> {
   const { videoPath, outputDir } = input;
-  const audioPath = path.join(outputDir, "audio.mp3");
+  const audioPath = path.join(outputDir, "audio.wav");
 
-  log.ffmpeg("Extracting audio with FFmpeg (mono, 16kHz, 64kbps MP3)...");
+  log.ffmpeg("Extracting audio with FFmpeg (WAV 16kHz mono 16-bit PCM)...");
 
-  // Arguments FFmpeg optimisés pour la parole
+  // Arguments FFmpeg optimises pour Whisper.cpp :
+  // -vn        : pas de video
+  // -ar 16000  : sample rate 16 kHz (optimal pour Whisper)
+  // -ac 1      : mono (Whisper traite mono)
+  // -c:a pcm_s16le : codec audio 16-bit PCM little-endian (WAV standard)
+  // -y         : overwrite output
   const args = [
     "-i", videoPath,
-    "-vn",                // no video
-    "-acodec", "libmp3lame",
-    "-ar", "16000",       // 16 kHz sample rate
-    "-ac", "1",           // mono
-    "-b:a", "64k",        // 64 kbps bitrate
-    "-y",                 // overwrite
+    "-vn",
+    "-ar", "16000",
+    "-ac", "1",
+    "-c:a", "pcm_s16le",
+    "-y",
     audioPath,
   ];
 
@@ -65,16 +74,16 @@ export async function extractAudio(input: ExtractAudioInput): Promise<ExtractAud
         const sizeBytes = stats.size;
         const sizeMb = (sizeBytes / 1024 / 1024).toFixed(2);
 
-        // Vérifie la taille
+        // Verifie la taille
         if (sizeBytes > MAX_AUDIO_SIZE_BYTES) {
           reject(new Error(
-            `Audio too large: ${sizeMb} MB > 25 MB limit (Whisper Infomaniak). ` +
-            `Vidéo source trop longue. Phase 2b ajoutera le chunking.`
+            `Audio too large: ${sizeMb} MB > 500 MB safety limit. ` +
+            `Video source trop longue (>4h equivalent).`
           ));
           return;
         }
 
-        // Parse la durée depuis stderr (FFmpeg log "Duration: 00:00:29.12")
+        // Parse la duree depuis stderr (FFmpeg log "Duration: 00:00:29.12")
         const durationMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
         let durationSeconds: number | undefined;
         if (durationMatch) {

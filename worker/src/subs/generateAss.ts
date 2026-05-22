@@ -9,6 +9,14 @@
 //  - 1:1  (carré)      → font 60, max 30 chars/ligne
 //  - 16:9 (horizontal) → font 52, max 60 chars/ligne
 //  Wrap forcé à 2 lignes max avec split équilibré.
+//
+//  Optimisations Whisper.cpp (2026-05-22) :
+//  - Cap subdivision 4.0s (au lieu de 2.5s) : Whisper.cpp donne déjà
+//    des segments naturels de 3-5s confortables à lire.
+//  - mergeOrphanSegments : fusionne les sub-segments < 1.0s ou < 3 mots
+//    avec leur voisin (évite les flashs visuels du genre "vous." seul).
+//  - wrapToTwoLines : malus si la ligne 1 finit sur un mot de liaison
+//    FR ("de", "le", "et"...) pour préserver le sens visuel.
 // ============================================================
 
 import { promises as fs } from "node:fs";
@@ -101,15 +109,18 @@ function detectFormat(width: number, height: number): FormatKey {
 }
 
 const MAX_DURATION_PER_SEGMENT = 3.5;
-const MAX_REAL_DURATION_PER_SEGMENT = 2.5; // ⭐ Cap APRÈS interpolation anchor
+const MAX_REAL_DURATION_PER_SEGMENT = 4.0; // Cap subdivision (relevé pour confort lecture Whisper.cpp)
+
+// ============================================================
+//  Subdivision des sous-segments trop longs
+// ============================================================
 
 /**
- * Subdivise les sous-segments trop longs APRÈS l'interpolation anchor.
- * Quand Whisper compresse 90s en 28s, l'interpolation étire chaque sub-seg
- * mais il garde son texte intact → 9s à l'écran avec plein de mots = désync.
- * 
- * Fix : si un sub-segment dépasse maxDuration en temps réel,
- * on le divise en N sub-sub-segments avec mots répartis équitablement.
+ * Subdivise les sous-segments dépassant maxDuration en N sub-sub-segments
+ * avec les mots répartis équitablement (par durée, pas par timestamps réels).
+ *
+ * Note : avec Whisper.cpp on a déjà des segments naturels de 3-5s,
+ * donc cette subdivision intervient rarement (cap = 4s).
  */
 function subdivideLongSegments(
   segments: WhisperSegment[],
@@ -125,11 +136,9 @@ function subdivideLongSegments(
       continue;
     }
 
-    // Subdivision nécessaire
     const words = seg.text.replace(/\\N/g, " ").split(/\s+/).filter((w) => w.length > 0);
 
     if (words.length <= 1) {
-      // Un seul mot : on clamp juste la durée
       result.push({ ...seg, end: seg.start + maxDuration });
       continue;
     }
@@ -153,6 +162,82 @@ function subdivideLongSegments(
 
       if (endWord >= words.length) break;
     }
+  }
+
+  return result;
+}
+
+// ============================================================
+//  ⭐ Anti-orphelin : merge des sub-segments trop courts
+// ============================================================
+
+/**
+ * Post-processing : fusionne les sub-segments "orphelins" (trop courts ou
+ * trop peu de mots) avec leur voisin proche pour éviter les flashs visuels.
+ *
+ * Un orphelin = sub-segment < minDurationSec OU avec < minWords.
+ * Il est fusionné avec son voisin (précédent ou suivant) si le gap
+ * temporel est ≤ maxMergeGapSec.
+ */
+function mergeOrphanSegments(
+  segments: WhisperSegment[],
+  minDurationSec: number = 1.0,
+  minWords: number = 3,
+  maxMergeGapSec: number = 0.40  // Aligné sur SILENCE_FLUSH_THRESHOLD_MS (ne pas défaire ce qu'un silence a séparé)
+): WhisperSegment[] {
+  if (segments.length === 0) return segments;
+
+  const result: WhisperSegment[] = [];
+  let i = 0;
+
+  while (i < segments.length) {
+    const seg = segments[i];
+    const duration = seg.end - seg.start;
+    const wordCount = seg.text.split(/\s+/).filter((w) => w.length > 0).length;
+    const isOrphan = duration < minDurationSec || wordCount < minWords;
+
+    if (!isOrphan) {
+      result.push({ ...seg });
+      i++;
+      continue;
+    }
+
+    // Tente fusion avec le PRÉCÉDENT (priorité)
+    // ⭐ MAIS PAS si prev finit par ponctuation finale (.!?)
+    //    car ça mélangerait 2 phrases distinctes
+    //    ex: "...naturelle." + "C'est d'ailleurs" = NON
+    const prev = result[result.length - 1];
+    const prevEndsWithSentencePunctuation = prev ? /[.!?]\s*$/.test(prev.text) : false;
+    if (prev && !prevEndsWithSentencePunctuation) {
+      const gapPrev = seg.start - prev.end;
+      if (gapPrev <= maxMergeGapSec) {
+        prev.end = seg.end;
+        prev.text = `${prev.text} ${seg.text}`.replace(/\s+/g, " ").trim();
+        i++;
+        continue;
+      }
+    }
+
+    // Tente fusion avec le SUIVANT
+    // ⭐ MAIS PAS si l'orphelin finit sur ponctuation finale (.!?)
+    //    car ça mélangerait 2 phrases distinctes ("vous." + "Vous pourrez...")
+    const endsWithSentencePunctuation = /[.!?]\s*$/.test(seg.text);
+    if (!endsWithSentencePunctuation) {
+      const next = segments[i + 1];
+      if (next) {
+        const gapNext = next.start - seg.end;
+        if (gapNext <= maxMergeGapSec) {
+          next.start = seg.start;
+          next.text = `${seg.text} ${next.text}`.replace(/\s+/g, " ").trim();
+          i++;
+          continue;
+        }
+      }
+    }
+
+    // Aucune fusion possible : garder tel quel
+    result.push({ ...seg });
+    i++;
   }
 
   return result;
@@ -192,11 +277,36 @@ function escapeAssText(text: string): string {
     .trim();
 }
 
+// ============================================================
+//  ⭐ Wrap 2 lignes — évite mots de liaison en fin de ligne 1
+// ============================================================
+
+/**
+ * Mots de liaison FR — on évite de finir une ligne sur l'un d'eux
+ * pour ne pas casser le sens visuel.
+ */
+const FR_LINK_WORDS = new Set([
+  "de", "du", "le", "la", "les", "et", "ou", "à", "au", "aux",
+  "un", "une", "des", "ce", "ces", "cette", "ses", "son", "sa",
+  "que", "qui", "qu'", "d'", "l'", "n'", "m'", "t'", "s'", "j'", "c'",
+  "très", "plus", "mais", "pour", "par", "sur", "sous", "dans", "avec",
+  "comme", "sans", "vers", "chez", "en", "y",
+]);
+
+function endsOnLinkWord(line: string): boolean {
+  const words = line.trim().split(/\s+/);
+  const lastWord = (words[words.length - 1] || "").toLowerCase().replace(/[.,;:!?]+$/, "");
+  return FR_LINK_WORDS.has(lastWord);
+}
+
 /**
  * Wrap text en MAX 2 lignes, split équilibré au mot.
  * Si texte tient sur 1 ligne (≤ maxCharsPerLine), retourne tel quel.
  * Sinon, trouve le meilleur point de split (équilibre line1/line2)
  * et insère "\N" (newline ASS) au point de split.
+ *
+ * ⭐ Évite de finir line1 sur un mot de liaison FR ("de", "le", "et"...)
+ *    via un malus de 100 dans le scoring.
  */
 function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
   if (text.length <= maxCharsPerLine) return text;
@@ -205,7 +315,7 @@ function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
   if (words.length <= 1) return text;
 
   let bestSplitIdx = -1;
-  let bestBalance = Infinity;
+  let bestScore = Infinity;
 
   for (let i = 1; i < words.length; i++) {
     const line1 = words.slice(0, i).join(" ");
@@ -214,9 +324,15 @@ function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
     // Skip si une ligne dépasse maxCharsPerLine
     if (line1.length > maxCharsPerLine || line2.length > maxCharsPerLine) continue;
 
-    const balance = Math.abs(line1.length - line2.length);
-    if (balance < bestBalance) {
-      bestBalance = balance;
+    let score = Math.abs(line1.length - line2.length);
+
+    // Malus si line1 finit sur un mot de liaison ("de", "le", "et"...)
+    if (endsOnLinkWord(line1)) {
+      score += 100;
+    }
+
+    if (score < bestScore) {
+      bestScore = score;
       bestSplitIdx = i;
     }
   }
@@ -234,7 +350,13 @@ function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
 // ============================================================
 //  STRATÉGIE 1 : Word-level timestamps (timing parfait)
 // ============================================================
+// ============================================================
+//  ⭐ Silence-aware flushing : coupe le sub-segment dès que la voix
+//  fait une mini-pause (>= 350ms). Évite le texte affiché pendant
+//  les silences et suit le rythme respiratoire naturel du locuteur.
+// ============================================================
 
+const SILENCE_FLUSH_THRESHOLD_MS = 400;
 function buildSegmentsFromWords(
   words: WhisperWord[],
   maxCharsPerSegment: number
@@ -259,6 +381,16 @@ function buildSegmentsFromWords(
   };
 
   for (const word of words) {
+    // ⭐ Silence-aware flush : si le gap avec le mot précédent est >= 350ms,
+    //    on flush AVANT d'ajouter ce mot (création d'un nouveau sub-segment).
+    if (currentWords.length > 0) {
+      const prevWord = currentWords[currentWords.length - 1];
+      const gapMs = (word.start - prevWord.end) * 1000;
+      if (gapMs >= SILENCE_FLUSH_THRESHOLD_MS) {
+        flush();
+      }
+    }
+
     currentWords.push(word);
 
     const accumText = currentWords
@@ -378,6 +510,8 @@ function splitAllSegments(
 
 // ============================================================
 //  Anchor interpolation (offset précis multi-points)
+//  Note : avec Whisper.cpp on a quasi plus besoin (no more drift).
+//  Gardé en backup pour edge cases ou tests futurs.
 // ============================================================
 
 function applyAnchorInterpolation(
@@ -466,13 +600,21 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
     }
   }
 
-  // ⭐ NEW : Subdiviser les sous-segments trop longs après interpolation
-  // (Whisper compresse parfois 90s en 28s → anchors étirent → subs trop longs)
+  // Subdiviser les sous-segments trop longs (cap = 4.0s)
   const beforeSubdivide = splitSegments.length;
   splitSegments = subdivideLongSegments(splitSegments, MAX_REAL_DURATION_PER_SEGMENT);
   if (splitSegments.length !== beforeSubdivide) {
     console.log(
       `[generateAss] Subdivision: ${beforeSubdivide} → ${splitSegments.length} segments (cap=${MAX_REAL_DURATION_PER_SEGMENT}s)`
+    );
+  }
+
+  // ⭐ Anti-orphelin : fusionne les sub-segments trop courts avec leurs voisins
+  const beforeMerge = splitSegments.length;
+  splitSegments = mergeOrphanSegments(splitSegments);
+  if (splitSegments.length !== beforeMerge) {
+    console.log(
+      `[generateAss] Merge orphans: ${beforeMerge} → ${splitSegments.length} segments`
     );
   }
 
@@ -504,6 +646,14 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
   lines.push("[Events]");
   lines.push("Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text");
 
+// ⭐ Mini-délai d'apparition : +100ms pour que le sub n'apparaisse
+  //    pas avant la perception auditive du mot (Whisper time = onset phonétique pur)
+  splitSegments = splitSegments.map((seg) => ({
+    ...seg,
+    start: seg.start + 0.10,
+    end: seg.end,
+  }));
+  
   for (const seg of splitSegments) {
     if (!seg.text || seg.text.trim().length === 0) continue;
     const start = formatAssTime(seg.start);

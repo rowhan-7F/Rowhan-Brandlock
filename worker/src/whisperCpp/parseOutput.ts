@@ -1,10 +1,15 @@
 // ============================================================
-//  Whisper.cpp - Parse JSON Output
-//  
+//  Whisper.cpp - Parse JSON Output + Reconstruct Words
+//
 //  Transforme le JSON brut produit par whisper-cli (-ojf)
 //  en structure WhisperCppResult propre et typée.
-//  
+//
 //  Filtre les hallucinations connues en français.
+//  Reconstitue les mots entiers depuis les sub-tokens BPE.
+//
+//  Fix 2026-05-22 : la ponctuation isolée (","/"."/"!"/"?")
+//  a un timestamp synthétique qui mange les silences réels.
+//  On ignore donc ces tokens pour le calcul du end_ms du mot.
 // ============================================================
 
 import { promises as fs } from "node:fs";
@@ -17,11 +22,18 @@ import type {
 } from "./types.js";
 
 /**
+ * Type d'un mot reconstitué depuis les sub-tokens BPE Whisper.
+ */
+export type ReconstructedWord = {
+  word: string;
+  start_ms: number;
+  end_ms: number;
+  confidence: number;
+};
+
+/**
  * Lit et parse un fichier JSON Whisper.cpp.
  * Filtre automatiquement les hallucinations FR connues.
- * 
- * @param jsonPath Path absolu du fichier .json produit par whisper-cli -ojf
- * @returns Résultat structuré et nettoyé
  */
 export async function parseWhisperCppOutput(
   jsonPath: string
@@ -43,7 +55,6 @@ export async function parseWhisperCppOutput(
     .map((seg) => {
       const tokens: WhisperCppToken[] = (seg.tokens || [])
         .filter((tok) => {
-          // Exclut les tokens spéciaux ([_BEG_], [_EOT_], etc.)
           const text = tok.text || "";
           return !text.startsWith("[_") && text.trim().length > 0;
         })
@@ -94,4 +105,83 @@ export async function parseWhisperCppOutput(
     segments: cleanedSegments,
     hallucinations_filtered: hallucinationsFiltered,
   };
+}
+
+// ============================================================
+//  Reconstruction des vrais mots depuis les sub-tokens BPE
+//
+//  Whisper.cpp tokenize en BPE : "Fabien" -> [" Fab", "ien"].
+//  Règle : un token commençant par ESPACE = nouveau mot.
+//          Les autres = suite du mot précédent.
+//
+//  ⭐ Fix ponctuation : les tokens "," "." "!" "?" ":" ";" '"' ont
+//     un timestamp synthétique posé par Whisper bien APRÈS la fin
+//     du mot prononcé (parfois 400-500ms plus tard). On les attache
+//     textuellement au mot précédent SANS update end_ms, pour
+//     préserver le vrai timing de fin de prononciation.
+// ============================================================
+
+const PUNCTUATION_ONLY_REGEX = /^[.,;:!?"]+$/;
+
+export function reconstructWordsFromTokens(
+  tokens: WhisperCppToken[]
+): ReconstructedWord[] {
+  const words: ReconstructedWord[] = [];
+  let current: {
+    parts: string[];
+    start_ms: number;
+    end_ms: number;
+    confidences: number[];
+  } | null = null;
+
+  for (const tok of tokens) {
+    if (!tok.text || tok.text.length === 0) continue;
+
+    const isNewWord = tok.text.startsWith(" ") || current === null;
+
+    if (isNewWord) {
+      if (current !== null) {
+        words.push({
+          word: current.parts.join("").trim(),
+          start_ms: current.start_ms,
+          end_ms: current.end_ms,
+          confidence:
+            current.confidences.reduce((a, b) => a + b, 0) /
+            current.confidences.length,
+        });
+      }
+      current = {
+        parts: [tok.text.trimStart()],
+        start_ms: tok.from_ms,
+        end_ms: tok.to_ms,
+        confidences: [tok.confidence],
+      };
+    } else {
+      // Continue le mot courant (sub-token ou ponctuation)
+      current.parts.push(tok.text);
+
+      // ⭐ NE PAS update end_ms si c'est juste de la ponctuation isolée
+      //    (la ponctuation a un timestamp synthétique qui mange les silences)
+      const trimmed = tok.text.trim();
+      const isPunctuationOnly = PUNCTUATION_ONLY_REGEX.test(trimmed);
+      if (!isPunctuationOnly) {
+        current.end_ms = tok.to_ms;
+      }
+
+      current.confidences.push(tok.confidence);
+    }
+  }
+
+  if (current !== null) {
+    words.push({
+      word: current.parts.join("").trim(),
+      start_ms: current.start_ms,
+      end_ms: current.end_ms,
+      confidence:
+        current.confidences.reduce((a, b) => a + b, 0) /
+        current.confidences.length,
+    });
+  }
+
+  return words.filter((w) => w.word.length > 0);
 }

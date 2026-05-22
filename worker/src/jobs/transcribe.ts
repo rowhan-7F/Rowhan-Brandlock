@@ -1,8 +1,15 @@
 // ============================================================
 //  Job handler: TRANSCRIBE
-//  Pipeline complet :
-//  download → extract audio → VAD → upload → Whisper → sanitizer
-//  → ANCHORS BINARY SEARCH → save
+//  Pipeline 100% local + souverain Suisse avec Whisper.cpp :
+//  download -> extract WAV -> upload -> Whisper.cpp -> sanitizer -> save
+//
+//  Migration 2026-05-22 : Infomaniak Whisper -> Whisper.cpp self-hosted
+//  Bénéfices :
+//  - Souveraineté Suisse maximale (zéro cloud externe)
+//  - Token-level timestamps natifs (filtre hallucinations FR)
+//  - Plus de drift sur vidéos longues (>60s)
+//  - Suppression VAD + anchors binary search (devenus inutiles)
+//  - ~50% moins de code, ~10x plus maintenable
 // ============================================================
 
 import path from "node:path";
@@ -11,10 +18,7 @@ import { log } from "../logger.js";
 import { downloadFromStorage, cleanupJobTmp } from "../storage/download.js";
 import { uploadToStorage } from "../storage/upload.js";
 import { extractAudio } from "../ffmpeg/extractAudio.js";
-import { detectSpeechStart } from "../ffmpeg/detectSpeechStart.js";
-import { findSpeechAnchors } from "../whisper/findSpeechAnchors.js";
-import { submitToWhisper } from "../whisper/client.js";
-import { pollWhisper } from "../whisper/poll.js";
+import { runWhisperCpp, reconstructWordsFromTokens } from "../whisperCpp/index.js";
 import { applySanitizer } from "../sanitizer/apply.js";
 
 type TranscribeJobInput = {
@@ -37,7 +41,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 
   try {
     // ====================================
-    //  ÉTAPE 1/10 — Charger le projet
+    //  ÉTAPE 1/8 — Charger le projet
     // ====================================
     await updateProgress(jobId, 5, "Récupération du projet...");
 
@@ -60,7 +64,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     log.project(project.title, project.tenant_id);
 
     // ====================================
-    //  ÉTAPE 2/10 — Download source MP4
+    //  ÉTAPE 2/8 — Download source MP4
     // ====================================
     await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
 
@@ -73,7 +77,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ÉTAPE 3/10 — Extract audio
+    //  ÉTAPE 3/8 — Extract audio WAV 16kHz mono
     // ====================================
     await updateProgress(jobId, 25, "Extraction de la piste audio (FFmpeg)...");
 
@@ -84,31 +88,16 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ⭐ ÉTAPE 4/10 — VAD (fallback rapide, info seulement)
+    //  ÉTAPE 4/8 — Upload audio.wav vers Supabase Storage
     // ====================================
-    await updateProgress(jobId, 30, "Pré-analyse audio...");
+    await updateProgress(jobId, 35, "Upload de l'audio extrait...");
 
-    let vadSpeechStart = 0;
-    try {
-      const vadResult = await detectSpeechStart({ audioPath });
-      vadSpeechStart = vadResult.speechStartSeconds;
-      log.info(`VAD (fallback): voix à ${vadSpeechStart.toFixed(2)}s`);
-    } catch (vadErr) {
-      const msg = vadErr instanceof Error ? vadErr.message : String(vadErr);
-      log.warn(`VAD failed (non-fatal): ${msg}`);
-    }
-
-    // ====================================
-    //  ÉTAPE 5/10 — Upload audio MP3
-    // ====================================
-    await updateProgress(jobId, 40, "Upload de l'audio extrait...");
-
-    const audioStoragePath = `${project.tenant_id}/${project.id}/audio.mp3`;
+    const audioStoragePath = `${project.tenant_id}/${project.id}/audio.wav`;
     await uploadToStorage({
       localPath: audioPath,
       bucket: "video-sources",
       storagePath: audioStoragePath,
-      contentType: "audio/mpeg",
+      contentType: "audio/wav",
     });
 
     const audioPublicPath = `${config.supabaseUrl}/storage/v1/object/video-sources/${audioStoragePath}`;
@@ -118,39 +107,44 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
       .eq("id", projectId);
 
     // ====================================
-    //  ÉTAPE 6/10 — POST Whisper Infomaniak
+    //  ⭐ ÉTAPE 5/8 — Whisper.cpp (transcription locale souveraine)
     // ====================================
-    await updateProgress(jobId, 50, "Envoi à Whisper Infomaniak...");
+    await updateProgress(jobId, 40, "Transcription Whisper.cpp en cours...");
 
-    const { batchId } = await submitToWhisper({
+    const whisperStart = Date.now();
+
+    const whisperResult = await runWhisperCpp({
       audioPath,
       language: "fr",
+      threads: 16,
+      outputDir: jobTmpDir,
+      outputBasename: "whisper_output",
+      onProgress: async (percent) => {
+        // Map 0-100% Whisper -> 40-90% du job global
+        const jobPercent = Math.floor(40 + (percent / 100) * 50);
+        await updateProgress(
+          jobId,
+          jobPercent,
+          `Transcription en cours (${percent}%)...`
+        );
+      },
     });
 
-    // ====================================
-    //  ÉTAPE 7/10 — Poll Whisper jusqu'à completion
-    // ====================================
-    await updateProgress(jobId, 55, "Transcription en cours...");
+    const whisperElapsed = ((Date.now() - whisperStart) / 1000).toFixed(1);
+    log.info(
+      `Whisper.cpp: ${whisperResult.segments.length} segments, ` +
+      `${whisperResult.hallucinations_filtered} hallucinations filtered, ` +
+      `total ${whisperElapsed}s`
+    );
 
-    const whisperResult = await pollWhisper(batchId, async (elapsed) => {
-      const progressInRange = Math.min(25, (elapsed / 60) * 20);
-      const percent = Math.floor(55 + progressInRange);
-      await updateProgress(
-        jobId,
-        percent,
-        `Transcription en cours (${Math.floor(elapsed)}s)...`,
-        Math.max(0, 120 - elapsed)
-      );
-    });
-
-    if (!whisperResult.text) {
-      throw new Error("Whisper returned empty transcript");
+    if (!whisperResult.text || whisperResult.segments.length === 0) {
+      throw new Error("Whisper.cpp returned empty transcript or no segments");
     }
 
     // ====================================
-    //  ÉTAPE 8/10 — Apply sanitizer (lexique tenant)
+    //  ÉTAPE 6/8 — Apply sanitizer (lexique tenant)
     // ====================================
-    await updateProgress(jobId, 80, "Application du lexique tenant...");
+    await updateProgress(jobId, 92, "Application du lexique tenant...");
 
     const { sanitized, appliedReplacements } = await applySanitizer(
       project.tenant_id,
@@ -158,68 +152,65 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     );
 
     // ====================================
-    //  ⭐ ÉTAPE 8.5/10 — ANCHORS BINARY SEARCH (cerveau précision)
-    //  Détecte le timing EXACT de la voix via Whisper sur des chunks
+    //  ÉTAPE 7/8 — Save transcript en DB
     // ====================================
-    await updateProgress(jobId, 85, "Calibration précise des sous-titres...");
-
-    const whisperStart = whisperResult.segments?.[0]?.start || 0;
-    const whisperEnd = whisperResult.segments?.[0]?.end
-                       || whisperResult.durationSeconds
-                       || 30;
-
-    let speechAnchors: Array<{ whisperTime: number; realTime: number; textSnippet: string }> = [];
-    let computedOffset = 0;
-
-    try {
-      const anchorResult = await findSpeechAnchors({
-        audioPath,
-        outputDir: jobTmpDir,
-        audioDurationSeconds: whisperResult.durationSeconds || 30,
-        whisperFullText: whisperResult.text,
-        whisperStart,
-        whisperEnd,
-        precisionSeconds: 0.2,
-      });
-
-      speechAnchors = anchorResult.anchors;
-
-      if (speechAnchors.length > 0) {
-        const startAnchor = speechAnchors[0];
-        computedOffset = startAnchor.realTime - startAnchor.whisperTime;
-        log.info(
-          `Anchors: ${anchorResult.totalCallsMade} appels en ${anchorResult.totalTimeSeconds.toFixed(1)}s, offset_start=${computedOffset.toFixed(2)}s`
-        );
-      }
-    } catch (anchorErr) {
-      const msg = anchorErr instanceof Error ? anchorErr.message : String(anchorErr);
-      log.warn(`Anchors failed (using VAD fallback): ${msg}`);
-
-      // Fallback sur VAD si anchors plantent
-      computedOffset = vadSpeechStart > 0
-        ? Math.max(0, vadSpeechStart - whisperStart)
-        : 0;
-    }
-
-    // ====================================
-    //  ÉTAPE 9/10 — Save transcript en DB
-    // ====================================
-    await updateProgress(jobId, 95, "Sauvegarde du transcript...");
+    await updateProgress(jobId, 97, "Sauvegarde du transcript...");
     log.save();
+
+    // Reconstruction des VRAIS mots depuis les sub-tokens BPE Whisper.
+    // Sans ça, "Fabien" reste découpé en " Fab" + "ien" dans les subs.
+    // On reconstruit segment par segment pour préserver les frontières naturelles.
+    const segmentsWithRealWords = whisperResult.segments.map((seg) => ({
+        raw: seg,
+        words: reconstructWordsFromTokens(seg.tokens),
+      }));
+  
+      // Conversion ms -> secondes pour generateAss.ts.
+      // ⭐ FIX TIMING : on resserre start/end sur le PREMIER et DERNIER mot réel,
+      //    pas sur les frontières du segment Whisper (qui incluent les silences).
+      //    Évite que les subs apparaissent pendant les pauses.
+      const legacySegments = segmentsWithRealWords.map(({ raw, words }) => {
+        if (words.length === 0) {
+          // Fallback rare : segment sans mots reconstitués (devrait pas arriver)
+          return {
+            start: raw.from_ms / 1000,
+            end: raw.to_ms / 1000,
+            text: raw.text,
+          };
+        }
+        const firstWord = words[0];
+        const lastWord = words[words.length - 1];
+        return {
+          start: firstWord.start_ms / 1000,
+          end: lastWord.end_ms / 1000,
+          text: raw.text,
+        };
+      });
+  
+      // Flatten en liste plate pour generateAss (compat words)
+      const reconstructedWords = segmentsWithRealWords.flatMap((s) => s.words);
+  
+      // Convertit en format "words" attendu par generateAss.ts (start/end en secondes)
+      const legacyWords = reconstructedWords.map((w) => ({
+        word: w.word,
+        start: w.start_ms / 1000,
+        end: w.end_ms / 1000,
+        confidence: w.confidence,
+      }));
 
     const updatedStateJson = {
       ...(project.state_json || {}),
-      auto_subtitle_offset_seconds: computedOffset,
-      speech_anchors: speechAnchors,
       transcript: {
         raw: whisperResult.text,
         edited: sanitized,
-        segments: whisperResult.segments || [],
-        words: whisperResult.words || [],
+        segments: legacySegments,
+        words: legacyWords,
         language: whisperResult.language || "fr",
-        duration_seconds: whisperResult.durationSeconds,
+        duration_seconds: whisperResult.duration_seconds,
         sanitized_at: new Date().toISOString(),
         applied_replacements_count: appliedReplacements,
+        engine: "whisper.cpp-large-v3",
+        hallucinations_filtered: whisperResult.hallucinations_filtered,
       },
     };
 
@@ -237,7 +228,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  ÉTAPE 10/10 — Mark job completed
+    //  ÉTAPE 8/8 — Mark job completed
     // ====================================
     await supabase.rpc("complete_video_job", {
       p_job_id: jobId,
@@ -245,11 +236,14 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
         transcript_length: sanitized.length,
         raw_length: whisperResult.text.length,
         applied_replacements: appliedReplacements,
-        segments_count: whisperResult.segments?.length || 0,
+        segments_count: whisperResult.segments.length,
+        words_count: legacyWords.length,
         language: whisperResult.language || "fr",
         audio_size_bytes: audioSizeBytes,
-        auto_subtitle_offset_seconds: computedOffset,
-        speech_anchors_count: speechAnchors.length,
+        hallucinations_filtered: whisperResult.hallucinations_filtered,
+        engine: "whisper.cpp-large-v3",
+        whisper_load_ms: whisperResult.timings_ms?.load,
+        whisper_total_ms: whisperResult.timings_ms?.total,
       },
     });
   } finally {

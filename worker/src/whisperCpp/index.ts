@@ -6,7 +6,8 @@
 // ============================================================
 
 export { runWhisperCpp } from "./runWhisperCpp.js";
-export { parseWhisperCppOutput } from "./parseOutput.js";
+export { parseWhisperCppOutput, reconstructWordsFromTokens } from "./parseOutput.js";
+export type { ReconstructedWord } from "./parseOutput.js";
 
 export {
   WHISPER_CPP_BINARY_PATH,
