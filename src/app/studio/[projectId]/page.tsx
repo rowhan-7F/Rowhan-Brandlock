@@ -500,9 +500,7 @@ export default function StudioEditorPage() {
       >
         {slides.map((slide: any, idx: number) => {
           const subVariant = (slide as any).subVariant || undefined;
-          const templateKey = config?.exportTemplates
-            ? Object.keys(config.exportTemplates)[0]
-            : "carrousel_instagram";
+          const templateKey = "carrousel_instagram"; // Slides = carrousel uniquement (vidéo a sa propre page)
           return (
             <div
               key={`export-${slide.id}`}
@@ -686,26 +684,7 @@ function SlideAccordion({
           </span>
         </div>
       )}
-      {/* Feedback admin (status needs_changes + commentaire) */}
-      {/* ⭐ Slide approuvée (status ok) */}
-      {reviewStatus === "ok" && (
-        <div className="mx-3 mb-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded flex items-center gap-1.5">
-          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
-          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
-            Slide approuvée
-          </span>
-        </div>
-      )}
-      {/* Feedback admin (status needs_changes + commentaire) */}
-      {/* ⭐ Slide approuvée (status ok) */}
-      {reviewStatus === "ok" && (
-        <div className="mx-3 mb-2 px-2 py-1.5 bg-green-50 border border-green-200 rounded flex items-center gap-1.5">
-          <CheckCircle2 size={11} className="text-green-600 shrink-0" />
-          <span className="font-bold uppercase tracking-wider text-[9px] text-green-700">
-            Slide approuvée
-          </span>
-        </div>
-      )}
+
       {/* Feedback admin (status needs_changes + commentaire) */}
       {reviewStatus === "needs_changes" && reviewComment?.trim() && (
         <div className="mx-3 mb-2 px-2 py-1.5 bg-amber-50 border border-amber-200 rounded text-[10px] text-amber-900">
