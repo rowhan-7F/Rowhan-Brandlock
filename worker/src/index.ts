@@ -21,7 +21,7 @@ async function pollLoop() {
   log.success("BrandLock Worker started");
   log.info(`Worker ID: ${config.workerId}`);
   log.info(`Supabase: ${config.supabaseUrl}`);
-  log.info(`Whisper: Infomaniak (product ${config.infomaniakProductId})`);
+  log.info(`Whisper: Whisper.cpp local (model large-v3, CPU 16 threads + BLAS)`);
   log.info(`Poll interval: ${config.pollIntervalMs}ms`);
   console.log("");
 

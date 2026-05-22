@@ -1,5 +1,6 @@
 // ============================================================
-//  Centralise la lecture du .env + clients Supabase/Infomaniak
+//  Centralise la lecture du .env + clients Supabase
+//  Note : Whisper est désormais local (Whisper.cpp), pas d'API externe
 // ============================================================
 
 import "dotenv/config";
@@ -31,16 +32,11 @@ export const config = {
   supabaseUrl: required("SUPABASE_URL"),
   supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
 
-  // Whisper Infomaniak
-  infomaniakToken: required("INFOMANIAK_AI_TOKEN"),
-  infomaniakProductId: required("INFOMANIAK_AI_PRODUCT_ID"),
-  infomaniakBaseUrl: optional("INFOMANIAK_AI_BASE_URL", "https://api.infomaniak.com/1/ai"),
+// Whisper : local via worker/whisper-cpp/ (binary + model large-v3)
 
   // Worker
   workerId: optional("WORKER_ID", "worker-local-1"),
   pollIntervalMs: parseInt(optional("POLL_INTERVAL_MS", "5000"), 10),
-  whisperPollIntervalMs: parseInt(optional("WHISPER_POLL_INTERVAL_MS", "3000"), 10),
-  whisperTimeoutMs: parseInt(optional("WHISPER_TIMEOUT_MS", "600000"), 10),
   tmpDir: optional("TMP_DIR", "./tmp"),
   logLevel: optional("LOG_LEVEL", "info"),
 };
