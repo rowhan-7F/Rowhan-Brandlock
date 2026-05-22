@@ -1,6 +1,5 @@
 // ============================================================
-//  Job handler: RENDER_FINAL (burned subs version)
-//  Pipeline : download MP4 + ASS gen + FFmpeg burn + upload
+//  Job handler: RENDER_FINAL (burned subs + voice-off + b-rolls)
 // ============================================================
 
 import path from "node:path";
@@ -26,6 +25,23 @@ type VideoProjectForRender = {
   format: string;
   state_json: Record<string, any>;
   source_dimensions: { width: number; height: number } | null;
+  source_duration_seconds: number | null;
+};
+
+type BurnSubsBroll = {
+  localPath: string;
+  type: "video" | "image";
+  start_time: number;
+  end_time: number;
+  position:
+    | "fullscreen"
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right"
+    | "center";
+  scale: number;
+  duration_seconds: number;
 };
 
 const FORMAT_DIMENSIONS: Record<string, { width: number; height: number }> = {
@@ -45,12 +61,16 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
 
     const { data: projectData, error: projectErr } = await supabase
       .from("studio_video_projects")
-      .select("id, tenant_id, title, source_format, source_video_url, format, state_json, source_dimensions")
+      .select(
+        "id, tenant_id, title, source_format, source_video_url, format, state_json, source_dimensions, source_duration_seconds"
+      )
       .eq("id", projectId)
       .maybeSingle();
 
     if (projectErr || !projectData) {
-      throw new Error(`Project ${projectId} not found: ${projectErr?.message || "no data"}`);
+      throw new Error(
+        `Project ${projectId} not found: ${projectErr?.message || "no data"}`
+      );
     }
 
     const project = projectData as VideoProjectForRender;
@@ -85,28 +105,129 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     const jobTmpDir = path.dirname(localVideoPath);
 
     // ====================================
+    //  ÉTAPE 2.5 — Voice-off (optionnel)
+    // ====================================
+    let localVoiceoverPath: string | undefined;
+    let audioMix:
+      | { main_volume: number; voiceover_volume: number }
+      | undefined;
+
+    const voiceoverAudio = project.state_json?.voiceover_audio;
+    const audioMixState = project.state_json?.audio_mix;
+
+    if (voiceoverAudio?.url) {
+      await updateProgress(jobId, 16, "Téléchargement de la voice-off...");
+
+      const urlMatch = voiceoverAudio.url.match(
+        /\/storage\/v1\/object\/public\/video-voiceovers\/(.+)$/
+      );
+
+      if (urlMatch) {
+        const voiceoverStoragePath = urlMatch[1];
+        const ext = voiceoverAudio.filename.split(".").pop() || "mp3";
+
+        const { localPath: voicePath } = await downloadFromStorage({
+          jobId,
+          bucket: "video-voiceovers",
+          storagePath: voiceoverStoragePath,
+          outputFilename: `voiceover.${ext}`,
+        });
+
+        localVoiceoverPath = voicePath;
+        audioMix = {
+          main_volume: audioMixState?.main_volume ?? 0.25,
+          voiceover_volume: audioMixState?.voiceover_volume ?? 1.0,
+        };
+
+        log.info(
+          `Voice-off loaded: ${voiceoverAudio.filename} (main=${audioMix.main_volume}, vo=${audioMix.voiceover_volume})`
+        );
+      } else {
+        log.warn(
+          `Voice-off URL invalid format, skipping: ${voiceoverAudio.url}`
+        );
+      }
+    }
+
+    // ====================================
+    //  ÉTAPE 2.6 — B-rolls (optionnel, plusieurs possibles)
+    // ====================================
+    const stateBrolls = project.state_json?.brolls;
+    const localBrolls: BurnSubsBroll[] = [];
+
+    if (Array.isArray(stateBrolls) && stateBrolls.length > 0) {
+      await updateProgress(
+        jobId,
+        20,
+        `Téléchargement de ${stateBrolls.length} b-roll${
+          stateBrolls.length > 1 ? "s" : ""
+        }...`
+      );
+
+      for (let i = 0; i < stateBrolls.length; i++) {
+        const broll = stateBrolls[i];
+
+        const urlMatch = broll.url.match(
+          /\/storage\/v1\/object\/public\/video-brolls\/(.+)$/
+        );
+        if (!urlMatch) {
+          log.warn(`B-roll ${broll.filename}: URL invalid, skipping`);
+          continue;
+        }
+
+        const storagePath = urlMatch[1];
+        const ext =
+          broll.filename.split(".").pop() ||
+          (broll.type === "video" ? "mp4" : "png");
+
+        try {
+          const { localPath } = await downloadFromStorage({
+            jobId,
+            bucket: "video-brolls",
+            storagePath,
+            outputFilename: `broll-${i}.${ext}`,
+          });
+
+          localBrolls.push({
+            localPath,
+            type: broll.type,
+            start_time: broll.start_time,
+            end_time: broll.end_time,
+            position: broll.position,
+            scale: broll.scale,
+            duration_seconds: broll.duration_seconds,
+          });
+
+          log.info(
+            `B-roll ${i + 1}/${stateBrolls.length} loaded: ${broll.filename} (${broll.type}, ${broll.position}, ${broll.start_time}-${broll.end_time}s)`
+          );
+        } catch (err: any) {
+          log.warn(`B-roll ${broll.filename} download failed: ${err.message}`);
+        }
+      }
+    }
+
+    // ====================================
     //  ÉTAPE 3 — Generate .ass file
     // ====================================
-    await updateProgress(jobId, 20, "Génération des sous-titres .ass...");
+    await updateProgress(jobId, 25, "Génération des sous-titres .ass...");
 
-    // Détermine les dimensions cibles
-    const targetDims = FORMAT_DIMENSIONS[project.format] || { width: 1080, height: 1920 };
+    const targetDims =
+      FORMAT_DIMENSIONS[project.format] || { width: 1080, height: 1920 };
 
-    // ⭐ Sync sur la durée audio réelle pour corriger les drifts Whisper
-    // On étire les timecodes pour couvrir la durée totale de la vidéo
-    const videoDuration = project.state_json?.transcript?.duration_seconds || null;
+    const videoDuration =
+      project.state_json?.transcript?.duration_seconds || null;
 
-    // ⭐ Offset auto (détecté par anchors binary search)
-    const autoOffset = typeof project.state_json?.auto_subtitle_offset_seconds === "number"
-      ? project.state_json.auto_subtitle_offset_seconds
-      : 0;
+    const autoOffset =
+      typeof project.state_json?.auto_subtitle_offset_seconds === "number"
+        ? project.state_json.auto_subtitle_offset_seconds
+        : 0;
 
-    // ⭐ Manual offset (slider)
-    const manualOffset = typeof project.state_json?.subtitle_offset_seconds === "number"
-      ? project.state_json.subtitle_offset_seconds
-      : 0;
+    const manualOffset =
+      typeof project.state_json?.subtitle_offset_seconds === "number"
+        ? project.state_json.subtitle_offset_seconds
+        : 0;
 
-    // ⭐ Anchors pour interpolation précise
     const anchors = Array.isArray(project.state_json?.speech_anchors)
       ? project.state_json.speech_anchors
       : [];
@@ -125,26 +246,29 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
       videoHeight: targetDims.height,
       videoDurationSeconds: videoDuration,
       offsetSeconds: subtitleOffset,
-      anchors,  // ⭐ NEW : pour interpolation multi-points
+      anchors,
     });
 
     log.info(`Generated .ass with ${segmentCount} segments`);
 
     // ====================================
-    //  ÉTAPE 4 — Burn subs with FFmpeg
+    //  ÉTAPE 4 — Burn subs + audio mix + overlays
     // ====================================
-    await updateProgress(jobId, 30, "Burn des sous-titres (FFmpeg)...");
+    const features: string[] = ["subs"];
+    if (localVoiceoverPath) features.push("voice-off");
+    if (localBrolls.length > 0) features.push(`${localBrolls.length} b-roll(s)`);
+    const burnLabel = `Render FFmpeg (${features.join(" + ")})...`;
+    await updateProgress(jobId, 30, burnLabel);
 
     const startBurn = Date.now();
 
-    // Update progress périodiquement pendant FFmpeg (longue tâche)
     const progressTicker = setInterval(async () => {
       const elapsed = (Date.now() - startBurn) / 1000;
       const estimatedPercent = Math.min(85, 30 + Math.floor(elapsed * 3));
       await updateProgress(
         jobId,
         estimatedPercent,
-        `Burn en cours (${Math.floor(elapsed)}s)...`
+        `${burnLabel.replace("...", "")} (${Math.floor(elapsed)}s)...`
       );
     }, 3000);
 
@@ -152,6 +276,11 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
       videoPath: localVideoPath,
       assPath,
       outputDir: jobTmpDir,
+      videoWidth: targetDims.width,
+      videoHeight: targetDims.height,
+      voiceoverPath: localVoiceoverPath,
+      audioMix,
+      brolls: localBrolls,
     });
 
     clearInterval(progressTicker);
@@ -176,19 +305,42 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
 
     const finalUrl = `${config.supabaseUrl}/storage/v1/object/video-exports/${finalStoragePath}`;
 
+    const renderSettings: Record<string, any> = {
+      render_type: "subs_burned",
+      segments_count: segmentCount,
+      output_size_bytes: outputSize,
+      subtitle_style: "luxury_helvetica_bold",
+      format: project.format,
+      has_voiceover: !!localVoiceoverPath,
+      brolls_count: localBrolls.length,
+    };
+
+    if (localVoiceoverPath && audioMix) {
+      renderSettings.voiceover = {
+        filename: voiceoverAudio?.filename,
+        duration_seconds: voiceoverAudio?.duration_seconds,
+        main_volume: audioMix.main_volume,
+        voiceover_volume: audioMix.voiceover_volume,
+      };
+    }
+
+    if (localBrolls.length > 0) {
+      renderSettings.brolls = localBrolls.map((b) => ({
+        type: b.type,
+        position: b.position,
+        start_time: b.start_time,
+        end_time: b.end_time,
+        scale: b.scale,
+      }));
+    }
+
     const { error: updateErr } = await supabase
       .from("studio_video_projects")
       .update({
         status: "completed",
         rendered_at: new Date().toISOString(),
         final_video_url: finalUrl,
-        render_settings: {
-          render_type: "subs_burned",
-          segments_count: segmentCount,
-          output_size_bytes: outputSize,
-          subtitle_style: "luxury_helvetica_bold",
-          format: project.format,
-        },
+        render_settings: renderSettings,
       })
       .eq("id", projectId);
 
@@ -206,6 +358,8 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
         segments_count: segmentCount,
         output_size_bytes: outputSize,
         output_path: finalStoragePath,
+        has_voiceover: !!localVoiceoverPath,
+        brolls_count: localBrolls.length,
       },
     });
   } finally {

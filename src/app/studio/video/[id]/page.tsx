@@ -12,6 +12,8 @@ import AppHeader from "@/components/AppHeader";
 import VideoDropzone from "@/components/studio/video/VideoDropzone";
 import TranscriptPanel from "@/components/studio/video/TranscriptPanel";
 import RenderPanel from "@/components/studio/video/RenderPanel";
+import VoiceoverPanel from "@/components/studio/video/VoiceoverPanel";
+import BrollsPanel from "@/components/studio/video/BrollsPanel";
 import {
   VideoProject,
   VIDEO_MODE_INFO,
@@ -274,6 +276,18 @@ export default function StudioVideoPage() {
 
             {/* ⭐ Phase 2b — Panneau transcription */}
             <TranscriptPanel
+              project={project}
+              onProjectUpdated={loadAll}
+            />
+
+            {/* ⭐ Phase 6A — Panneau voice-off */}
+            <VoiceoverPanel
+              project={project}
+              onProjectUpdated={loadAll}
+            />
+
+            {/* ⭐ Phase 6B — Panneau b-rolls */}
+            <BrollsPanel
               project={project}
               onProjectUpdated={loadAll}
             />

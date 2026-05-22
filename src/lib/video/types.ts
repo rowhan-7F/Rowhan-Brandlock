@@ -61,7 +61,7 @@ export type VideoProject = {
   output_srt_url: string | null;
   output_size_bytes: number | null;
 
-  // ⭐ Phase 4+5 — rendu final
+  // Phase 4+5 — rendu final
   final_video_url: string | null;
   render_settings: Record<string, unknown> | null;
 
@@ -91,6 +91,13 @@ export type VideoStateJson = {
     edited_at?: string;
   };
 
+  // === Phase 6A : Voice-Off ===
+  voiceover_audio?: VoiceoverAudio;
+  audio_mix?: AudioMix;
+
+  // === Phase 6B : B-rolls overlay ===
+  brolls?: BRoll[];
+
   slides?: VoiceOffSlide[];
 
   framing?: {
@@ -111,6 +118,47 @@ export type TranscriptSegment = {
   start: number;
   end: number;
   text: string;
+};
+
+// === Phase 6A : Voice-Off audio overlay ===
+export type VoiceoverAudio = {
+  url: string;
+  filename: string;
+  duration_seconds: number;
+  size_bytes: number;
+  mime_type: string;
+  uploaded_at: string;
+};
+
+export type AudioMix = {
+  main_volume: number;       // 0.0 - 1.0 (volume audio original)
+  voiceover_volume: number;  // 0.0 - 1.0 (volume voix-off)
+};
+
+// === Phase 6B : B-rolls overlay video/image ===
+export type BRollType = "video" | "image";
+
+export type BRollPosition =
+  | "fullscreen"
+  | "top-left"
+  | "top-right"
+  | "bottom-left"
+  | "bottom-right"
+  | "center";
+
+export type BRoll = {
+  id: string;                    // uuid client-generated
+  type: BRollType;
+  url: string;
+  filename: string;
+  size_bytes: number;
+  mime_type: string;
+  duration_seconds: number;      // pour images : durée d'affichage (default 3s)
+  start_time: number;            // début dans la vidéo principale (sec)
+  end_time: number;              // fin dans la vidéo principale (sec)
+  position: BRollPosition;       // emplacement à l'écran
+  scale: number;                 // 0.1 - 1.0 (fullscreen = 1.0, sinon ~0.3)
+  uploaded_at: string;
 };
 
 export type VoiceOffSlide = {
@@ -217,8 +265,33 @@ export type UploadSignedUrlResponse = {
 //  CONSTANTS
 // ============================================================
 
-export const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024; // 500 MB
-export const MAX_VIDEO_DURATION_SECONDS = 300; // 5 min
+export const MAX_VIDEO_SIZE_BYTES = 500 * 1024 * 1024;          // 500 MB
+export const MAX_VIDEO_DURATION_SECONDS = 300;                  // 5 min
+
+export const MAX_VOICEOVER_SIZE_BYTES = 50 * 1024 * 1024;       // 50 MB
+export const MAX_VOICEOVER_DURATION_SECONDS = 600;              // 10 min
+
+export const DEFAULT_MAIN_VOLUME_WITH_VOICEOVER = 0.25;         // baisse audio original quand voice-off active
+export const DEFAULT_MAIN_VOLUME_WITHOUT_VOICEOVER = 1.0;
+export const DEFAULT_VOICEOVER_VOLUME = 1.0;
+
+// === Phase 6B : B-rolls constants ===
+export const MAX_BROLL_SIZE_BYTES = 100 * 1024 * 1024;          // 100 MB par b-roll
+export const MAX_BROLL_DURATION_SECONDS = 60;                   // 1 min par b-roll
+export const DEFAULT_IMAGE_DURATION_SECONDS = 3;                // image affichée 3s par défaut
+export const DEFAULT_BROLL_SCALE = 0.3;                         // 30% scale (overlay coin)
+export const DEFAULT_BROLL_POSITION = "bottom-right" as const;
+
+export const ACCEPTED_BROLL_VIDEO_MIME_TYPES = [
+  "video/mp4",
+  "video/quicktime",
+] as const;
+
+export const ACCEPTED_BROLL_IMAGE_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+] as const;
 
 export const ACCEPTED_VIDEO_MIME_TYPES = [
   "video/mp4",
@@ -227,9 +300,14 @@ export const ACCEPTED_VIDEO_MIME_TYPES = [
 
 export const ACCEPTED_AUDIO_MIME_TYPES = [
   "audio/mpeg",
+  "audio/mp3",         // Variante MP3 (Windows surtout)
   "audio/wav",
+  "audio/wave",        // Variante WAV
+  "audio/x-wav",       // Variante WAV
   "audio/mp4",
   "audio/x-m4a",
+  "audio/m4a",         // Variante M4A
+  "audio/aac",         // AAC compatible
 ] as const;
 
 export const VIDEO_FORMAT_DIMENSIONS: Record<VideoFormat, { width: number; height: number; label: string }> = {
