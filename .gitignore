@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# ============================================================
+# Whisper.cpp - binaires et modèles trop lourds pour git
+# Setup process: voir worker/whisper-cpp/README.md
+# ============================================================
+worker/whisper-cpp/bin/
+worker/whisper-cpp/models/
+worker/whisper-cpp/samples/
