@@ -64,22 +64,68 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     log.project(project.title, project.tenant_id);
 
     // ====================================
-    //  ÉTAPE 2/8 — Download source MP4
+    //  ÉTAPE 2/8 — Download media source
+    //  ⭐ Phase X1 : Priorité au voice-off si présent
+    //  Le voice-off est plus propre que l'audio source (pas de bruit ambiant,
+    //  pas de musique, élocution claire) → transcription mieux synchronisée
+    //  avec ce que l'utilisateur entendra dans la vidéo finale.
     // ====================================
-    await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
+    const voiceoverAudio = project.state_json?.voiceover_audio as
+      | { url?: string; filename?: string }
+      | undefined;
 
-    const sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
-    const { localPath: localVideoPath } = await downloadFromStorage({
-      jobId,
-      bucket: "video-sources",
-      storagePath: sourcePath,
-      outputFilename: `source.${project.source_format}`,
-    });
+    const voUrlMatch = voiceoverAudio?.url
+      ? voiceoverAudio.url.match(
+          /\/storage\/v1\/object\/public\/video-voiceovers\/(.+)$/
+        )
+      : null;
+
+    let localVideoPath: string;
+    let transcribedFrom: "voiceover" | "video";
+
+    if (voUrlMatch) {
+      // ⭐ Voice-off détecté → on transcribe le voice-off
+      await updateProgress(jobId, 10, "Téléchargement de la voice-off (prioritaire)...");
+
+      const voiceoverStoragePath = voUrlMatch[1];
+      const ext = voiceoverAudio?.filename?.split(".").pop() || "mp3";
+
+      const { localPath } = await downloadFromStorage({
+        jobId,
+        bucket: "video-voiceovers",
+        storagePath: voiceoverStoragePath,
+        outputFilename: `voiceover.${ext}`,
+      });
+
+      localVideoPath = localPath;
+      transcribedFrom = "voiceover";
+      log.info(`[transcribe] Phase X1 — Voice-off detected, transcribing voice-off audio`);
+    } else {
+      // Pas de voice-off → vidéo source (comportement par défaut)
+      await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
+
+      const sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
+      const { localPath } = await downloadFromStorage({
+        jobId,
+        bucket: "video-sources",
+        storagePath: sourcePath,
+        outputFilename: `source.${project.source_format}`,
+      });
+
+      localVideoPath = localPath;
+      transcribedFrom = "video";
+    }
 
     // ====================================
     //  ÉTAPE 3/8 — Extract audio WAV 16kHz mono
     // ====================================
-    await updateProgress(jobId, 25, "Extraction de la piste audio (FFmpeg)...");
+    await updateProgress(
+        jobId,
+        25,
+        transcribedFrom === "voiceover"
+          ? "Conversion voice-off → WAV 16kHz..."
+          : "Extraction de la piste audio (FFmpeg)..."
+      );
 
     const jobTmpDir = path.dirname(localVideoPath);
     const { audioPath, sizeBytes: audioSizeBytes } = await extractAudio({
@@ -211,6 +257,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
         applied_replacements_count: appliedReplacements,
         engine: "whisper.cpp-large-v3",
         hallucinations_filtered: whisperResult.hallucinations_filtered,
+        source: transcribedFrom, // ⭐ Phase X1 : "voiceover" ou "video"
       },
     };
 
