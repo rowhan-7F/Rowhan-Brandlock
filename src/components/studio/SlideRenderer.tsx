@@ -133,6 +133,14 @@ export default function SlideRenderer({
 
   const variantConfig = resolveVariantConfig(template, variant, subVariant);
   if (!variantConfig) {
+    console.warn('[SlideRenderer DEBUG]', { 
+      templateKey, 
+      variant, 
+      subVariant,
+      availableTemplates: Object.keys(config?.exportTemplates || {}),
+      availableVariants: Object.keys(template?.slideVariants || {}),
+      availableSubs: Object.keys(template?.slideVariants?.[variant]?.subVariants || {}),
+    });
     return <FallbackSlide message={`Variant '${variant}' / sub '${subVariant || ""}' introuvable`} scale={scale} />;
   }
 

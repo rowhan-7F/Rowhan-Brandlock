@@ -1040,9 +1040,7 @@ function AddSlideButton({ config, onAdd, brandColor }: any) {
 function SlidePreview({
   slide, index, isOpen, brandColor, config, onClick,
 }: any) {
-  const templateKey = config?.exportTemplates
-    ? Object.keys(config.exportTemplates)[0]
-    : "carrousel_instagram";
+  const templateKey = "carrousel_instagram"; // Slides = carrousel uniquement (vidéo a sa propre page)
 
   const subVariant = (slide as any).subVariant || getDefaultSubVariant(config, slide.variant);
   const subVariantConfig = getSubVariantConfig(config, slide.variant, subVariant);
