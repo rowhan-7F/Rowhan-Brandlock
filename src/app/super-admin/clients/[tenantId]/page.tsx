@@ -9,6 +9,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, Crown, Calendar,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import BrandAssetsSection from "@/components/admin/BrandAssetsSection";
 
 // ============================================================
 //  PAGE DÉTAIL TENANT
@@ -251,6 +252,9 @@ export default function TenantDetailPage({
           💡 L&apos;ajout/suppression d&apos;utilisateurs sera disponible dans une prochaine version
         </p>
       </Section>
+
+      {/* SECTION BRAND ASSETS (Phase 7 V2) */}
+      <BrandAssetsSection tenantId={tenant.tenant_id} />
 
       {/* SECTION CONFIG JSON (collapsible) */}
       <Section title="Configuration JSON">
