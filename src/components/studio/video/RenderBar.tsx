@@ -152,20 +152,7 @@ export default function RenderBar({ project, onProjectUpdated }: Props) {
             <div className="text-[9px] font-black uppercase tracking-widest text-green-700">Rendu termine</div>
             <div className="text-sm font-bold text-neutral-900">Video luxury prete a etre telechargee</div>
           </div>
-          {downloadUrl ? (
-            
-              <a
-              href={downloadUrl}
-              download={(project.title || "video") + ".mp4"}
-              className="inline-flex items-center gap-2 px-4 py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition hover:opacity-90 shrink-0"
-              style={{ backgroundColor: BRAND_BORDEAUX }}
-            >
-              <Download size={14} />
-              Telecharger
-            </a>
-          ) : (
-            <Loader2 size={16} className="text-neutral-400 animate-spin" />
-          )}
+          {/* Phase 12 peaufinage #6+7 : Telecharger deplace dans header. Garde juste re-rendre */}
           <button
             type="button"
             onClick={handleStartRender}
