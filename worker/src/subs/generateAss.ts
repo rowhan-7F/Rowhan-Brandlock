@@ -179,11 +179,171 @@ function subdivideLongSegments(
  * Il est fusionné avec son voisin (précédent ou suivant) si le gap
  * temporel est ≤ maxMergeGapSec.
  */
+// ============================================================
+//  ⭐ Anti-MICRO-orphelin : 2eme pass plus aggressif pour
+//      les segments de 1-2 mots seulement. Force le merge meme
+//      si le gap est jusqu'a 2.5s (vs 0.40s du merge classique).
+//      Resout les cas "contenu." / "naturelle." flash visuels.
+// ============================================================
+// ============================================================
+//  ⭐ Anti-flashs : merge 2 sub-segments courts (1 ligne chacun)
+//      en 1 seul bloc de 2 lignes. Plus stable visuellement,
+//      reduit l'impression de saccade entre sub-titres courts.
+//
+//  Conditions de merge :
+//    - current et next tiennent chacun sur 1 ligne (<= maxCharsPerLine)
+//    - leur fusion tient en 2 lignes (<= maxCharsPerSegment)
+//    - gap temporel <= 1.5s
+//    - aucun des 2 n'est deja multi-ligne (\\N)
+// ============================================================
+// ============================================================
+//  ⭐ No-flicker : comble les petits trous entre sub-segments
+//      Le sous-titre courant s'etend jusqu'a 50ms avant le suivant.
+//      SAUF si le gap > 1.5s (vraie pause respiratoire).
+//
+//  Effet : transition fluide entre sous-titres, pas de flash blanc
+//          entre 2 textes (effet TV broadcast premium).
+// ============================================================
+function extendSegmentsToFillGaps(
+  segments: WhisperSegment[],
+  maxGapToFillSec: number = 1.5,
+  marginBeforeNextSec: number = 0.05,
+): WhisperSegment[] {
+  if (segments.length < 2) return segments;
+  const result: WhisperSegment[] = [];
+
+  for (let i = 0; i < segments.length; i++) {
+    const current = { ...segments[i] };
+    const next = i + 1 < segments.length ? segments[i + 1] : null;
+
+    if (next) {
+      const gap = next.start - current.end;
+      if (gap > 0 && gap <= maxGapToFillSec) {
+        // Petit gap : on prolonge current jusqu'a 50ms avant next
+        const extendedEnd = next.start - marginBeforeNextSec;
+        if (extendedEnd > current.end) {
+          current.end = extendedEnd;
+        }
+      }
+      // gap > 1.5s : pas de touch (vraie respiration laissee intacte)
+    }
+
+    result.push(current);
+  }
+
+  return result;
+}
+
+function mergeShortLinesIntoTwoLineBlocks(
+  segments: WhisperSegment[],
+  maxCharsPerLine: number,
+  maxCharsPerSegment: number,
+  maxGapSec: number = 1.5,
+): WhisperSegment[] {
+  if (segments.length < 2) return segments;
+  const result: WhisperSegment[] = [];
+  let i = 0;
+
+  while (i < segments.length) {
+    const current = segments[i];
+    const next = i + 1 < segments.length ? segments[i + 1] : null;
+
+    if (!next) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    const currentTrimmed = current.text.trim();
+    const nextTrimmed = next.text.trim();
+
+    // Skip si l'un contient deja \N (deja multi-ligne)
+    if (currentTrimmed.includes("\\N") || nextTrimmed.includes("\\N")) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    // Check 1 : les 2 tiennent en 1 ligne ?
+    if (currentTrimmed.length > maxCharsPerLine || nextTrimmed.length > maxCharsPerLine) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    // Check 2 : fusion tient en 2 lignes ?
+    const mergedLength = currentTrimmed.length + nextTrimmed.length + 1;
+    if (mergedLength > maxCharsPerSegment) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    // Check 3 : gap raisonnable ?
+    const gap = next.start - current.end;
+    if (gap > maxGapSec) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    // Check 4 : current ne finit PAS par ponctuation forte ?
+    //   Si current finit par . ! ? -> c'est une fin de phrase/pensee
+    //   -> ne PAS merger, laisser le visuel respirer
+    const endsWithSentencePunct = /[.!?][\s"')\]]*$/.test(currentTrimmed);
+    if (endsWithSentencePunct) {
+      result.push({ ...current });
+      i++;
+      continue;
+    }
+
+    // -> Merge en 1 bloc 2 lignes
+    result.push({
+      start: current.start,
+      end: next.end,
+      text: currentTrimmed + " " + nextTrimmed,
+    });
+    i += 2;
+  }
+
+  return result;
+}
+
+function mergeStrictMicroOrphans(
+  segments: WhisperSegment[],
+  maxMergeGapSec: number = 2.5,
+): WhisperSegment[] {
+  if (segments.length === 0) return segments;
+  const result: WhisperSegment[] = [];
+
+  for (const seg of segments) {
+    const wordCount = seg.text.split(/\s+/).filter((w) => w.length > 0).length;
+    const isMicroOrphan = wordCount <= 2;
+
+    if (isMicroOrphan && result.length > 0) {
+      const prev = result[result.length - 1];
+      const gapPrev = seg.start - prev.end;
+
+      if (gapPrev <= maxMergeGapSec) {
+        // Force merge avec prev (ignore la regle de ponctuation
+        // car c'est probablement la fin d'une phrase coupee)
+        prev.end = seg.end;
+        prev.text = (prev.text + " " + seg.text).replace(/\s+/g, " ").trim();
+        continue;
+      }
+    }
+
+    result.push({ ...seg });
+  }
+
+  return result;
+}
+
 function mergeOrphanSegments(
   segments: WhisperSegment[],
   minDurationSec: number = 1.0,
   minWords: number = 3,
-  maxMergeGapSec: number = 0.40  // Aligné sur SILENCE_FLUSH_THRESHOLD_MS (ne pas défaire ce qu'un silence a séparé)
+  maxMergeGapSec: number = 0.30  // Aligné sur SILENCE_FLUSH_THRESHOLD_MS (ne pas défaire ce qu'un silence a séparé)
 ): WhisperSegment[] {
   if (segments.length === 0) return segments;
 
@@ -356,7 +516,7 @@ function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
 //  les silences et suit le rythme respiratoire naturel du locuteur.
 // ============================================================
 
-const SILENCE_FLUSH_THRESHOLD_MS = 400;
+const SILENCE_FLUSH_THRESHOLD_MS = 300;
 function buildSegmentsFromWords(
   words: WhisperWord[],
   maxCharsPerSegment: number
@@ -612,6 +772,11 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
   // ⭐ Anti-orphelin : fusionne les sub-segments trop courts avec leurs voisins
   const beforeMerge = splitSegments.length;
   splitSegments = mergeOrphanSegments(splitSegments);
+  // ⭐ 2eme pass : force merge des micro-orphelins (1-2 mots)
+  splitSegments = mergeStrictMicroOrphans(splitSegments);
+
+  // 3eme pass : merge 2 sub-segments courts en 1 bloc 2 lignes
+  splitSegments = mergeShortLinesIntoTwoLineBlocks(splitSegments, config.maxCharsPerLine, config.maxCharsPerSegment);
   if (splitSegments.length !== beforeMerge) {
     console.log(
       `[generateAss] Merge orphans: ${beforeMerge} → ${splitSegments.length} segments`
