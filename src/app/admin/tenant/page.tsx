@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import AppHeader from "@/components/AppHeader";
-import BrandAssetsButton from "@/components/admin/BrandAssetsButton";
+import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -206,32 +206,11 @@ export default function AdminTenantPage() {
       <AppHeader
         eyebrow="ADMINISTRATION"
         title="Tableau de bord"
-        rightSlot={
-          <div className="flex items-center gap-2">
-            <BrandAssetsButton tenantId={user?.tenant_id || null} />
-            <Link
-              href="/admin/tenant/library"
-            className="px-3 py-2 rounded-lg border border-neutral-200 bg-white text-xs font-bold text-neutral-700 hover:bg-orange-50 hover:border-orange-300 transition flex items-center gap-1.5 relative"
-            title="Bibliothèque d'images"
-          >
-            <Library size={13} />
-            Bibliothèque
-            {pendingImagesCount > 0 && (
-              <span className="bg-orange-500 text-white text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded animate-pulse">
-                {pendingImagesCount}
-              </span>
-            )}
-          </Link>
-          </div>
-        }
+        rightSlot={<AdminTenantMenu active="dashboard" tenantId={user?.tenant_id || null} />}
       />
 
       <div className="max-w-6xl mx-auto p-6">
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <StatCard label="Briefs ouverts" count={openTasks.length} icon={<FileText size={18} />} color="orange" />
-          <StatCard label="À valider" count={pendingProjects.length} icon={<Clock size={18} />} color="amber" />
-          <StatCard label="Approuvés" count={approvedProjects.length} icon={<CheckCircle2 size={18} />} color="green" />
-        </div>
+        
 
         <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
           <div className="flex border-b border-neutral-200">
@@ -304,6 +283,10 @@ function StatCard({ label, count, icon, color }: any) {
 //  TAB BUTTON
 // ============================================================
 function TabButton({ active, onClick, label, count }: any) {
+  const isPendingTab = label === "À valider" && count > 0;
+  const badgeClass = isPendingTab
+    ? "bg-[#B11E2F] text-white animate-pulse"
+    : "bg-neutral-100 text-neutral-600";
   return (
     <button
       type="button"
@@ -315,7 +298,7 @@ function TabButton({ active, onClick, label, count }: any) {
       }`}
     >
       {label}
-      <span className="ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-neutral-100 text-[10px] font-black text-neutral-600">
+      <span className={`ml-2 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-black ${badgeClass}`}>
         {count}
       </span>
     </button>
