@@ -80,7 +80,7 @@ export async function composeBrandAsset(
   args.push(
     "-f", "lavfi",
     "-t", durationSeconds.toFixed(3),
-    "-i", "anullsrc=channel_layout=stereo:sample_rate=44100"
+    "-i", "anullsrc=channel_layout=stereo:sample_rate=48000"
   );
 
   // ============================================================
@@ -114,8 +114,8 @@ export async function composeBrandAsset(
     "-preset", "veryfast",
     "-crf", "20",
     "-c:a", "aac",
-    "-b:a", "128k",
-    "-ar", "44100",
+    "-b:a", "192k",
+    "-ar", "48000",
     "-ac", "2",
     "-t", durationSeconds.toFixed(3),
     "-s", `${videoWidth}x${videoHeight}`,  // ⭐ FORCE OUTPUT RESOLUTION

@@ -17,6 +17,7 @@ import BrollsPanel from "@/components/studio/video/BrollsPanel";
 import {
   VideoProject,
   VIDEO_MODE_INFO,
+  VIDEO_MODE_INFO_FULL,
   VIDEO_FORMAT_DIMENSIONS,
 } from "@/lib/video/types";
 import { formatDuration, formatFileSize } from "@/lib/video/thumbnail";
@@ -154,7 +155,7 @@ export default function StudioVideoPage() {
     );
   }
 
-  const modeInfo = VIDEO_MODE_INFO[project.mode];
+  const modeInfo = VIDEO_MODE_INFO_FULL[project.mode];
   const dims = VIDEO_FORMAT_DIMENSIONS[project.format];
 
   return (
@@ -170,7 +171,7 @@ export default function StudioVideoPage() {
         {project.status === "draft" && (
           <div className="space-y-6">
             <div className="text-center max-w-md mx-auto">
-              <div className="text-3xl mb-2">{modeInfo.icon}</div>
+              <div className="text-3xl mb-2">{(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}</div>
               <h2 className="text-lg font-bold text-neutral-900">
                 Upload de la source
               </h2>
@@ -219,7 +220,7 @@ export default function StudioVideoPage() {
                       Mode
                     </div>
                     <div className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                      <span className="text-lg">{modeInfo.icon}</span>
+                      <span className="text-lg">{(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}</span>
                       {modeInfo.label}
                     </div>
                   </div>

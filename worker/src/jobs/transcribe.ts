@@ -18,6 +18,7 @@ import { log } from "../logger.js";
 import { downloadFromStorage, cleanupJobTmp } from "../storage/download.js";
 import { uploadToStorage } from "../storage/upload.js";
 import { extractAudio } from "../ffmpeg/extractAudio.js";
+import { enhanceAudio } from "../ffmpeg/audioEnhance.js";
 import { runWhisperCpp, reconstructWordsFromTokens } from "../whisperCpp/index.js";
 import { applySanitizer } from "../sanitizer/apply.js";
 
@@ -31,6 +32,7 @@ type VideoProject = {
   id: string;
   tenant_id: string;
   title: string;
+  mode: string;
   source_format: string | null;
   source_video_url: string | null;
   state_json: Record<string, unknown>;
@@ -47,7 +49,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 
     const { data: projectData, error: projectErr } = await supabase
       .from("studio_video_projects")
-      .select("id, tenant_id, title, source_format, source_video_url, state_json")
+      .select("id, tenant_id, title, mode, source_format, source_video_url, state_json")
       .eq("id", projectId)
       .maybeSingle();
 
@@ -134,6 +136,25 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
+    //  ETAPE 4.5/8 — Audio Enhancement (Phase 8.B)
+    //  Applique un filtre FFmpeg selon project.mode :
+    //  - studio_clean   : passthrough
+    //  - voice_music    : highpass + denoise leger
+    //  - field_event    : highpass + lowpass + denoise fort + dynaudnorm
+    //  - premium_demux  : event + compression dynamique
+    // ====================================
+    await updateProgress(jobId, 35, "Optimisation audio (mode " + project.mode + ")...");
+
+    const { enhancedPath: whisperAudioPath, applied: enhanceApplied, activeMode: enhanceActiveMode } = await enhanceAudio({
+      inputPath: audioPath,
+      outputDir: jobTmpDir,
+      mode: project.mode,
+      onLog: (msg) => log.info(msg),
+    });
+
+    log.info("Audio enhancement: applied=" + enhanceApplied + " (mode=" + project.mode + " -> active=" + enhanceActiveMode + ")");
+
+    // ====================================
     //  ÉTAPE 4/8 — Upload audio.wav vers Supabase Storage
     // ====================================
     await updateProgress(jobId, 35, "Upload de l'audio extrait...");
@@ -160,7 +181,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     const whisperStart = Date.now();
 
     const whisperResult = await runWhisperCpp({
-      audioPath,
+      audioPath: whisperAudioPath,
       language: "fr",
       threads: 16,
       outputDir: jobTmpDir,
@@ -183,8 +204,34 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
       `total ${whisperElapsed}s`
     );
 
-    if (!whisperResult.text || whisperResult.segments.length === 0) {
-      throw new Error("Whisper.cpp returned empty transcript or no segments");
+    if (whisperResult.segments.length === 0) {
+      log.warn("[transcribe] No speech detected after filter - saving empty transcript");
+      const emptyStateJson = {
+        ...(project.state_json || {}),
+        transcript: {
+          raw: whisperResult.text || "",
+          edited: "",
+          segments: [],
+          words: [],
+          language: whisperResult.language || "fr",
+          duration_seconds: whisperResult.duration_seconds,
+          sanitized_at: new Date().toISOString(),
+          applied_replacements_count: 0,
+          engine: "whisper.cpp-large-v3",
+          hallucinations_filtered: whisperResult.hallucinations_filtered,
+          no_speech_detected: true,
+        },
+      };
+      await supabase
+        .from("studio_video_projects")
+        .update({
+          state_json: emptyStateJson,
+          status: "transcribed",
+          transcribed_at: new Date().toISOString(),
+        })
+        .eq("id", projectId);
+      log.info("[transcribe] Empty transcript saved (no speech detected)");
+      return;
     }
 
     // ====================================
