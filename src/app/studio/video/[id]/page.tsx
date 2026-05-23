@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft, Film, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -15,7 +15,14 @@ import TranscriptPanel from "@/components/studio/video/TranscriptPanel";
 import RenderPanel from "@/components/studio/video/RenderPanel";
 import VoiceoverPanel from "@/components/studio/video/VoiceoverPanel";
 import BrollsPanel from "@/components/studio/video/BrollsPanel";
+import AudioSubsPanel from "@/components/studio/video/AudioSubsPanel";
+import SourceInfoPanel from "@/components/studio/video/SourceInfoPanel";
+import MusicPanel from "@/components/studio/video/MusicPanel";
 import VideoSubsPreview from "@/components/studio/video/VideoSubsPreview";
+import BrollsTimeline from "@/components/studio/video/BrollsTimeline";
+import RenderBar from "@/components/studio/video/RenderBar";
+import StudioActionsSidebar, { ActionKey } from "@/components/studio/video/StudioActionsSidebar";
+import StudioDrawer from "@/components/studio/video/StudioDrawer";
 import {
   VideoProject,
   VIDEO_MODE_INFO,
@@ -45,6 +52,44 @@ export default function StudioVideoPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement>(null);
+  const [signedSourceUrl, setSignedSourceUrl] = useState<string | null>(null);
+  // Phase 12.D : generer signed URL pour la video source (bucket prive)
+  useEffect(() => {
+    if (!project?.source_video_url) {
+      setSignedSourceUrl(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = new URL(project.source_video_url!);
+        const pathParts = url.pathname.split("/video-sources/");
+        if (pathParts.length !== 2) {
+          // URL pas standard, on essaie d'utiliser directement
+          setSignedSourceUrl(project.source_video_url || null);
+          return;
+        }
+        const path = decodeURIComponent(pathParts[1]);
+        const { data, error } = await supabase.storage
+          .from("video-sources")
+          .createSignedUrl(path, 3600);
+        if (!cancelled) {
+          if (error) {
+            console.warn("[signed URL] error:", error.message);
+            setSignedSourceUrl(null);
+          } else if (data?.signedUrl) {
+            setSignedSourceUrl(data.signedUrl);
+          }
+        }
+      } catch (err: any) {
+        console.warn("[signed URL] parsing error:", err?.message);
+        if (!cancelled) setSignedSourceUrl(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [project?.source_video_url]);
+  const [activeDrawer, setActiveDrawer] = useState<ActionKey | null>(null);
 
   const loadAll = async () => {
     try {
@@ -200,9 +245,10 @@ export default function StudioVideoPage() {
                                 <div className="bg-neutral-900 p-4 flex items-center justify-center" style={{ minHeight: "300px" }}>
                   <div className="w-full" style={{ maxWidth: project.format === "9_16" ? "400px" : project.format === "1_1" ? "500px" : "100%" }}>
                     <VideoSubsPreview
-                      videoUrl={project.source_video_url}
+                      videoUrl={signedSourceUrl}
                       segments={(project.state_json?.transcript?.segments as any) || []}
                       format={project.format}
+                      externalVideoRef={videoPreviewRef}
                     />
                   </div>
                 </div>
@@ -267,30 +313,63 @@ export default function StudioVideoPage() {
                 </div>
               </div>
             </div>
+            {/* ⭐ Phase 12 — Timeline visuelle des b-rolls */}
+            <BrollsTimeline
+              project={project}
+              videoRef={videoPreviewRef}
+              onProjectUpdated={loadAll}
+            />
 
-            {/* ⭐ Phase 2b — Panneau transcription */}
-            <TranscriptPanel
+            {/* ⭐ Phase 12 — Boutons rendu/telechargement sous la timeline */}
+            <RenderBar
               project={project}
               onProjectUpdated={loadAll}
             />
 
-            {/* ⭐ Phase 6A — Panneau voice-off */}
-            <VoiceoverPanel
+            {/* ⭐ Phase 12 — Sidebar + Drawer luxury (panels en slide-in) */}
+            <StudioActionsSidebar
               project={project}
-              onProjectUpdated={loadAll}
+              active={activeDrawer}
+              onSelect={(key) => setActiveDrawer((prev) => (prev === key ? null : key))}
             />
 
-            {/* ⭐ Phase 6B — Panneau b-rolls */}
-            <BrollsPanel
-              project={project}
-              onProjectUpdated={loadAll}
-            />
+            {/* ⭐ Phase 12.D - 4 drawers reorganises */}
+            <StudioDrawer
+              isOpen={activeDrawer === "source"}
+              onClose={() => setActiveDrawer(null)}
+              eyebrow="01 - SOURCE"
+              title="Video source"
+            >
+              <SourceInfoPanel project={project} onProjectUpdated={loadAll} />
+            </StudioDrawer>
 
-            {/* ⭐ Phase 4+5 — Panneau rendu vidéo avec subs burned */}
-            <RenderPanel
-              project={project}
-              onProjectUpdated={loadAll}
-            />
+            <StudioDrawer
+              isOpen={activeDrawer === "audio"}
+              onClose={() => setActiveDrawer(null)}
+              eyebrow="02 - AUDIO & SUBS"
+              title="Voix-off et transcription"
+            >
+              <AudioSubsPanel project={project} onProjectUpdated={loadAll} />
+            </StudioDrawer>
+
+            <StudioDrawer
+              isOpen={activeDrawer === "brolls"}
+              onClose={() => setActiveDrawer(null)}
+              eyebrow="03 - B-ROLLS"
+              title="B-Rolls"
+            >
+              <BrollsPanel project={project} onProjectUpdated={loadAll} />
+            </StudioDrawer>
+
+            <StudioDrawer
+              isOpen={activeDrawer === "music"}
+              onClose={() => setActiveDrawer(null)}
+              eyebrow="04 - MUSIQUE"
+              title="Musique de fond"
+            >
+              <MusicPanel project={project} onProjectUpdated={loadAll} />
+            </StudioDrawer>
+
           </div>
         )}
       </main>

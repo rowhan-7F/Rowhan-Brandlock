@@ -109,9 +109,9 @@ export async function POST(
       );
     }
 
-    if (project.status !== "draft") {
+    if (project.status === "completed") {
       return NextResponse.json(
-        { error: `Upload impossible : le projet est en status "${project.status}"` },
+        { error: `Upload impossible : projet deja rendu (status "${project.status}")` },
         { status: 400 }
       );
     }
@@ -125,7 +125,31 @@ export async function POST(
       );
     }
 
-    const storagePath = `${project.tenant_id}/${id}/source.${ext}`;
+    const timestamp = Date.now();
+    const storagePath = `${project.tenant_id}/${id}/source-${timestamp}.${ext}`;
+
+    // Phase 12.D : si source existe deja (replace), on supprime l'ancien fichier specifique
+    // pour eviter d'accumuler des sources orphelines dans le storage
+    if (project.source_video_url) {
+      try {
+        // Extraire le path de l'URL signe ou public stocke
+        const url = new URL(project.source_video_url);
+        const pathParts = url.pathname.split("/video-sources/");
+        if (pathParts.length === 2) {
+          const oldPath = decodeURIComponent(pathParts[1]);
+          const { error: removeErr } = await supabaseAdmin.storage
+            .from("video-sources")
+            .remove([oldPath]);
+          if (removeErr) {
+            console.warn("[upload] cleanup ancien source failed (non-fatal):", removeErr.message);
+          } else {
+            console.log("[upload] ancien source supprime:", oldPath);
+          }
+        }
+      } catch (cleanupErr: any) {
+        console.warn("[upload] cleanup parsing URL failed (non-fatal):", cleanupErr?.message);
+      }
+    }
 
     const { data: signedData, error: signedErr } = await supabaseAdmin.storage
       .from("video-sources")

@@ -14,6 +14,7 @@ type Props = {
   videoUrl: string | null;
   segments: TranscriptSegment[];
   format: VideoFormat;
+  externalVideoRef?: React.RefObject<HTMLVideoElement | null>;
 };
 
 // Config style subs par format (match generateAss.ts cote worker)
@@ -27,8 +28,9 @@ const FORMAT_CONFIG: Record<VideoFormat, {
   "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 60 },
 };
 
-export default function VideoSubsPreview({ videoUrl, segments, format }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export default function VideoSubsPreview({ videoUrl, segments, format, externalVideoRef }: Props) {
+  const internalVideoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = externalVideoRef || internalVideoRef;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
