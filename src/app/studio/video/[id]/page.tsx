@@ -9,11 +9,13 @@ import { useRouter, useParams } from "next/navigation";
 import { Loader2, ArrowLeft, Film, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import AppHeader from "@/components/AppHeader";
+import StudioMenu from "@/components/studio/StudioMenu";
 import VideoDropzone from "@/components/studio/video/VideoDropzone";
 import TranscriptPanel from "@/components/studio/video/TranscriptPanel";
 import RenderPanel from "@/components/studio/video/RenderPanel";
 import VoiceoverPanel from "@/components/studio/video/VoiceoverPanel";
 import BrollsPanel from "@/components/studio/video/BrollsPanel";
+import VideoSubsPreview from "@/components/studio/video/VideoSubsPreview";
 import {
   VideoProject,
   VIDEO_MODE_INFO,
@@ -164,6 +166,7 @@ export default function StudioVideoPage() {
         backHref="/studio"
         eyebrow={`STUDIO · VIDÉO · ${modeInfo.label.toUpperCase()} · ${dims.width}×${dims.height}`}
         title={project.title}
+        rightSlot={<StudioMenu active="projects" tenantId={profile?.tenant_id || null} />}
       />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -194,24 +197,14 @@ export default function StudioVideoPage() {
             <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
 
-                <div className="bg-neutral-900 flex items-center justify-center p-4">
-                  {project.source_video_url ? (
-                    <video
-                      src={project.source_video_url}
-                      controls
-                      className="w-full max-h-[60vh] rounded-lg"
-                      style={{
-                        aspectRatio:
-                          project.format === "9_16"
-                            ? "9/16"
-                            : project.format === "1_1"
-                            ? "1/1"
-                            : "16/9",
-                      }}
+                                <div className="bg-neutral-900 p-4 flex items-center justify-center" style={{ minHeight: "300px" }}>
+                  <div className="w-full" style={{ maxWidth: project.format === "9_16" ? "400px" : project.format === "1_1" ? "500px" : "100%" }}>
+                    <VideoSubsPreview
+                      videoUrl={project.source_video_url}
+                      segments={(project.state_json?.transcript?.segments as any) || []}
+                      format={project.format}
                     />
-                  ) : (
-                    <div className="text-neutral-500 text-sm">Pas de source</div>
-                  )}
+                  </div>
                 </div>
 
                 <div className="p-6 space-y-3">

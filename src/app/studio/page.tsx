@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCurrentTenant } from "../../lib/useCurrentTenant";
 import { supabase } from "../../lib/supabase";
 import TasksCapsule from "@/components/studio/TasksCapsule";
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import AppHeader from "@/components/AppHeader";
 import NotificationsBell from "@/components/NotificationsBell";
+import StudioMenu from "@/components/studio/StudioMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -218,7 +220,12 @@ export default function StudioHomePage() {
       <AppHeader
         eyebrow={`STUDIO · ${roleLabel}`}
         title={config.tenant.name}
-        rightSlot={<NotificationsBell brandColor={brandColor} />}
+        rightSlot={
+          <div className="flex items-center gap-2">
+            <StudioMenu active="projects" tenantId={config.tenant.id || null} />
+            <NotificationsBell brandColor={brandColor} />
+          </div>
+        }
       />
 
       <main className="max-w-6xl mx-auto px-8 py-8">
