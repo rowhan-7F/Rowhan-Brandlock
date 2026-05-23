@@ -175,7 +175,7 @@ export default function VideoSubsPreview({ videoUrl, segments, format, externalV
         ref={videoRef}
         src={videoUrl}
         controls
-        className="absolute inset-0 w-full h-full object-contain"
+        className="absolute inset-0 w-full h-full object-cover"
       />
       <canvas
         ref={canvasRef}

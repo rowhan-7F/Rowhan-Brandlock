@@ -239,7 +239,94 @@ export default function SlideRenderer({
       {/* ============================================================ */}
       {/*  COUCHE 3b : Tous les autres composants (rendu standard)    */}
       {/* ============================================================ */}
-      {Object.entries(components)
+      {/* Phase 12 peaufinage #2 : Groupe quote flex column */}
+        {variant === "quote" && (() => {
+          const quoteBlockCfg = components.quoteBlock;
+          const separatorCfg = components.authorSeparator;
+          const authorCfg = components.quoteAuthor;
+          // Pour la variante quote, simpleText avec inputKey quoteRole = le role
+          const roleCfg = components.simpleText;
+          const detailsBoxCfg = components.detailsBox;
+
+          const QuoteBlockComp = ATOMIC_COMPONENTS[quoteBlockCfg?.componentType || "quoteBlock"];
+          const SeparatorComp = ATOMIC_COMPONENTS[separatorCfg?.componentType || "separator"];
+          const AuthorComp = ATOMIC_COMPONENTS[authorCfg?.componentType || "quoteAuthor"];
+          const RoleComp = ATOMIC_COMPONENTS[roleCfg?.componentType || "simpleText"];
+
+          const quoteValue = extractValue(inputValues[quoteBlockCfg?.inputKey || "quoteText"]);
+          const authorValue = extractValue(inputValues[authorCfg?.inputKey || "quoteAuthor"]);
+          const roleValue = extractValue(inputValues[roleCfg?.inputKey || "quoteRole"]);
+
+          if (!quoteValue) return null;
+
+          const safeTop = 200 * scale;
+          const safeBottom = (detailsBoxCfg?.bottomPx ? (detailsBoxCfg.bottomPx + 80) : 120) * scale;
+
+          return (
+            <div
+              key="quote-group-flex"
+              style={{
+                position: "absolute",
+                top: safeTop,
+                bottom: safeBottom,
+                left: 0,
+                right: 0,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: `0 ${90 * scale}px`,
+              }}
+            >
+              <div style={{ width: "100%", textAlign: "center" }}>
+                {QuoteBlockComp && (
+                  <QuoteBlockComp
+                    config={config}
+                    componentConfig={quoteBlockCfg}
+                    value={quoteValue}
+                    scale={scale}
+                  />
+                )}
+              </div>
+              <div
+                style={{
+                  marginTop: `${40 * scale}px`,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: `${14 * scale}px`,
+                }}
+              >
+                {separatorCfg?.enabled !== false && SeparatorComp && (
+                  <SeparatorComp
+                    config={config}
+                    componentConfig={separatorCfg}
+                    value={null}
+                    scale={scale}
+                  />
+                )}
+                {authorValue && AuthorComp && (
+                  <AuthorComp
+                    config={config}
+                    componentConfig={authorCfg}
+                    value={authorValue}
+                    scale={scale}
+                  />
+                )}
+                {roleValue && RoleComp && (
+                  <RoleComp
+                    config={config}
+                    componentConfig={roleCfg}
+                    value={roleValue}
+                    scale={scale}
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
+        {Object.entries(components)
         .sort(([, a]: any, [, b]: any) => {
           // paperBackground doit être rendu EN PREMIER (couche de fond)
           const aType = a?.componentType || "";
@@ -251,6 +338,16 @@ export default function SlideRenderer({
         .map(([componentKey, componentConfigRaw]: [string, any]) => {
         if (componentConfigRaw?.enabled === false) return null;
         if (componentKey === "backgroundMedia") return null;
+
+          // Phase 12 peaufinage #2 : Skip composants quote (rendus en flex column)
+          if (variant === "quote" && (
+            componentKey === "quoteBlock" ||
+            componentKey === "authorSeparator" ||
+            componentKey === "quoteAuthor" ||
+            (componentKey === "simpleText" && componentConfigRaw?.inputKey === "quoteRole")
+          )) {
+            return null;
+          }
 
         // Skip badge + partnerLabel si on les a déjà rendus groupés
         if (shouldGroupBadgeAndPartner && (componentKey === "badge" || componentKey === "partnerLabel")) {
@@ -361,10 +458,10 @@ function PartnerRenderer({ config, componentConfig, value, scale }: any) {
 
 function customPlacementToStyle(componentConfig: any, scale: number): React.CSSProperties {
   const style: React.CSSProperties = { position: "absolute" };
-  if (componentConfig.topPx !== undefined) style.top = componentConfig.topPx * scale;
-  if (componentConfig.bottomPx !== undefined) style.bottom = componentConfig.bottomPx * scale;
-  if (componentConfig.leftPx !== undefined) style.left = componentConfig.leftPx * scale;
-  if (componentConfig.rightPx !== undefined) style.right = componentConfig.rightPx * scale;
+  if (componentConfig.topPx !== undefined && componentConfig.topPx !== null) style.top = componentConfig.topPx * scale;
+  if (componentConfig.bottomPx !== undefined && componentConfig.bottomPx !== null) style.bottom = componentConfig.bottomPx * scale;
+  if (componentConfig.leftPx !== undefined && componentConfig.leftPx !== null) style.left = componentConfig.leftPx * scale;
+  if (componentConfig.rightPx !== undefined && componentConfig.rightPx !== null) style.right = componentConfig.rightPx * scale;
   return style;
 }
 

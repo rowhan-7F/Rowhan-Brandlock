@@ -41,6 +41,7 @@ export default function BrollsTimeline({ project, videoRef, onProjectUpdated }: 
   const [containerWidth, setContainerWidth] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const rafRef = useRef<number | null>(null);
   const patchTimers = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -165,6 +166,41 @@ export default function BrollsTimeline({ project, videoRef, onProjectUpdated }: 
     }
   };
 
+  // Phase 12 peaufinage #4 : Scrub video au click/drag sur la timeline (style Premiere/YouTube)
+  const seekToMouseX = (clientX: number) => {
+    const container = containerRef.current;
+    const video = videoRef.current;
+    if (!container || !video) return;
+    const rect = container.getBoundingClientRect();
+    const xPx = Math.max(0, Math.min(rect.width, clientX - rect.left));
+    const sec = pxToSec(xPx);
+    const clamped = Math.max(0, Math.min(sourceDuration, sec));
+    video.currentTime = clamped;
+    setSelectedId(null); // deselectionner les blocs en scrubbing
+  };
+
+  const handleContainerMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Ignorer si l'event vient d'un bloc Rnd (b-roll)
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-rnd-bloc]")) return;
+    setIsScrubbing(true);
+    seekToMouseX(e.clientX);
+  };
+
+  // Listener global pour suivre la souris meme hors container
+  useEffect(() => {
+    if (!isScrubbing) return;
+    const handleMove = (e: MouseEvent) => seekToMouseX(e.clientX);
+    const handleUp = () => setIsScrubbing(false);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScrubbing, sourceDuration, containerWidth]);
+
   // ============================================================
   //  Render
   // ============================================================
@@ -195,7 +231,8 @@ export default function BrollsTimeline({ project, videoRef, onProjectUpdated }: 
 
       <div
         ref={containerRef}
-        className="relative bg-neutral-50 rounded-lg border border-neutral-200 overflow-hidden"
+        onMouseDown={handleContainerMouseDown}
+        className="relative bg-neutral-50 rounded-lg border border-neutral-200 overflow-hidden select-none cursor-pointer"
         style={{ height: totalHeight }}
       >
         {containerWidth > 0 && (
@@ -261,6 +298,7 @@ export default function BrollsTimeline({ project, videoRef, onProjectUpdated }: 
                     cursor: "grab",
                   }}
                   className="hover:opacity-90"
+                  data-rnd-bloc="true"
                   resizeHandleStyles={{
                     left: { width: "8px", left: "-4px", cursor: "ew-resize" },
                     right: { width: "8px", right: "-4px", cursor: "ew-resize" },

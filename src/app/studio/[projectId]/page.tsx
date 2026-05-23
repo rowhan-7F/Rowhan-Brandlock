@@ -161,7 +161,7 @@ export default function StudioEditorPage() {
     updateStateJson((prev) => ({
       ...prev,
       slides: prev.slides.map((s) =>
-        s.id === slideId ? createSlideWithVariant(slideId, newVariant, newSubVariant, config) : s
+        s.id === slideId ? createSlideWithVariant(slideId, newVariant, newSubVariant, config, s) : s
       ),
     }));
   };
@@ -320,8 +320,10 @@ export default function StudioEditorPage() {
 
           {/* Titre éditable + save indicator */}
           <div className="min-w-0 flex-1">
-            <EditableProjectTitle
-              title={effectiveTitle}
+            {/* Phase 12 peaufinage : titre + badge meme ligne */}
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <div className="min-w-0 flex-1">
+                <EditableProjectTitle title={effectiveTitle}
               projectId={projectId}
               onUpdated={(newTitle) => {
                 setLocalTitle(newTitle);
@@ -329,28 +331,30 @@ export default function StudioEditorPage() {
                   projectState.project.title = newTitle;
                 }
               }}
-            />
-            <div className="text-[10px] text-neutral-400 flex items-center gap-2">
+              />
+            </div>
+            {project.status === "pending_approval" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-black uppercase tracking-widest text-amber-700 shrink-0">
+                <Clock size={9} />
+                En attente de validation
+              </span>
+            )}
+            {project.status === "approved" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-200 rounded text-[9px] font-black uppercase tracking-widest text-green-700 shrink-0">
+                <CheckCircle2 size={9} />
+                Approuve
+              </span>
+            )}
+            {project.status === "rejected" && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-black uppercase tracking-widest text-red-700 shrink-0">
+                <AlertCircle size={9} />
+                A retravailler
+              </span>
+            )}
+            </div>
+            <div className="text-[10px] text-neutral-400 flex items-center gap-2 mt-0.5">
               <SaveIndicator status={projectState.saveStatus} />
-              {/* ⭐ Badge de statut projet */}
-              {project.status === "pending_approval" && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-black uppercase tracking-widest text-amber-700">
-                  <Clock size={8} />
-                  En attente de validation
-                </span>
-              )}
-              {project.status === "approved" && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 border border-green-200 rounded text-[9px] font-black uppercase tracking-widest text-green-700">
-                  <CheckCircle2 size={8} />
-                  Approuvé
-                </span>
-              )}
-              {project.status === "rejected" && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-black uppercase tracking-widest text-red-700">
-                  <AlertCircle size={8} />
-                  À retravailler
-                </span>
-              )}
+              
             </div>
           </div>
         </div>
@@ -1194,8 +1198,25 @@ function createEmptySlide(variantKey: string, subVariantKey: string, config: any
   } as any;
 }
 
-function createSlideWithVariant(slideId: string, variantKey: string, subVariantKey: string, config: any): SlideState {
+function createSlideWithVariant(slideId: string, variantKey: string, subVariantKey: string, config: any, oldSlide?: any): SlideState {
   const fresh = createEmptySlide(variantKey, subVariantKey, config);
+  // Phase 12 peaufinage #5 : preserver les inputs communs entre ancienne et nouvelle variante
+  if (oldSlide && oldSlide.inputs) {
+    const newSubConfig = getSubVariantConfig(config, variantKey, subVariantKey);
+    const newInputKeys: string[] = (newSubConfig?.inputs || []).map((i: any) => i.key);
+    const preservedInputs: Record<string, any> = { ...fresh.inputs };
+    newInputKeys.forEach((key: string) => {
+      const oldValue = oldSlide.inputs[key];
+      if (oldValue === undefined || oldValue === null) return;
+      if (typeof oldValue === "object" && oldValue !== null) {
+        const hasContent = oldValue.value !== undefined && oldValue.value !== null && oldValue.value !== "";
+        if (hasContent) preservedInputs[key] = oldValue;
+      } else if (oldValue !== "") {
+        preservedInputs[key] = oldValue;
+      }
+    });
+    return { ...fresh, id: slideId, inputs: preservedInputs };
+  }
   return { ...fresh, id: slideId };
 }
 
