@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validModes = ["voice_off", "interview", "event"];
+    const validModes = ["voice_off", "interview", "event", "studio_clean", "voice_music", "field_event", "premium_demux"];
     if (!validModes.includes(mode)) {
       return NextResponse.json(
         { error: `Mode invalide. Valeurs acceptées : ${validModes.join(", ")}` },

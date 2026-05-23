@@ -7,7 +7,21 @@
 //  ENUMS (matches les types Postgres)
 // ============================================================
 
-export type VideoMode = "voice_off" | "interview" | "event";
+// Phase 8 : 4 modes actifs (UI). 3 legacy gardés pour anciens projets.
+export type VideoMode =
+  | "voice_off"      // legacy
+  | "interview"      // legacy
+  | "event"          // legacy
+  | "studio_clean"   // Phase 8 - Interview voix claire studio
+  | "voice_music"    // Phase 8 - Podcast voix + musique
+  | "field_event"    // Phase 8 - Event terrain bruyant
+  | "premium_demux"; // Phase 8 - Audio difficile, démixage IA
+
+export type ActiveVideoMode =
+  | "studio_clean"
+  | "voice_music"
+  | "field_event"
+  | "premium_demux";
 
 export type VideoFormat = "9_16" | "1_1" | "16_9";
 
@@ -318,22 +332,53 @@ export const VIDEO_FORMAT_DIMENSIONS: Record<VideoFormat, { width: number; heigh
   "16_9": { width: 1920, height: 1080, label: "Horizontal (YouTube, LinkedIn)" },
 };
 
-export const VIDEO_MODE_INFO: Record<VideoMode, { label: string; description: string; icon: string }> = {
-  voice_off: {
-    label: "Voice-Off",
-    description: "Audio + b-rolls assemblés",
-    icon: "🎙",
-  },
-  interview: {
+import { Mic, Music, Building2, Gem, type LucideIcon } from "lucide-react";
+
+// ============================================================
+//  Phase 8 - 4 thèmes audio orientés CLIENT
+//  Le worker s'adapte automatiquement selon le mode choisi.
+//  Labels parlants vs noms techniques internes.
+// ============================================================
+export const VIDEO_MODE_INFO: Record<
+  ActiveVideoMode,
+  { label: string; description: string; icon: LucideIcon; longHint: string }
+> = {
+  studio_clean: {
     label: "Interview",
-    description: "Vidéo d'une personne qui parle",
-    icon: "🎤",
+    description: "Voix claire, studio ou booth",
+    icon: Mic,
+    longHint: "Interview en intérieur calme, voix-off enregistrée, podcast pro",
   },
-  event: {
+  voice_music: {
+    label: "Podcast",
+    description: "Voix sur fond musical",
+    icon: Music,
+    longHint: "Communication institutionnelle, social media avec musique d'ambiance",
+  },
+  field_event: {
     label: "Event",
-    description: "Vidéo d'événement, sans paroles",
-    icon: "🎥",
+    description: "Reportage extérieur, terrain bruyant",
+    icon: Building2,
+    longHint: "Conférence avec foule, rue, événement, vent, drone",
   },
+  premium_demux: {
+    label: "Audio difficile",
+    description: "Démixage IA, qualité max (+30s)",
+    icon: Gem,
+    longHint: "Voix très faible vs musique forte, audio dégradé, captation distante",
+  },
+};
+
+// ============================================================
+//  Map complet (Phase 8 actifs + legacy) - utilise partout
+//  ou on lit project.mode pour gerer les anciens projets
+//  en voice_off/interview/event.
+// ============================================================
+export const VIDEO_MODE_INFO_FULL: Record<VideoMode, typeof VIDEO_MODE_INFO[ActiveVideoMode]> = {
+  ...VIDEO_MODE_INFO,
+  voice_off: VIDEO_MODE_INFO.studio_clean,
+  interview: VIDEO_MODE_INFO.studio_clean,
+  event: VIDEO_MODE_INFO.field_event,
 };
 
 export const TEMPLATE_KEY_BY_FORMAT: Record<VideoFormat, string> = {

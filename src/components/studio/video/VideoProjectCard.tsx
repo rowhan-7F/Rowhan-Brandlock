@@ -14,6 +14,7 @@ import {
   VideoProject,
   VideoStatus,
   VIDEO_MODE_INFO,
+  VIDEO_MODE_INFO_FULL,
 } from "@/lib/video/types";
 import { formatDuration } from "@/lib/video/thumbnail";
 
@@ -59,7 +60,7 @@ export default function VideoProjectCard({ project, onDelete }: VideoProjectCard
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
-  const modeInfo = VIDEO_MODE_INFO[project.mode];
+  const modeInfo = VIDEO_MODE_INFO_FULL[project.mode];
   const statusConfig = STATUS_CONFIG[project.status];
 
   const handleClick = () => {
@@ -134,7 +135,7 @@ export default function VideoProjectCard({ project, onDelete }: VideoProjectCard
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-4xl opacity-30">
-            {modeInfo.icon}
+            {(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}
           </div>
         )}
 
@@ -169,7 +170,7 @@ export default function VideoProjectCard({ project, onDelete }: VideoProjectCard
 
       <div className="p-3">
         <div className="flex items-start gap-2 mb-2">
-          <span className="text-base shrink-0 leading-none mt-0.5">{modeInfo.icon}</span>
+          <span className="text-base shrink-0 leading-none mt-0.5">{(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}</span>
           <div className="flex-1 min-w-0">
             <div className="text-[9px] font-black uppercase tracking-wider text-neutral-400">
               {modeInfo.label}

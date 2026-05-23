@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
 import AppHeader from "@/components/AppHeader";
+import BrandAssetsButton from "@/components/admin/BrandAssetsButton";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -206,8 +207,10 @@ export default function AdminTenantPage() {
         eyebrow="ADMINISTRATION"
         title="Tableau de bord"
         rightSlot={
-          <Link
-            href="/admin/tenant/library"
+          <div className="flex items-center gap-2">
+            <BrandAssetsButton tenantId={user?.tenant_id || null} />
+            <Link
+              href="/admin/tenant/library"
             className="px-3 py-2 rounded-lg border border-neutral-200 bg-white text-xs font-bold text-neutral-700 hover:bg-orange-50 hover:border-orange-300 transition flex items-center gap-1.5 relative"
             title="Bibliothèque d'images"
           >
@@ -219,6 +222,7 @@ export default function AdminTenantPage() {
               </span>
             )}
           </Link>
+          </div>
         }
       />
 
