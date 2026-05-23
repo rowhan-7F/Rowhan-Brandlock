@@ -15,6 +15,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/lib/toast";
 import { useJobStatus } from "@/lib/video/transcriptStatus";
 import { VideoProject } from "@/lib/video/types";
+import BrandAssetsSelector from "./BrandAssetsSelector";
 
 type Props = {
   project: VideoProject;
@@ -239,6 +240,13 @@ export default function RenderPanel({ project, onProjectUpdated }: Props) {
         (style luxury Helvetica Bold blanc, ombre noire, position bas-centre).
       </p>
 
+
+      {/* ⭐ Phase 7.5 : Sélection brand assets */}
+      {canRender && (
+        <div className="max-w-xl mx-auto mb-5 text-left">
+          <BrandAssetsSelector project={project} onSaved={onProjectUpdated} />
+        </div>
+      )}
 
       <button
         type="button"

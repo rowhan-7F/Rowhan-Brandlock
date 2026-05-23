@@ -9,6 +9,8 @@ import { downloadFromStorage, cleanupJobTmp } from "../storage/download.js";
 import { uploadToStorage } from "../storage/upload.js";
 import { generateAss } from "../subs/generateAss.js";
 import { burnSubs } from "../ffmpeg/burnSubs.js";
+import { composeBrandAsset, BrandAssetOverlayFormat, BrandAssetBgKind } from "../ffmpeg/composeBrandAsset.js";
+import { concatVideos } from "../ffmpeg/concatVideos.js";
 
 type RenderJobInput = {
   jobId: string;
@@ -286,13 +288,194 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     clearInterval(progressTicker);
 
     // ====================================
+    //  ⭐ ÉTAPE 4.5 — Brand Assets compose + concat (Phase 7.6)
+    // ====================================
+    let finalRenderPath = outputPath;
+    let finalSize = outputSize;
+
+    const introId = project.state_json?.intro_id as string | undefined;
+    const introBgId = project.state_json?.intro_background_id as
+      | string
+      | undefined;
+    const outroId = project.state_json?.outro_id as string | undefined;
+    const outroBgId = project.state_json?.outro_background_id as
+      | string
+      | undefined;
+
+    if (introId || outroId) {
+      await updateProgress(jobId, 86, "Composition intro/outro...");
+
+      const assetIds = [introId, outroId].filter(Boolean) as string[];
+      const { data: assets, error: assetsErr } = await supabase
+        .from("brand_video_assets")
+        .select(
+          `id, asset_type, name, overlay_url, overlay_format,
+           overlay_width, overlay_height, duration_seconds,
+           default_bg_url, default_bg_kind,
+           position_x, position_y,
+           backgrounds:brand_video_asset_backgrounds (
+             id, bg_url, bg_kind, is_approved
+           )`
+        )
+        .in("id", assetIds)
+        .eq("is_active", true);
+
+      if (assetsErr) {
+        log.warn(
+          `[brand-assets] DB error fetching assets: ${assetsErr.message}. Skipping intro/outro.`
+        );
+      } else {
+        const introAsset = assets?.find((a) => a.id === introId);
+        const outroAsset = assets?.find((a) => a.id === outroId);
+
+        const composedClips: { type: "intro" | "outro"; path: string }[] = [];
+
+        // Helper : download overlay + bg + compose 1 clip
+        const composeOne = async (
+          asset: any,
+          bgVariantId: string | undefined,
+          assetType: "intro" | "outro"
+        ): Promise<string | null> => {
+          // Pick BG : variant approuvée OU default
+          let bgUrl: string | null = null;
+          let bgKind: BrandAssetBgKind | null = null;
+
+          if (bgVariantId) {
+            const bgVariant = (asset.backgrounds || []).find(
+              (b: any) => b.id === bgVariantId && b.is_approved
+            );
+            if (bgVariant) {
+              bgUrl = bgVariant.bg_url;
+              bgKind = bgVariant.bg_kind;
+            }
+          }
+          if (!bgUrl && asset.default_bg_url) {
+            bgUrl = asset.default_bg_url;
+            bgKind = asset.default_bg_kind;
+          }
+          if (!bgUrl || !bgKind) {
+            log.warn(
+              `[brand-assets] ${assetType} "${asset.name}": no BG available. Skipping.`
+            );
+            return null;
+          }
+
+          // Download overlay
+          const overlayUrlMatch = (asset.overlay_url as string).match(
+            /\/storage\/v1\/object\/public\/brand-video-overlays\/(.+)$/
+          );
+          if (!overlayUrlMatch) {
+            log.warn(
+              `[brand-assets] ${assetType}: overlay URL invalid format, skipping.`
+            );
+            return null;
+          }
+
+          const overlayExt = asset.overlay_format as BrandAssetOverlayFormat;
+          const { localPath: overlayLocalPath } = await downloadFromStorage({
+            jobId,
+            bucket: "brand-video-overlays",
+            storagePath: overlayUrlMatch[1],
+            outputFilename: `${assetType}-overlay.${overlayExt}`,
+          });
+
+          // Download BG
+          const bgUrlMatch = (bgUrl as string).match(
+            /\/storage\/v1\/object\/public\/([^/]+)\/(.+)$/
+          );
+          if (!bgUrlMatch) {
+            log.warn(
+              `[brand-assets] ${assetType}: BG URL invalid format, skipping.`
+            );
+            return null;
+          }
+          const bgBucket = bgUrlMatch[1];
+          const bgStoragePath = bgUrlMatch[2];
+          const bgExt = bgStoragePath.split(".").pop() || "mp4";
+
+          const { localPath: bgLocalPath } = await downloadFromStorage({
+            jobId,
+            bucket: bgBucket,
+            storagePath: bgStoragePath,
+            outputFilename: `${assetType}-bg.${bgExt}`,
+          });
+
+          // Compose
+          const { outputPath: composedPath } = await composeBrandAsset({
+            overlayPath: overlayLocalPath,
+            overlayFormat: overlayExt,
+            bgPath: bgLocalPath,
+            bgKind,
+            durationSeconds: Number(asset.duration_seconds),
+            videoWidth: targetDims.width,
+            videoHeight: targetDims.height,
+            positionX: Number(asset.position_x ?? 0),
+            positionY: Number(asset.position_y ?? 0),
+            outputDir: jobTmpDir,
+            outputFilename: `${assetType}.mp4`,
+          });
+
+          log.info(
+            `[brand-assets] ${assetType} composed: ${asset.name} (${asset.duration_seconds}s)`
+          );
+
+          return composedPath;
+        };
+
+        if (introAsset) {
+          const p = await composeOne(introAsset, introBgId, "intro");
+          if (p) composedClips.push({ type: "intro", path: p });
+        }
+        if (outroAsset) {
+          const p = await composeOne(outroAsset, outroBgId, "outro");
+          if (p) composedClips.push({ type: "outro", path: p });
+        }
+
+        // Concat si au moins 1 clip à ajouter
+        if (composedClips.length > 0) {
+          await updateProgress(
+            jobId,
+            88,
+            `Concat ${composedClips.length} clip(s) brand + main...`
+          );
+
+          const introPath = composedClips.find((c) => c.type === "intro")?.path;
+          const outroPath = composedClips.find((c) => c.type === "outro")?.path;
+
+          const concatList: string[] = [];
+          if (introPath) concatList.push(introPath);
+          concatList.push(outputPath); // main (subs + voice-off + b-rolls)
+          if (outroPath) concatList.push(outroPath);
+
+          const { outputPath: concatedPath, sizeBytes: concatedSize } =
+            await concatVideos({
+              inputPaths: concatList,
+              outputDir: jobTmpDir,
+              outputFilename: "final-with-brand.mp4",
+            });
+
+          finalRenderPath = concatedPath;
+          finalSize = concatedSize;
+
+          log.info(
+            `[brand-assets] Final concated: ${concatList.length} segments → ${(
+              concatedSize /
+              1024 /
+              1024
+            ).toFixed(1)} MB`
+          );
+        }
+      }
+    }
+
+    // ====================================
     //  ÉTAPE 5 — Upload final video
     // ====================================
     await updateProgress(jobId, 90, "Upload de la vidéo finale...");
 
     const finalStoragePath = `${project.tenant_id}/${project.id}/final.mp4`;
     await uploadToStorage({
-      localPath: outputPath,
+      localPath: finalRenderPath,
       bucket: "video-exports",
       storagePath: finalStoragePath,
       contentType: "video/mp4",
@@ -308,7 +491,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     const renderSettings: Record<string, any> = {
       render_type: "subs_burned",
       segments_count: segmentCount,
-      output_size_bytes: outputSize,
+      output_size_bytes: finalSize,
       subtitle_style: "luxury_helvetica_bold",
       format: project.format,
       has_voiceover: !!localVoiceoverPath,
@@ -356,7 +539,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
       p_result_data: {
         render_type: "subs_burned",
         segments_count: segmentCount,
-        output_size_bytes: outputSize,
+        output_size_bytes: finalSize,
         output_path: finalStoragePath,
         has_voiceover: !!localVoiceoverPath,
         brolls_count: localBrolls.length,

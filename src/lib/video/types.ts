@@ -107,7 +107,9 @@ export type VideoStateJson = {
   };
 
   intro_id?: string;
+  intro_background_id?: string;        // ⭐ Phase 7.5 : BG variant sélectionnée
   outro_id?: string;
+  outro_background_id?: string;        // ⭐ Phase 7.5 : BG variant sélectionnée
   background_music_id?: string;
   color_grading_lut_id?: string;
 
