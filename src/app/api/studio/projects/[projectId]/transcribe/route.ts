@@ -14,11 +14,11 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ projectId: string }> }
 ) {
   try {
     // 1. Extract project ID from params (Next.js 15+ async params)
-    const { id: projectId } = await params;
+    const { projectId } = await params;
 
     // 2. Auth check via bearer token
     const authHeader = req.headers.get("authorization");
