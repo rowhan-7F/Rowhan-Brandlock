@@ -28,7 +28,7 @@ export async function GET(req: Request) {
 
   // Auth roles
   const allowedRoles = ["super_admin", "tenant_admin", "graphist"];
-  if (!allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role || "")) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
   if (user.role !== "super_admin" && user.tenant_id !== tenantId) {

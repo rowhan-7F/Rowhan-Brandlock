@@ -8,7 +8,7 @@ import { supabase } from "../../lib/supabase";
 import TasksCapsule from "@/components/studio/TasksCapsule";
 import {
   Plus, Loader2, FileText, Clock, CheckCircle2,
-  AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X, Film,
+  AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X, Film, Filter,
 } from "lucide-react";
 import StudioHeader from "@/components/StudioHeader";
 import NotificationsBell from "@/components/NotificationsBell";

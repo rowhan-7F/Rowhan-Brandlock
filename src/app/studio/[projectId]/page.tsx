@@ -275,7 +275,7 @@ export default function StudioEditorPage() {
         }}
         statusBadge={project.status as any}
         showStudioMenu={true}
-        tenantId={tenantState.status === "ready" ? tenantState.user.tenant_id : null}
+        tenantId={tenantState.status === "ready" ? tenantState.user.tenantId : null}
         showMessages={true}
         projectId={projectId}
         showNotifications={true}

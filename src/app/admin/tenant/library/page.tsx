@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,7 +44,7 @@ type Counts = {
 
 type FilterStatus = "pending" | "approved" | "all";
 
-export default function AdminLibraryPage() {
+function AdminLibraryPageInner() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -545,5 +547,13 @@ function Meta({ label, value }: { label: string; value: React.ReactNode }) {
       </div>
       <div className="text-xs text-neutral-700 truncate mt-0.5">{value}</div>
     </div>
+  );
+}
+
+export default function AdminLibraryPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-neutral-400" size={28} /></div>}>
+      <AdminLibraryPageInner />
+    </Suspense>
   );
 }

@@ -46,3 +46,4 @@ next-env.d.ts
 worker/whisper-cpp/bin/
 worker/whisper-cpp/models/
 worker/whisper-cpp/samples/
+build-log.txt

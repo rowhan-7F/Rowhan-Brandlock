@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import {
@@ -29,7 +31,7 @@ type TeamMember = {
   created_at: string;
 };
 
-export default function TeamPage() {
+function TeamPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -475,5 +477,13 @@ function AddStudioModal({
         </div>
       </div>
     </div>
+  );
+}
+
+export default function TeamPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-neutral-400" size={28} /></div>}>
+      <TeamPageInner />
+    </Suspense>
   );
 }

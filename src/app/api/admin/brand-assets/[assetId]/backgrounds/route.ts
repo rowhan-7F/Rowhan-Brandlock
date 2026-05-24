@@ -24,7 +24,7 @@ export async function POST(
 
   // Auth roles
   const allowedRoles = ["super_admin", "tenant_admin", "graphist"];
-  if (!allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role || "")) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
@@ -77,9 +77,9 @@ export async function POST(
       width,
       height,
       is_approved: isAutoApproved,
-      uploaded_by: user.id,
+      uploaded_by: user.user_id,
       uploaded_by_role: user.role,
-      approved_by: isAutoApproved ? user.id : null,
+      approved_by: isAutoApproved ? user.user_id : null,
       approved_at: isAutoApproved ? now : null,
     })
     .select()

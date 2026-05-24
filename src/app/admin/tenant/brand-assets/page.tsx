@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+export const dynamic = "force-dynamic";
+
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -9,7 +11,7 @@ import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import BrandAssetsTenantSection from "@/components/admin/BrandAssetsTenantSection";
 
-export default function TenantBrandAssetsPage() {
+function TenantBrandAssetsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
@@ -116,5 +118,13 @@ export default function TenantBrandAssetsPage() {
         <BrandAssetsTenantSection tenantId={tenantId} />
       </main>
     </div>
+  );
+}
+
+export default function TenantBrandAssetsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-neutral-400" size={28} /></div>}>
+      <TenantBrandAssetsPageInner />
+    </Suspense>
   );
 }

@@ -19,7 +19,7 @@ export async function PATCH(
 
   // Auth : SEUL super_admin OU tenant_admin peut approuver/rejeter
   const allowedRoles = ["super_admin", "tenant_admin"];
-  if (!allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role || "")) {
     return NextResponse.json(
       { error: "Accès refusé (rôle admin requis)" },
       { status: 403 }
@@ -52,7 +52,7 @@ export async function PATCH(
     action === "approve"
       ? {
           is_approved: true,
-          approved_by: user.id,
+          approved_by: user.user_id,
           approved_at: now,
           rejected_at: null,
           rejection_reason: null,
@@ -96,7 +96,7 @@ export async function DELETE(
   const { bgId } = await params;
 
   const allowedRoles = ["super_admin", "tenant_admin"];
-  if (!allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role || "")) {
     return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
   }
 
