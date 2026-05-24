@@ -108,7 +108,7 @@ export default function TeamPage() {
         .maybeSingle();
 
       setTenantName(tenant?.tenant_name || resolvedTenantId || "");
-      await fetchData(resolvedTenantId);
+      await fetchData(resolvedTenantId!);
       setLoading(false);
     })();
   }, [router, searchParams, fetchData]);
