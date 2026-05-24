@@ -8,7 +8,7 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -298,21 +298,31 @@ export default function AdminProjectReviewPage({
   const okCount = Object.values(slideReviews).filter(r => r.status === "ok").length;
   const needsChangesCount = Object.values(slideReviews).filter(r => r.status === "needs_changes").length;
 
+
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* ⭐ NOUVEAU AppHeader unifié */}
-      <AppHeader
-        eyebrow="VALIDATION"
-        title={project.title}
+      <StudioHeader
         backHref="/admin/tenant"
-        rightSlot={
-          <div className="flex items-center gap-3">
-            <span className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded ${statusBadge[project.status].color}`}>
-              {statusBadge[project.status].label}
-            </span>
-            <ProjectMessagesIcon projectId={projectId} brandColor="#B11E2F" />
-          </div>
-        }
+        eyebrowMain="VALIDATION"
+        eyebrowSubtitle={config?.tenant?.name || ""}
+        title={project.title}
+        statusBadge={project.status as any}
+        showMessages={true}
+        projectId={projectId}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <div className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">

@@ -108,12 +108,7 @@ export default function VideoProjectCard({ project, onDelete }: VideoProjectCard
     }
   };
 
-  const aspectClass =
-    project.format === "9_16"
-      ? "aspect-[9/16]"
-      : project.format === "1_1"
-      ? "aspect-square"
-      : "aspect-video";
+  const aspectClass = "aspect-square"; // Phase 12 peaufinage : uniformisation vignettes (carre pour tous formats)
 
   return (
     <div

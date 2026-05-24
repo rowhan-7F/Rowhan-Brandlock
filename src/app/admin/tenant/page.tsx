@@ -10,7 +10,7 @@ import {
   File as FileIcon,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
@@ -82,6 +82,7 @@ export default function AdminTenantPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [tenantName, setTenantName] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingImagesCount, setPendingImagesCount] = useState(0);
@@ -121,6 +122,18 @@ export default function AdminTenantPage() {
       }
 
       setUser(profile);
+
+        // Fetch tenant name pour le header
+        if (profile?.tenant_id) {
+          const { data: tenantConfig } = await supabase
+            .from("tenant_configs")
+            .select("tenant_name")
+            .eq("tenant_id", profile.tenant_id)
+            .maybeSingle();
+          if (tenantConfig?.tenant_name) {
+            setTenantName(tenantConfig.tenant_name);
+          }
+        }
 
       const token = session.access_token;
       const tenantId = profile.tenant_id;
@@ -200,13 +213,31 @@ export default function AdminTenantPage() {
   const approvedProjects = projects.filter((p) => p.status === "approved" || p.status === "published");
   const openTasks = tasks.filter((t) => t.status === "open" || t.status === "in_progress");
 
+
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* ⭐ NOUVEAU AppHeader unifié */}
-      <AppHeader
-        eyebrow="ADMINISTRATION"
+      <StudioHeader
+        backHref="/"
+        eyebrowMain="ADMINISTRATION"
+        eyebrowSubtitle={tenantName}
         title="Tableau de bord"
-        rightSlot={<AdminTenantMenu active="dashboard" tenantId={user?.tenant_id || null} />}
+        showAdminMenu={true}
+        adminMenuActive="dashboard"
+        tenantId={user?.tenant_id || null}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <div className="max-w-6xl mx-auto p-6">

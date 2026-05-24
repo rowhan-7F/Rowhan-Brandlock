@@ -11,7 +11,7 @@ import { Loader2, ArrowLeft, Film, Sparkles, Clock, CheckCircle2, AlertCircle, D
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import StudioMenu from "@/components/studio/StudioMenu";
 import NotificationsBell from "@/components/NotificationsBell";
 import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
@@ -287,108 +287,36 @@ export default function StudioVideoPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      {/* Phase 12 peaufinage #6+7 : Header custom luxury */}
-      <header className="bg-white border-b border-neutral-200 px-5 py-3 flex items-center justify-between shrink-0 sticky top-0 z-20">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Link href="/studio" className="text-neutral-400 hover:text-neutral-700 transition shrink-0" title="Retour au studio">
-            <ArrowLeft size={18} />
-          </Link>
-          <Link href="/" className="flex items-center gap-2 shrink-0 group" title="Accueil">
-            <div className="w-8 h-8 rounded-md flex items-center justify-center" style={{ backgroundColor: "#B11E2F" }}>
-              <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
-                <rect width="32" height="32" fill="#B11E2F" rx="3" />
-                <rect x="13" y="7" width="6" height="18" fill="white" />
-                <rect x="7" y="13" width="18" height="6" fill="white" />
-              </svg>
-            </div>
-          </Link>
-          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden sm:block" />
-          <div className="hidden md:block shrink-0">
-            <div className="text-[9px] font-black uppercase tracking-widest text-[#B11E2F]">STUDIO</div>
-            <div className="text-[10px] text-neutral-400 -mt-0.5">Video {modeInfo.label} - {dims.width}x{dims.height}</div>
-          </div>
-          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden md:block" />
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <EditableProjectTitle
-                title={project.title || ""}
-                endpoint={`/api/studio/video/projects/${project.id}`}
-                onUpdated={() => loadAll()}
-              />
-              {project.status === "pending_approval" && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-black uppercase tracking-widest text-amber-700 shrink-0">
-                  <Clock size={9} />
-                  En attente de validation
-                </span>
-              )}
-              {project.status === "approved" && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-200 rounded text-[9px] font-black uppercase tracking-widest text-green-700 shrink-0">
-                  <CheckCircle2 size={9} />
-                  Approuve
-                </span>
-              )}
-              {project.status === "rejected" && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-black uppercase tracking-widest text-red-700 shrink-0">
-                  <AlertCircle size={9} />
-                  A retravailler
-                </span>
-              )}
-            </div>
-            <div className="text-[10px] text-neutral-400 mt-0.5">
-              {project.status === "completed" ? "Video rendue" : project.status === "transcribed" ? "Transcription prete" : project.status === "uploaded" ? "Source uploadee" : "Brouillon"}
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <StudioMenu active="projects" tenantId={profile?.tenant_id || null} />
-          <ProjectMessagesIcon projectId={project.id} brandColor="#B11E2F" />
-          <NotificationsBell brandColor="#B11E2F" />
-          <button
-            onClick={handleExportVideo}
-            disabled={project.status !== "completed"}
-            className="px-3 py-2 rounded-lg border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            title={project.status === "completed" ? "Telecharger la video MP4" : "Lance d'abord un rendu"}
-          >
-            <Download size={13} />
-            Exporter
-          </button>
-          {(() => {
-            const isPending = project.status === "pending_approval";
-            const isApproved = project.status === "approved";
-            const isRejected = project.status === "rejected";
-            const cfg = isApproved
-              ? { label: "Approuve", bgColor: "#16a34a", disabled: true, title: "Approuve" }
-              : isPending
-              ? { label: "Re-soumettre", bgColor: "#f59e0b", disabled: false, title: "Mettre a jour" }
-              : isRejected
-              ? { label: "Re-soumettre", bgColor: "#B11E2F", disabled: false, title: "Nouvelle version" }
-              : { label: "Soumettre", bgColor: "#B11E2F", disabled: false, title: "Soumettre pour validation" };
-            return (
-              <button
-                onClick={handleSubmitVideo}
-                disabled={submittingVideo || cfg.disabled || !project.source_video_url}
-                title={cfg.title}
-                className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: cfg.bgColor }}
-              >
-                {submittingVideo ? <Loader2 size={12} className="animate-spin" /> : isApproved ? <CheckCircle2 size={12} /> : <Send size={12} />}
-                {submittingVideo ? "..." : cfg.label}
-              </button>
-            );
-          })()}
-          <div className="border-l border-neutral-200 pl-3 ml-1">
-            <button
-              type="button"
-              onClick={handleLogoutVideo}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 transition group"
-              title="Se deconnecter"
-              aria-label="Deconnexion"
-            >
-              <LogOut size={15} className="group-hover:rotate-12 transition-transform" />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Phase 12 peaufinage : Header universel StudioHeader */}
+      <StudioHeader
+        backHref="/studio"
+        eyebrowMain="STUDIO"
+        eyebrowSubtitle={tenant?.tenant_name || ""}
+        title={project.title || ""}
+        editableTitle={{
+          endpoint: `/api/studio/video/projects/${project.id}`,
+          onUpdated: () => loadAll(),
+        }}
+        statusBadge={project.status as any}
+        showStudioMenu={true}
+        tenantId={profile?.tenant_id || null}
+        showMessages={true}
+        projectId={project.id}
+        showNotifications={true}
+        exportAction={{
+          onClick: handleExportVideo,
+          disabled: project.status !== "completed",
+          title: project.status === "completed" ? "Télécharger le MP4" : "Lance un rendu d'abord",
+        }}
+        submitAction={{
+          onClick: handleSubmitVideo,
+          status: project.status as any,
+          submitting: submittingVideo,
+          disabled: !project.source_video_url,
+        }}
+        showLogout={true}
+        onLogout={handleLogoutVideo}
+      />
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
 

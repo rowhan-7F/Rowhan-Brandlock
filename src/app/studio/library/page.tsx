@@ -7,9 +7,10 @@ import {
   Clock, CheckCircle2, Filter, FolderUp, FileImage,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import StudioMenu from "@/components/studio/StudioMenu";
 import { toast } from "@/lib/toast";
+import { confirmDialog } from "@/lib/confirmDialog";
 
 const BRAND_BORDEAUX = "#B11E2F";
 
@@ -40,6 +41,7 @@ export default function StudioLibraryPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tenantName, setTenantName] = useState<string>("");
   const [images, setImages] = useState<BrandImage[]>([]);
   const [counts, setCounts] = useState<Counts>({ pending: 0, approved: 0, total: 0 });
   const [filter, setFilter] = useState<FilterStatus>("all");
@@ -94,6 +96,16 @@ export default function StudioLibraryPage() {
       }
 
       setTenantId(profile.tenant_id);
+
+      // Fetch tenant name pour le header
+      const { data: tenantConfig } = await supabase
+        .from("tenant_configs")
+        .select("tenant_name")
+        .eq("tenant_id", profile.tenant_id)
+        .maybeSingle();
+      if (tenantConfig?.tenant_name) {
+        setTenantName(tenantConfig.tenant_name);
+      }
       setLoading(false);
     })();
   }, [router]);
@@ -105,6 +117,17 @@ export default function StudioLibraryPage() {
   }, [tenantId, fetchImages]);
 
   if (loading) {
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    const { supabase } = await import("@/lib/supabase");
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 size={20} className="animate-spin text-neutral-400" />
@@ -113,13 +136,31 @@ export default function StudioLibraryPage() {
   }
 
   if (!tenantId) return null;
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    const { supabase } = await import("@/lib/supabase");
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <AppHeader
-        eyebrow="STUDIO"
-        title="Bibliotheque"
-        rightSlot={<StudioMenu active="library" tenantId={tenantId} />}
+      <StudioHeader
+        backHref="/"
+        eyebrowMain="STUDIO"
+        eyebrowSubtitle={tenantName}
+        title="Bibliothèque"
+        showStudioMenu={true}
+        studioMenuActive="library"
+        tenantId={tenantId}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <main className="max-w-6xl mx-auto px-6 py-8">
@@ -239,9 +280,9 @@ function ImageCard({ image, onClick }: { image: BrandImage; onClick: () => void 
       className="group relative bg-white rounded-xl border border-neutral-200 overflow-hidden hover:border-neutral-300 transition text-left"
     >
       <div className="aspect-square bg-neutral-100 relative overflow-hidden">
-        {image.thumbnail_url ? (
+        {image.thumbnail_url || image.public_url ? (
           <img
-            src={image.thumbnail_url}
+            src={image.thumbnail_url || image.public_url}
             alt={image.filename || ""}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
@@ -282,6 +323,17 @@ function ImageCard({ image, onClick }: { image: BrandImage; onClick: () => void 
 }
 
 function DetailModal({ image, onClose }: { image: BrandImage; onClose: () => void }) {
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    const { supabase } = await import("@/lib/supabase");
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col" style={{ maxHeight: "90vh" }} onClick={(e) => e.stopPropagation()}>
@@ -328,6 +380,17 @@ function DetailModal({ image, onClose }: { image: BrandImage; onClose: () => voi
 
 function DetailField({ label, value, highlight }: { label: string; value: string; highlight?: "green" | "orange" }) {
   const valueClass = highlight === "green" ? "text-green-700" : highlight === "orange" ? "text-orange-700" : "text-neutral-900";
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    const { supabase } = await import("@/lib/supabase");
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div>
       <div className="text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-0.5">{label}</div>
@@ -390,6 +453,17 @@ function UploadModal({
       setUploading(false);
     }
   };
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    const { supabase } = await import("@/lib/supabase");
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">

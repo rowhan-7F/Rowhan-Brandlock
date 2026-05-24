@@ -9,7 +9,7 @@ import {
   Library, Filter,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
@@ -52,6 +52,8 @@ export default function AdminLibraryPage() {
   const [search, setSearch] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<LibraryImage | null>(null);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tenantName, setTenantName] = useState<string>("");
 
   // ============================================================
   //  Charger les images
@@ -155,13 +157,31 @@ export default function AdminLibraryPage() {
   // ============================================================
   //  Rendering
   // ============================================================
+
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* ⭐ NOUVEAU AppHeader unifié */}
-      <AppHeader
-        eyebrow="ADMINISTRATION"
-        title="Bibliothèque d'images"
+      <StudioHeader
         backHref="/admin/tenant"
+        eyebrowMain="ADMINISTRATION"
+        eyebrowSubtitle={tenantName}
+        title="Bibliothèque d'images"
+        showAdminMenu={true}
+        adminMenuActive="library"
+        tenantId={tenantId}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <div className="max-w-7xl mx-auto p-6">

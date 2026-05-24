@@ -73,29 +73,17 @@ export default function LandingPage() {
           {/* Logo + Drapeau en astérix */}
           <div className="flex items-center gap-3">
             <img
-              src="/media/logo.png"
-              alt="BrandLock"
+              src="/media/logo-Rowhan-noir.gif"
+              alt="ROWHAN"
               className="h-10 w-auto object-contain"
             />
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0 mx-1.5" aria-label="Suisse"><rect width="32" height="32" fill="#B11E2F" rx="3" /><rect x="13" y="7" width="6" height="18" fill="white" /><rect x="7" y="13" width="18" height="6" fill="white" /></svg>
             <div className="flex items-baseline gap-1.5">
               <span
-                className="font-black tracking-tighter text-lg italic"
-                style={{ color: COLORS.ink, letterSpacing: "-0.04em" }}
+                style={{ color: COLORS.ink, letterSpacing: "0.2em" }}
               >
-                BrandLock
+                Brand Governance
               </span>
-              {/* Drapeau Suisse — astérix tout petit aligné typo */}
-              <svg
-                viewBox="0 0 32 32"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-3 w-3 shrink-0"
-                aria-label="Suisse"
-                style={{ alignSelf: "center" }}
-              >
-                <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
-                <rect x="13" y="7" width="6" height="18" fill="white" />
-                <rect x="7" y="13" width="18" height="6" fill="white" />
-              </svg>
             </div>
           </div>
 
@@ -143,7 +131,7 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="relative max-w-5xl mx-auto px-6 py-24 lg:py-36 text-center">
+        <div className="relative max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center">
           {/* Eyebrow */}
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
@@ -175,10 +163,10 @@ export default function LandingPage() {
             className="text-base lg:text-lg leading-[1.7] max-w-2xl mx-auto mb-12"
             style={{ color: "#EFE9DD" }}
           >
-            Automatisez le « dernier kilomètre » de votre communication :
-            habillage, sous-titrage et déclinaison multi-formats. BrandLock
-            sécurise la production de vos vidéos et images en forçant le respect
-            strict de vos <em style={{ color: COLORS.gold, fontStyle: "italic" }}>Safe Zones</em> et de votre charte graphique.
+              Vos chartes graphiques deviennent du code. Vos équipes - communication, RH, finance,
+              stagiaires - produisent rapports, présentations et vidéos conformes à votre identité,
+              sans qu'aucune validation humaine ne soit nécessaire. Hébergé à Genève, souverain,
+              <em style={{ color: COLORS.gold, fontStyle: "italic" }}>verrouillé</em>.
           </p>
 
           {/* CTA principal */}
@@ -270,7 +258,7 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16" style={{ backgroundColor: `${COLORS.gold}25` }}>
             <GuaranteeCard num="01" icon={<Lock size={18} />} title="Le « Hard Lock » architectural" description="Votre charte graphique n'est plus une simple suggestion, c'est une règle mathématique (JSON). L'outil verrouille les polices, les couleurs institutionnelles et les marges de sécurité (Safe Zones). Vos équipes intègrent leurs médias, le logiciel garantit un rendu parfait pour chaque réseau." />
-            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats sans faille" description="Uploadez une vidéo horizontale, BrandLock la décline instantanément pour vos Stories, Reels ou Carrousels. Les zones mortes des réseaux sociaux (boutons « J'aime », descriptions) sont calculées automatiquement pour que votre message et vos intervenants ne soient jamais masqués." />
+            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats sans faille" description="Uploadez une vidéo horizontale, Rowhan la décline instantanément pour vos Stories, Reels ou Carrousels. Les zones mortes des réseaux sociaux (boutons « J'aime », descriptions) sont calculées automatiquement pour que votre message et vos intervenants ne soient jamais masqués." />
             <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Fini la transcription manuelle. L'intelligence artificielle (technologie Whisper) extrait la voix de vos vidéos et incruste les sous-titres directement dans la typographie et les couleurs exactes de votre institution. Une accessibilité parfaite en un clic." />
             <GuaranteeCard num="04" icon={<ShieldCheck size={18} />} title="Souveraineté & étanchéité absolue" description="Hébergées chez Infomaniak, vos vidéos brutes, vos discours et vos données métier restent strictement confidentiels. L'IA agit comme un moteur de traitement local et n'utilise jamais vos médias pour entraîner des modèles publics." />
             <GuaranteeCard num="05" icon={<Network size={18} />} title="Décentralisation sécurisée" description="Déléguez la création de contenu à vos différents départements, partenaires ou agences externes sans aucune crainte. Ils gagnent en autonomie de production, tandis que la Direction de la Communication conserve le contrôle absolu du moteur de rendu." />
@@ -286,7 +274,7 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <SectionHeader
             eyebrow="Cas d'usage sectoriels"
-            title="Comment BrandLock sécurise vos départements"
+            title="Comment Rowhan sécurise vos départements"
             subtitle="Une plateforme unique, des gabarits cloisonnés selon vos profils métiers."
           />
 
@@ -336,28 +324,28 @@ export default function LandingPage() {
             style={{ color: COLORS.gold }}
           >
             <span className="w-6 h-px" style={{ backgroundColor: COLORS.gold }}></span>
-            Audit qualité IA & traçabilité
+            Validation multi-niveaux
             <span className="w-6 h-px" style={{ backgroundColor: COLORS.gold }}></span>
           </div>
 
           <h2
             className="text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-6"
           >
-            Le <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>check-up</em> avant publication.
+              Le <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>double regard</em> avant publication.
           </h2>
 
           <p className="text-base leading-[1.75] mb-10" style={{ color: "#EFE9DD" }}>
-            Juste avant l'exportation, notre <strong style={{ color: COLORS.gold }}>« Police IA »</strong> scanne votre rendu final.
-            Elle vérifie le ratio de contraste pour garantir l'accessibilité aux
-            malvoyants (Normes WCAG), alerte sur les dépassements de Safe Zones
-            et valide la structure. Le tableau de bord conserve l'historique des
-            exports pour une traçabilité totale.
+              Avant qu'un contenu sorte de votre institution, Rowhan applique une double validation. Le
+              <strong style={{ color: COLORS.gold }}> Hard Lock</strong> automatique force le respect de votre charte. Polices,
+              couleurs, marges et Safe Zones sont mathématiquement verrouillés.
+              <br /><br />
+              Le <strong style={{ color: COLORS.gold }}>circuit admin</strong> soumet chaque export à validation d'un administrateur tenant. Chaque rendu est horodaté,
           </p>
 
           <div className="flex items-center justify-center gap-3 flex-wrap">
-            <Pill icon={<Eye size={11} />} label="WCAG Accessibility" />
-            <Pill icon={<FileCheck2 size={11} />} label="Safe Zones validées" />
-            <Pill icon={<ScrollText size={11} />} label="Historique complet" />
+            <Pill icon={<Eye size={11} />} label="Charte verrouillée" />
+            <Pill icon={<FileCheck2 size={11} />} label="Circuit admin" />
+            <Pill icon={<ScrollText size={11} />} label="Traçabilité institutionnelle" />
           </div>
         </div>
       </section>
@@ -398,20 +386,50 @@ export default function LandingPage() {
             <FaqItem
               isOpen={openFaq === 0}
               onToggle={() => setOpenFaq(openFaq === 0 ? null : 0)}
-              question="L'IA modifie-t-elle le fond de notre message ?"
-              answer="Non. L'IA de BrandLock est utilisée de manière utilitaire (transcription audio pour les sous-titres, recadrage vidéo, vérification de conformité). Le fond de votre message reste 100% sous le contrôle de vos équipes."
+              question="Concrètement, que fait Rowhan que mon designer ne fait pas ?"
+              answer="Votre designer crée du sur-mesure, mais à ses horaires et son tarif. Rowhan industrialise la diffusion : une fois sa charte encodée, vos équipes produisent 24/7 sans lui, et le rendu est mathématiquement conforme. Votre designer reste indispensable pour les créations stratégiques. Il est libéré des tâches répétitives."
             />
             <FaqItem
               isOpen={openFaq === 1}
               onToggle={() => setOpenFaq(openFaq === 1 ? null : 1)}
-              question="Que se passe-t-il si les formats des réseaux sociaux (Instagram, LinkedIn) changent ?"
-              answer="Notre équipe technique met à jour les grilles de Safe Zones de manière centralisée. Vos gabarits s'adaptent automatiquement aux nouvelles dimensions sans aucune intervention de votre part."
+              question="Si un stagiaire produit un contenu, peut-il publier une erreur ?"
+              answer="Non, c'est l'intérêt du système. Il choisit un gabarit, dépose son texte ou sa vidéo, clique. Les polices, couleurs et logos sont verrouillés. Avant publication, son contenu passe par la validation de l'administrateur de votre service. Il ne peut pas casser votre image."
             />
             <FaqItem
               isOpen={openFaq === 2}
               onToggle={() => setOpenFaq(openFaq === 2 ? null : 2)}
-              question="Le logiciel remplace-t-il nos agences de création ou logiciels de montage ?"
-              answer="Pas du tout. BrandLock sécurise le « dernier kilomètre ». Vos équipes ou agences continuent d'utiliser leurs outils habituels pour le montage créatif, puis utilisent BrandLock pour l'habillage final, le sous-titrage et la déclinaison multicanale aux normes de l'institution."
+              question="Comment êtes-vous certains que les données ne sortent pas de Suisse ?"
+              answer="Tous les traitements — sous-titrage Whisper, détection de visages, analyse de scènes — tournent sur nos serveurs Infomaniak à Genève. Aucun appel à OpenAI, Google ou Microsoft. Vos textes et vidéos ne quittent jamais le canton."
+            />
+            <FaqItem
+              isOpen={openFaq === 3}
+              onToggle={() => setOpenFaq(openFaq === 3 ? null : 3)}
+              question="Est-ce conforme aux normes d'accessibilité WCAG ?"
+              answer="Oui, automatiquement. Avant chaque export, Rowhan vérifie le contraste typographique et bloque les rendus non-conformes. Vos contenus sont accessibles aux personnes malvoyantes par défaut, sans intervention de votre équipe."
+            />
+            <FaqItem
+              isOpen={openFaq === 4}
+              onToggle={() => setOpenFaq(openFaq === 4 ? null : 4)}
+              question="Allez-vous remplacer nos logiciels existants (InDesign, Adobe Premiere) ?"
+              answer="Pas du tout. Vos équipes créatives continuent avec leurs outils habituels. Rowhan sécurise le « dernier kilomètre » : la mise aux normes finale, le sous-titrage et la déclinaison multi-formats. C'est un complément, pas un remplaçant."
+            />
+            <FaqItem
+              isOpen={openFaq === 5}
+              onToggle={() => setOpenFaq(openFaq === 5 ? null : 5)}
+              question="Que se passe-t-il quand TikTok ou Instagram changent leurs formats ?"
+              answer="Notre équipe technique met à jour vos Safe Zones de manière centralisée. Vous ne touchez à rien : vos gabarits s'adaptent automatiquement aux nouvelles dimensions."
+            />
+            <FaqItem
+              isOpen={openFaq === 6}
+              onToggle={() => setOpenFaq(openFaq === 6 ? null : 6)}
+              question="Combien de temps pour déployer Rowhan dans notre institution ?"
+              answer="Une semaine type. Jour 1-2 : encodage de votre charte graphique en code. Jour 3-4 : intégration de vos logos, fonts et identité sonore. Jour 5 : connexion SSO et formation de vos équipes. Vous commencez à produire en production le lundi suivant."
+            />
+            <FaqItem
+              isOpen={openFaq === 7}
+              onToggle={() => setOpenFaq(openFaq === 7 ? null : 7)}
+              question="Qui est responsable si vos serveurs tombent un jour de publication ?"
+              answer="Notre SLA institutionnel garantit 99.9% de disponibilité. En cas d'incident, nous sommes joignables 24/7 sur un numéro direct genevois. Les exports déjà réalisés restent téléchargeables localement même en cas de panne du service."
             />
           </div>
         </div>
@@ -467,13 +485,12 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img
-              src="/media/logo.png"
-              alt="BrandLock"
+              src="/media/logo-Rowhan-noir.gif"
+              alt="ROWHAN"
               className="h-8 w-auto object-contain"
               style={{ filter: "brightness(0) invert(1)" }}
             />
             <div className="flex items-baseline gap-1.5">
-              <span className="font-black tracking-tighter text-base italic">BrandLock</span>
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5">
                 <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
                 <rect x="13" y="7" width="6" height="18" fill="white" />
@@ -491,7 +508,7 @@ export default function LandingPage() {
           </div>
 
           <div className="text-[10px] uppercase tracking-widest" style={{ color: "#807972" }}>
-            © 2026 BrandLock · Tous droits réservés
+            © 2026 Rowhan · Tous droits réservés
           </div>
         </div>
       </footer>

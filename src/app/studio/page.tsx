@@ -10,7 +10,7 @@ import {
   Plus, Loader2, FileText, Clock, CheckCircle2,
   AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X, Film,
 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import NotificationsBell from "@/components/NotificationsBell";
 import StudioMenu from "@/components/studio/StudioMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
@@ -19,6 +19,8 @@ import { confirmDialog } from "@/lib/confirmDialog";
 // ⭐ Module vidéo
 import NewVideoProjectModal from "@/components/studio/video/NewVideoProjectModal";
 import VideoProjectCard from "@/components/studio/video/VideoProjectCard";
+import CarouselProjectCard from "@/components/studio/CarouselProjectCard";
+import ProjectFilters, { FilterType, FilterStatus, SortBy } from "@/components/studio/ProjectFilters";
 import type { VideoProject } from "@/lib/video/types";
 
 type ProjectRow = {
@@ -58,6 +60,14 @@ export default function StudioHomePage() {
   const [videoProjects, setVideoProjects] = useState<VideoProject[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [showNewVideoModal, setShowNewVideoModal] = useState(false);
+
+  // Phase 12 peaufinage : filtres unifies dashboard
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("recent");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
     if (tenantState.status === "unauthenticated") {
@@ -124,6 +134,18 @@ export default function StudioHomePage() {
       .is("archived_at", null)
       .order("updated_at", { ascending: false });
     setVideoProjects((data as VideoProject[]) || []);
+  };
+
+  // Phase 12 peaufinage : reload carrousels apres delete
+  const reloadProjects = async () => {
+    if (tenantState.status !== "ready") return;
+    const { data } = await supabase
+      .from("studio_projects")
+      .select("*")
+      .eq("tenant_id", tenantState.user.tenantId!)
+      .neq("status", "archived")
+      .order("updated_at", { ascending: false });
+    setProjects((data as ProjectRow[]) || []);
   };
 
   const handleCreate = async () => {
@@ -205,10 +227,40 @@ export default function StudioHomePage() {
   }
 
   const { user, config } = tenantState;
-  const drafts = projects.filter((p) => p.status === "draft");
-  const pending = projects.filter((p) => p.status === "pending_approval");
-  const approved = projects.filter((p) => p.status === "approved");
-  const rejected = projects.filter((p) => p.status === "rejected");
+  // Phase 12 peaufinage : merge videos + carrousels en une liste unifiee
+  const allProjects = [
+    ...projects.map((p) => ({ ...p, _type: "carousel" as const })),
+    ...videoProjects.map((vp) => ({ ...vp, _type: "video" as const })),
+  ];
+
+  // Filtre par type
+  const typeFiltered = allProjects.filter((p) => {
+    if (filterType === "all") return true;
+    return p._type === filterType;
+  });
+
+  // Filtre par statut
+  const statusFiltered = typeFiltered.filter((p) => {
+    if (filterStatus === "all") return true;
+    return p.status === filterStatus;
+  });
+
+  // Filtre par recherche
+  const searchFiltered = statusFiltered.filter((p) => {
+    if (!searchQuery.trim()) return true;
+    return p.title?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  // Tri
+  const sorted = [...searchFiltered].sort((a, b) => {
+    if (sortBy === "title") return (a.title || "").localeCompare(b.title || "");
+    if (sortBy === "oldest") return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const paginatedProjects = sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
   const brandColor = config.brandIdentity.colors.brandPrimary;
 
   // ⭐ Eyebrow dynamique selon le rôle
@@ -217,15 +269,17 @@ export default function StudioHomePage() {
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* ⭐ NOUVEAU AppHeader unifié */}
-      <AppHeader
-        eyebrow={`STUDIO · ${roleLabel}`}
-        title={config.tenant.name}
-        rightSlot={
-          <div className="flex items-center gap-2">
-            <StudioMenu active="projects" tenantId={config.tenant.id || null} />
-            <NotificationsBell brandColor={brandColor} />
-          </div>
-        }
+      {/* Phase 12 peaufinage : Header universel StudioHeader */}
+      <StudioHeader
+        backHref="/"
+        eyebrowMain="STUDIO"
+        eyebrowSubtitle={config.tenant.name}
+        title="Mes projets"
+        showStudioMenu={true}
+        tenantId={config.tenant.id || null}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <main className="max-w-6xl mx-auto px-8 py-8">
@@ -236,17 +290,13 @@ export default function StudioHomePage() {
         )}
 
         <div className="mb-10">
-          <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Mes projets</h2>
-          <p className="text-sm text-neutral-500 mb-5">
-            Gère tes contenus visuels en respectant la charte de {config.tenant.name}
-          </p>
 
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleCreate}
               disabled={creating}
               className="text-white text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl transition flex items-center gap-2 disabled:opacity-40 shadow-sm hover:shadow-md"
-              style={{ backgroundColor: brandColor }}
+              style={{ backgroundColor: "#B11E2F" }}
             >
               {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
               {creating ? "Création..." : "Nouveau carrousel"}
@@ -256,7 +306,7 @@ export default function StudioHomePage() {
             <button
               onClick={() => setShowNewVideoModal(true)}
               className="inline-flex items-center gap-2 px-6 py-3.5 bg-white border-2 text-sm font-bold uppercase tracking-wider rounded-xl transition shadow-sm hover:shadow-md"
-              style={{ borderColor: brandColor, color: brandColor }}
+              style={{ borderColor: "#B11E2F", color: "#B11E2F" }}
             >
               <Film size={16} />
               Nouveau projet vidéo
@@ -264,72 +314,69 @@ export default function StudioHomePage() {
           </div>
         </div>
 
-        {/* ⭐ SECTION VIDÉOS */}
-        {!loadingVideos && videoProjects.length > 0 && (
-          <section className="mb-10">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-widest bg-purple-100 text-purple-700">
-                <Film size={11} /> Mes vidéos
-              </span>
-              <span className="text-[11px] text-neutral-400">{videoProjects.length}</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {videoProjects.map((vp) => (
-                <VideoProjectCard key={vp.id} project={vp} onDelete={reloadVideos} />
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Phase 12 peaufinage : Filtres unifies + grille fusionnee */}
+        <ProjectFilters
+          filterType={filterType}
+          filterStatus={filterStatus}
+          sortBy={sortBy}
+          search={searchQuery}
+          onTypeChange={(v) => { setFilterType(v); setCurrentPage(1); }}
+          onStatusChange={(v) => { setFilterStatus(v); setCurrentPage(1); }}
+          onSortChange={setSortBy}
+          onSearchChange={(v) => { setSearchQuery(v); setCurrentPage(1); }}
+          totalCount={sorted.length}
+        />
 
-        {loadingProjects ? (
+        {(loadingProjects || loadingVideos) ? (
           <div className="text-center py-16">
             <Loader2 className="w-5 h-5 animate-spin text-neutral-400 mx-auto" />
           </div>
-        ) : projects.length === 0 ? (
-          <EmptyState brandColor={brandColor} onCreate={handleCreate} creating={creating} />
+        ) : sorted.length === 0 ? (
+          (filterType !== "all" || filterStatus !== "all" || searchQuery.trim()) ? (
+            <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center">
+              <Filter size={32} className="text-neutral-300 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-neutral-900 mb-1">Aucun resultat</h3>
+              <p className="text-sm text-neutral-500">Essaie de modifier ou reinitialiser les filtres.</p>
+            </div>
+          ) : (
+            <EmptyState brandColor={brandColor} onCreate={handleCreate} creating={creating} />
+          )
         ) : (
-          <div className="space-y-8">
-            {drafts.length > 0 && (
-              <ProjectSection
-                title="Brouillons"
-                icon={<Pencil size={14} />}
-                color="text-neutral-600"
-                bgColor="bg-neutral-100"
-                projects={drafts}
-                brandColor={brandColor}
-              />
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {paginatedProjects.map((p: any) => (
+                p._type === "video" ? (
+                  <VideoProjectCard key={`v-${p.id}`} project={p} onDelete={reloadVideos} />
+                ) : (
+                  <CarouselProjectCard key={`c-${p.id}`} project={p} config={config} brandColor={brandColor} onDelete={reloadProjects} />
+                )
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Precedent
+                </button>
+                <span className="px-3 py-1.5 text-xs font-bold text-neutral-700">
+                  Page {currentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Suivant
+                </button>
+              </div>
             )}
-            {pending.length > 0 && (
-              <ProjectSection
-                title="En attente d'approbation"
-                icon={<Clock size={14} />}
-                color="text-orange-700"
-                bgColor="bg-orange-100"
-                projects={pending}
-                brandColor={brandColor}
-              />
-            )}
-            {approved.length > 0 && (
-              <ProjectSection
-                title="Approuvés"
-                icon={<CheckCircle2 size={14} />}
-                color="text-green-700"
-                bgColor="bg-green-100"
-                projects={approved}
-                brandColor={brandColor}
-              />
-            )}
-            {rejected.length > 0 && (
-              <ProjectSection
-                title="Refusés"
-                icon={<AlertCircle size={14} />}
-                color="text-red-700"
-                bgColor="bg-red-100"
-                projects={rejected}
-                brandColor={brandColor}
-              />
-            )}
-          </div>
+          </>
         )}
       </main>
 

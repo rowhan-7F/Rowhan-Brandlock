@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 import {
   Loader2, AlertCircle, Plus, X, Trash2, Mail, User, Briefcase, Eye, EyeOff,
 } from "lucide-react";
-import AppHeader from "@/components/AppHeader";
+import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -152,13 +152,30 @@ export default function TeamPage() {
 
   if (!tenantId) return null;
 
+
+  const handleLogout = async () => {
+    const ok = await confirmDialog("Se deconnecter ?", {
+      description: "Tu vas etre redirige vers la page d'accueil.",
+      confirmLabel: "Deconnexion",
+    });
+    if (!ok) return;
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  };
+
   return (
     <div className="min-h-screen bg-neutral-50">
-      <AppHeader
-        eyebrow={isSuperAdminView ? "SUPER ADMIN" : "ADMINISTRATION"}
+      <StudioHeader
+        backHref={isSuperAdminView ? "/super-admin/clients" : "/admin/tenant"}
+        eyebrowMain={isSuperAdminView ? "SUPER ADMIN" : "ADMINISTRATION"}
+        eyebrowSubtitle={tenantName}
         title="Ma Team"
-        backHref={isSuperAdminView ? "/super-admin/clients" : undefined}
-        rightSlot={isSuperAdminView ? undefined : <AdminTenantMenu active="team" tenantId={tenantId} />}
+        showAdminMenu={!isSuperAdminView}
+        adminMenuActive="team"
+        tenantId={tenantId}
+        showNotifications={true}
+        showLogout={true}
+        onLogout={handleLogout}
       />
 
       <main className="max-w-5xl mx-auto px-6 py-8">

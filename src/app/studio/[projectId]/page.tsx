@@ -18,6 +18,7 @@ import SlideRenderer from "../../../components/studio/SlideRenderer";
 import MediaPicker, { SelectedImage } from "../../../components/studio/MediaPicker";
 import { exportCarouselAsZip, downloadBlob, ExportProgress } from "../../../lib/exportCarousel";
 import NotificationsBell from "@/components/NotificationsBell";
+import StudioHeader from "@/components/StudioHeader";
 import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
@@ -257,169 +258,42 @@ export default function StudioEditorPage() {
   return (
     <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden">
       {/* ⭐ HEADER UNIFIÉ — Style identique à AppHeader, mais avec features éditeur */}
-      <header className="bg-white border-b border-neutral-200 px-5 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-
-          {/* Back arrow vers /studio */}
-          <Link
-            href="/studio"
-            className="text-neutral-400 hover:text-neutral-700 transition shrink-0"
-            title="Retour à mes projets"
-          >
-            <ArrowLeft size={18} />
-          </Link>
-
-          {/* Logo BrandLock + drapeau astérix (style AppHeader) */}
-          <Link href="/" className="flex items-center gap-2 shrink-0 group" title="Accueil">
-            <img
-              src="/media/logo.png"
-              alt="BrandLock"
-              className="h-7 w-auto object-contain transition-opacity group-hover:opacity-70"
-            />
-            <div className="flex items-baseline gap-1">
-              <span
-                className="font-black tracking-tighter text-sm italic hidden lg:inline text-[#181614]"
-                style={{ letterSpacing: "-0.04em" }}
-              >
-                BrandLock
-              </span>
-              <svg
-                viewBox="0 0 32 32"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-2 w-2 shrink-0 hidden lg:block"
-                aria-label="Suisse"
-              >
-                <rect width="32" height="32" fill="#B11E2F" rx="3" />
-                <rect x="13" y="7" width="6" height="18" fill="white" />
-                <rect x="7" y="13" width="18" height="6" fill="white" />
-              </svg>
-            </div>
-          </Link>
-
-          {/* Séparateur vertical */}
-          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden sm:block" />
-
-          {/* Eyebrow STUDIO */}
-          <div className="hidden md:block shrink-0">
-            <div className="text-[9px] font-black uppercase tracking-widest text-[#B11E2F]">
-              STUDIO
-            </div>
-            <div className="text-[10px] text-neutral-400 -mt-0.5">{config.tenant.name}</div>
-          </div>
-
-          {/* Séparateur vertical */}
-          <div className="h-7 w-px bg-neutral-200 shrink-0 hidden md:block" />
-
-          {/* Brand color square (compact) */}
-          <div
-            className="w-6 h-6 rounded-md flex items-center justify-center text-white font-black text-[10px] shrink-0"
-            style={{ backgroundColor: brandColor }}
-          >
-            {config.tenant.name.charAt(0)}
-          </div>
-
-          {/* Titre éditable + save indicator */}
-          <div className="min-w-0 flex-1">
-            {/* Phase 12 peaufinage : titre + badge meme ligne */}
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
-              <div className="min-w-0 flex-1">
-                <EditableProjectTitle title={effectiveTitle}
-              projectId={projectId}
-              onUpdated={(newTitle) => {
-                setLocalTitle(newTitle);
-                if (projectState.status === "ready" && projectState.project) {
-                  projectState.project.title = newTitle;
-                }
-              }}
-              />
-            </div>
-            {project.status === "pending_approval" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 border border-amber-200 rounded text-[9px] font-black uppercase tracking-widest text-amber-700 shrink-0">
-                <Clock size={9} />
-                En attente de validation
-              </span>
-            )}
-            {project.status === "approved" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 border border-green-200 rounded text-[9px] font-black uppercase tracking-widest text-green-700 shrink-0">
-                <CheckCircle2 size={9} />
-                Approuve
-              </span>
-            )}
-            {project.status === "rejected" && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-black uppercase tracking-widest text-red-700 shrink-0">
-                <AlertCircle size={9} />
-                A retravailler
-              </span>
-            )}
-            </div>
-            <div className="text-[10px] text-neutral-400 flex items-center gap-2 mt-0.5">
-              <SaveIndicator status={projectState.saveStatus} />
-              
-            </div>
-          </div>
-        </div>
-
-        {/* DROITE — Actions + Logout isolé */}
-        <div className="flex items-center gap-2 shrink-0">
-          <ProjectMessagesIcon projectId={projectId} brandColor={brandColor} />
-          <NotificationsBell brandColor={brandColor} />
-
-          <button
-            onClick={handleExport}
-            disabled={exporting || slides.length === 0}
-            className="px-3 py-2 rounded-lg border border-neutral-200 bg-white text-xs font-medium text-neutral-700 hover:bg-neutral-50 hover:border-neutral-300 transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Exporter en PNG (ZIP)"
-          >
-            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-            {exporting
-              ? exportProgress?.step === "capturing"
-                ? `${exportProgress.current}/${exportProgress.total}`
-                : exportProgress?.step === "zipping" ? "ZIP..." : "Export..."
-              : "Exporter"}
-          </button>
-
-          {/* ⭐ Bouton Soumettre / Re-soumettre selon statut */}
-          {(() => {
-            const isPending = project.status === "pending_approval";
-            const isApproved = project.status === "approved";
-            const isRejected = project.status === "rejected";
-
-            const cfg = isApproved
-              ? { label: "Approuvé", bgColor: "#16a34a", disabled: true, title: "Ce projet a été approuvé par l'admin" }
-              : isPending
-              ? { label: "Re-soumettre", bgColor: "#f59e0b", disabled: false, title: "Mettre à jour la version envoyée à l'admin" }
-              : isRejected
-              ? { label: "Re-soumettre", bgColor: brandColor, disabled: false, title: "Soumettre une nouvelle version" }
-              : { label: "Soumettre", bgColor: brandColor, disabled: false, title: "Soumettre pour validation" };
-
-            return (
-              <button
-                onClick={handleSubmit}
-                disabled={submitting || slides.length === 0 || cfg.disabled}
-                title={cfg.title}
-                className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: cfg.bgColor }}
-              >
-                {submitting ? <Loader2 size={12} className="animate-spin" /> : isApproved ? <CheckCircle2 size={12} /> : <Send size={12} />}
-                {submitting ? "..." : cfg.label}
-              </button>
-            );
-          })()}
-
-          {/* ⭐ BOUTON DÉCONNEXION — Isolé avec séparateur (style AppHeader) */}
-          <div className="border-l border-neutral-200 pl-3 ml-1">
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-9 h-9 rounded-lg flex items-center justify-center text-neutral-400 hover:text-red-600 hover:bg-red-50 transition group"
-              title="Se déconnecter"
-              aria-label="Déconnexion"
-            >
-              <LogOut size={15} className="group-hover:rotate-12 transition-transform" />
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Phase 12 peaufinage : Header universel StudioHeader */}
+      <StudioHeader
+        backHref="/studio"
+        eyebrowMain="STUDIO"
+        eyebrowSubtitle={config.tenant.name}
+        title={effectiveTitle}
+        editableTitle={{
+          endpoint: `/api/studio/projects/${projectId}/save`,
+          onUpdated: (newTitle) => {
+            setLocalTitle(newTitle);
+            if (projectState.status === "ready" && projectState.project) {
+              projectState.project.title = newTitle;
+            }
+          },
+        }}
+        statusBadge={project.status as any}
+        showStudioMenu={true}
+        tenantId={tenantState.status === "ready" ? tenantState.user.tenant_id : null}
+        showMessages={true}
+        projectId={projectId}
+        showNotifications={true}
+        exportAction={{
+          onClick: handleExport,
+          disabled: exporting || slides.length === 0,
+          loading: exporting,
+          title: "Exporter en PNG (ZIP)",
+        }}
+        submitAction={{
+          onClick: handleSubmit,
+          status: project.status as any,
+          submitting: submitting,
+          disabled: slides.length === 0,
+        }}
+        showLogout={true}
+        onLogout={handleLogout}
+      />
 
       <div className="flex-1 flex overflow-hidden">
         <aside className="w-[340px] border-r border-neutral-200 bg-white overflow-y-auto flex flex-col shrink-0">

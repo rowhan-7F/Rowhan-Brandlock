@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "BrandLock — IA Marketing pour Marques de Luxe",
-  description: "Le marketing de luxe enfin verrouillé par l'IA. Charte respectée à 100%.",
+  title: "Rowhan · Brand Governance",
+  description: "Le verrou de conformité pour vos contenus numériques. Édition institutionnelle suisse.",
+  icons: { icon: "/media/logo-favicon.gif" },
 };
 
 export default function RootLayout({
