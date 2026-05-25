@@ -69,20 +69,25 @@ export default function LandingPage() {
           borderColor: `${COLORS.ink}10`,
         }}
       >
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
           {/* Logo + Drapeau en astérix */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             <img
               src="/media/logo-Rowhan-noir.gif"
               alt="ROWHAN"
-              className="h-10 w-auto object-contain"
+              className="h-8 sm:h-10 w-auto object-contain"
             />
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0 mx-1.5" aria-label="Suisse"><rect width="32" height="32" fill="#B11E2F" rx="3" /><rect x="13" y="7" width="6" height="18" fill="white" /><rect x="7" y="13" width="18" height="6" fill="white" /></svg>
-            <div className="flex items-baseline gap-1.5">
-              <span
+              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0 mx-0 sm:mx-0.5" aria-label="Suisse"><rect width="32" height="32" fill="#B11E2F" rx="3" /><rect x="13" y="7" width="6" height="18" fill="white" /><rect x="7" y="13" width="18" height="6" fill="white" /></svg>
+            <div className="flex flex-col leading-[0.85]">
+              <span className="text-[10px] sm:text-base font-medium"
                 style={{ color: COLORS.ink, letterSpacing: "0.2em" }}
               >
-                Brand Governance
+                Brand
+              </span>
+              <span className="text-[10px] sm:text-base font-medium"
+                style={{ color: COLORS.ink, letterSpacing: "0.2em" }}
+              >
+                Governance
               </span>
             </div>
           </div>
@@ -91,7 +96,7 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
-            className="text-xs font-bold uppercase tracking-widest px-5 py-2.5 rounded-full transition-all hover:shadow-md flex items-center gap-2"
+            className="text-xs font-bold uppercase tracking-wider sm:tracking-widest px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all hover:shadow-md flex items-center gap-2"
             style={{
               backgroundColor: COLORS.ink,
               color: COLORS.cream,
@@ -148,25 +153,25 @@ export default function LandingPage() {
 
           {/* Titre énorme magazine */}
           <h1
-            className="text-5xl md:text-6xl lg:text-7xl font-black tracking-[-0.04em] leading-[0.95] mb-8 text-white"
+            className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-[-0.02em] leading-[0.95] mb-8 text-white"
             style={{ fontFeatureSettings: "'ss01'" }}
           >
-            Le verrou de{" "}
+            Votre verrou de{" "}
             <span style={{ color: COLORS.gold, fontStyle: "italic", fontWeight: 500 }}>
               conformité
             </span>
             <br />
-            pour vos contenus<br />numériques.
+            institutionnel.
           </h1>
 
           <p
             className="text-base lg:text-lg leading-[1.7] max-w-2xl mx-auto mb-12"
             style={{ color: "#EFE9DD" }}
           >
-              Vos chartes graphiques deviennent du code. Vos équipes - communication, RH, finance,
-              stagiaires - produisent rapports, présentations et vidéos conformes à votre identité,
-              sans qu'aucune validation humaine ne soit nécessaire. Hébergé à Genève, souverain,
-              <em style={{ color: COLORS.gold, fontStyle: "italic" }}>verrouillé</em>.
+              L'ADN visuel de votre institution, verrouillé à la source par nos algorithmes.
+              La fidélité à votre identité devient une <em style={{ color: COLORS.gold, fontStyle: "italic" }}>évidence technique</em>.
+              Une promesse tenue par la technologie.
+              Conçu à Genève. Hébergé en Suisse. Conforme par <em style={{ color: COLORS.gold, fontStyle: "italic" }}>essence</em>.
           </p>
 
           {/* CTA principal */}
@@ -214,25 +219,25 @@ export default function LandingPage() {
       <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            eyebrow="Trust Center"
-            title="Garanties juridiques & infrastructure IT"
+            eyebrow="Le verrou institutionnel"
+            title="Trois piliers, une promesse souveraine"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
             <TrustCard
               icon={<Server size={20} />}
-              title="Hébergement souverain 100% genevois"
-              description="Infrastructures cloud gérées exclusivement par Infomaniak à Genève. Aucune donnée ne transite par des serveurs tiers ou nord-américains."
+              title="Souveraineté absolue, hébergée à Genève"
+              description="Vos données restent en Suisse. Toujours. Infrastructure cloud opérée par Infomaniak depuis Genève. Aucune transit par des serveurs étrangers — par essence, jamais par hasard."
             />
             <TrustCard
               icon={<Scale size={20} />}
-              title="Conformité stricte nLPD"
-              description="Architecture technique et traitement des flux alignés de manière intransigeante sur les exigences de la nouvelle Loi sur la Protection des Données suisse."
+              title="Conformité nLPD, par construction"
+              description="L'architecture entière est alignée sur les exigences de la Loi sur la Protection des Données suisse. Pas un ajout. Pas une option. Une fondation."
             />
             <TrustCard
               icon={<KeyRound size={20} />}
-              title="Intégration IT transparente (SSO)"
-              description="Connexion fluide à vos environnements institutionnels existants (Single Sign-On / SAML, Active Directory) pour une gestion centralisée des accès."
+              title="Intégration institutionnelle native"
+              description="SSO, SAML, Active Directory. Rowhan se connecte à votre écosystème institutionnel comme s'il avait toujours été là. Une présence sans friction."
             />
           </div>
         </div>
@@ -250,19 +255,19 @@ export default function LandingPage() {
       >
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            eyebrow="Architecture de confiance"
-            title="Six garanties technologiques"
-            subtitle="Pour répondre aux impératifs de sécurité et d'efficacité du secteur public."
+            eyebrow="Architecture verrouillée"
+            title="Six garanties, un seul verrou"
+            subtitle="L'ADN de votre institution, imposé à chaque exportation."
             invert
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16" style={{ backgroundColor: `${COLORS.gold}25` }}>
-            <GuaranteeCard num="01" icon={<Lock size={18} />} title="Le « Hard Lock » architectural" description="Votre charte graphique n'est plus une simple suggestion, c'est une règle mathématique (JSON). L'outil verrouille les polices, les couleurs institutionnelles et les marges de sécurité (Safe Zones). Vos équipes intègrent leurs médias, le logiciel garantit un rendu parfait pour chaque réseau." />
-            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats sans faille" description="Uploadez une vidéo horizontale, Rowhan la décline instantanément pour vos Stories, Reels ou Carrousels. Les zones mortes des réseaux sociaux (boutons « J'aime », descriptions) sont calculées automatiquement pour que votre message et vos intervenants ne soient jamais masqués." />
-            <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Fini la transcription manuelle. L'intelligence artificielle (technologie Whisper) extrait la voix de vos vidéos et incruste les sous-titres directement dans la typographie et les couleurs exactes de votre institution. Une accessibilité parfaite en un clic." />
-            <GuaranteeCard num="04" icon={<ShieldCheck size={18} />} title="Souveraineté & étanchéité absolue" description="Hébergées chez Infomaniak, vos vidéos brutes, vos discours et vos données métier restent strictement confidentiels. L'IA agit comme un moteur de traitement local et n'utilise jamais vos médias pour entraîner des modèles publics." />
-            <GuaranteeCard num="05" icon={<Network size={18} />} title="Décentralisation sécurisée" description="Déléguez la création de contenu à vos différents départements, partenaires ou agences externes sans aucune crainte. Ils gagnent en autonomie de production, tandis que la Direction de la Communication conserve le contrôle absolu du moteur de rendu." />
-            <GuaranteeCard num="06" icon={<Zap size={18} />} title="Le « dernier kilomètre » accéléré" description="De l'upload de la vidéo brute à l'export du fichier .zip normé, le logiciel élimine les tâches chronophages (ajout de logos, création de bumpers d'intro/outro, recadrage). Vos collaborateurs gagnent des heures chaque semaine et les boucles de validation sont drastiquement réduites." />
+            <GuaranteeCard num="01" icon={<Lock size={18} />} title="Le verrou architectural" description="Votre charte graphique n'est plus une simple suggestion, c'est une règle mathématique (JSON). L'outil verrouille les polices, les couleurs institutionnelles et les marges de sécurité (Safe Zones). Vos équipes intègrent leurs médias, le logiciel garantit un rendu parfait pour chaque réseau." />
+            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats verrouillée" description="Une production unique, déclinée naturellement à tous vos formats institutionnels et numériques. Les zones critiques de chaque canal sont protégées par calcul, jamais par approximation." />
+            <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Notre IA Whisper extrait la voix, applique votre charte. Typographies, couleurs, positionnements — fidèles à votre identité institutionnelle, sans intervention humaine." />
+            <GuaranteeCard num="04" icon={<ShieldCheck size={18} />} title="Étanchéité absolue, technologie souveraine" description="Vos productions, vos discours, vos données restent en Suisse. L'intelligence artificielle opère localement, n'entraîne aucun modèle public. Le verrou est aussi celui du secret." />
+            <GuaranteeCard num="05" icon={<Network size={18} />} title="Délégation maîtrisée" description="Vos départements, partenaires et agences produisent en autonomie. Votre Direction de la Communication conserve le contrôle absolu du moteur. Liberté pour les équipes, verrou pour l'institution." />
+            <GuaranteeCard num="06" icon={<Zap size={18} />} title="Le dernier kilomètre, automatisé" description="De la production à l'export final, les tâches chronophages disparaissent. Logos, bumpers, recadrage — intégrés par construction. Vos équipes gagnent des heures. Votre identité gagne en permanence." />
           </div>
         </div>
       </section>
@@ -273,9 +278,9 @@ export default function LandingPage() {
       <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
         <div className="max-w-6xl mx-auto">
           <SectionHeader
-            eyebrow="Cas d'usage sectoriels"
-            title="Comment Rowhan sécurise vos départements"
-            subtitle="Une plateforme unique, des gabarits cloisonnés selon vos profils métiers."
+            eyebrow="Vos départements verrouillés"
+            title="Une tour de contrôle, des métiers libérés"
+            subtitle="Chaque équipe produit librement. Votre identité reste intacte."
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
@@ -329,7 +334,7 @@ export default function LandingPage() {
           </div>
 
           <h2
-            className="text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-6"
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.015em] leading-[1.05] mb-6"
           >
               Le <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>double regard</em> avant publication.
           </h2>
@@ -338,7 +343,6 @@ export default function LandingPage() {
               Avant qu'un contenu sorte de votre institution, Rowhan applique une double validation. Le
               <strong style={{ color: COLORS.gold }}> Hard Lock</strong> automatique force le respect de votre charte. Polices,
               couleurs, marges et Safe Zones sont mathématiquement verrouillés.
-              <br /><br />
               Le <strong style={{ color: COLORS.gold }}>circuit admin</strong> soumet chaque export à validation d'un administrateur tenant. Chaque rendu est horodaté,
           </p>
 
@@ -452,7 +456,7 @@ export default function LandingPage() {
           }}
         />
         <div className="max-w-3xl mx-auto text-center relative">
-          <h2 className="text-4xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-5">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-[-0.015em] leading-[1.05] mb-5">
             La technologie au service des<br />
             <em style={{ color: COLORS.gold, fontWeight: 500, fontStyle: "italic" }}>institutions suisses.</em>
           </h2>
@@ -490,7 +494,7 @@ export default function LandingPage() {
               className="h-8 w-auto object-contain"
               style={{ filter: "brightness(0) invert(1)" }}
             />
-            <div className="flex items-baseline gap-1.5">
+            <div className="hidden sm:flex items-baseline gap-1.5">
               <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5">
                 <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
                 <rect x="13" y="7" width="6" height="18" fill="white" />
@@ -541,7 +545,7 @@ function SectionHeader({
         <span className="w-8 h-px" style={{ backgroundColor: accentColor }}></span>
       </div>
       <h2
-        className="text-3xl lg:text-5xl font-black tracking-[-0.03em] leading-[1.05] mb-4"
+        className="text-2xl sm:text-3xl lg:text-5xl font-black tracking-[-0.015em] leading-[1.05] mb-4"
         style={{ color: invert ? COLORS.cream : COLORS.ink }}
       >
         {title}
