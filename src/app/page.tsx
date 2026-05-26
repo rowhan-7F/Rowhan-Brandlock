@@ -77,7 +77,7 @@ export default function LandingPage() {
             <img
               src="/media/logo-Rowhan-noir.gif"
               alt="ROWHAN"
-              className="h-8 sm:h-10 w-auto object-contain"
+              className="h-10 sm:h-12 w-auto object-contain"
             />
           </div>
 
@@ -144,14 +144,14 @@ export default function LandingPage() {
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
             style={{
-              backgroundColor: "rgba(212, 175, 122, 0.15)",
-              border: `1px solid ${COLORS.gold}40`,
-              color: COLORS.gold,
+              backgroundColor: "rgba(255, 255, 255, 0.70)",
+              border: `1px solid ${COLORS.bordeaux}30`,
+              color: COLORS.bordeaux,
             }}
           >
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.gold }}></span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.bordeaux }}></span>
             Édition Institutionnelle Suisse
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.gold }}></span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.bordeaux }}></span>
           </div>
 
           {/* Titre énorme magazine */}
@@ -182,8 +182,8 @@ export default function LandingPage() {
             onClick={() => setProspectOpen(true)}
             className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
             style={{
-              backgroundColor: COLORS.cream,
-              color: COLORS.ink,
+                backgroundColor: COLORS.bordeaux,
+                color: "white",
               boxShadow: "0 20px 50px -20px rgba(0,0,0,0.5)",
             }}
           >
@@ -470,8 +470,8 @@ export default function LandingPage() {
             onClick={() => setProspectOpen(true)}
             className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
             style={{
-              backgroundColor: COLORS.cream,
-              color: COLORS.ink,
+                backgroundColor: COLORS.bordeaux,
+                color: "white",
               boxShadow: "0 20px 50px -20px rgba(0,0,0,0.4)",
             }}
           >

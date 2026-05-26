@@ -301,6 +301,7 @@ export default function StudioVideoPage() {
         showStudioMenu={true}
         tenantId={profile?.tenant_id || null}
         showMessages={true}
+        messagesProjectType="video"
         projectId={project.id}
         showNotifications={true}
         exportAction={{

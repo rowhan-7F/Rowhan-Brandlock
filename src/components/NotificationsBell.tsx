@@ -110,31 +110,49 @@ export default function NotificationsBell({ brandColor = "#F26522" }: { brandCol
   // ============================================================
   //  ⭐ ROUTAGE INTELLIGENT SELON RÔLE + TYPE DE NOTIF
   // ============================================================
-  const getRouteForNotification = (notif: Notification): string => {
-    // Détermine où aller selon le type de notification ET le rôle de l'user
-
-    // Si la notif a un project_id → on va sur le projet
-    // (les routes sont identiques pour admin et graphiste, juste l'UI change)
+  // ============================================================
+  //  ⭐ ROUTAGE INTELLIGENT SELON RÔLE + TYPE PROJET (carousel/video)
+  // ============================================================
+  const getRouteForNotification = async (notif: Notification): Promise<string> => {
+    console.log("[BELL] === START getRouteForNotification ===", { notifId: notif.id, type: notif.type, related_project_id: notif.related_project_id, userRole });
+    // Si la notif a un project_id → on doit detecter si c'est carousel ou video
     if (notif.related_project_id) {
-      // L'admin va sur la page de validation
-      if (userRole === "tenant_admin" || userRole === "super_admin") {
-        return `/admin/tenant/projects/${notif.related_project_id}`;
+      // Detecter le type : query studio_video_projects
+      let isVideo = false;
+      console.log("[BELL] Query studio_video_projects with id:", notif.related_project_id);
+      try {
+        const { data: videoProject } = await supabase
+          .from("studio_video_projects")
+          .select("id")
+          .eq("id", notif.related_project_id)
+          .maybeSingle();
+        isVideo = !!videoProject;
+        console.log("[BELL] Query result:", { videoProject, isVideo: !!videoProject });
+      } catch (err) {
+        console.warn("[BELL] type detection error:", err);
       }
-      // Le graphiste va sur l'éditeur
-      return `/studio/${notif.related_project_id}`;
+
+      // Routing selon role + type
+      if (userRole === "tenant_admin" || userRole === "super_admin") {
+        return isVideo
+          ? `/admin/tenant/projects/video/${notif.related_project_id}`
+          : `/admin/tenant/projects/${notif.related_project_id}`;
+      }
+      // Graphiste
+      return isVideo
+        ? `/studio/video/${notif.related_project_id}`
+        : `/studio/${notif.related_project_id}`;
     }
 
     // Si la notif a un task_id → dépend du rôle
     if (notif.related_task_id) {
-      // L'admin va sur son dashboard pour voir le brief
       if (userRole === "tenant_admin" || userRole === "super_admin") {
         return "/admin/tenant";
       }
-      // Le graphiste va sur SON dashboard (où sa capsule de briefs est visible)
       return "/studio";
     }
 
-    // Fallback : dashboard correspondant au rôle
+    // Fallback : dashboard correspondant au role
     if (userRole === "tenant_admin" || userRole === "super_admin") {
       return "/admin/tenant";
     }
@@ -163,7 +181,7 @@ export default function NotificationsBell({ brandColor = "#F26522" }: { brandCol
     }
 
     setOpen(false);
-    const targetRoute = getRouteForNotification(notif);
+    const targetRoute = await getRouteForNotification(notif);
     console.log("[BELL] Routing to:", targetRoute, "(role:", userRole, ")");
     router.push(targetRoute);
   };

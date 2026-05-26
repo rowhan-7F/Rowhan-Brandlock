@@ -345,6 +345,7 @@ export default function AdminMobileFeed({
 
         <button
           type="button"
+          onClick={() => setActiveTab("pending")}
           className="flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
           style={{
             color:
