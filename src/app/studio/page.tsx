@@ -18,8 +18,7 @@ import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
 // ⭐ Module vidéo
 import NewVideoProjectModal from "@/components/studio/video/NewVideoProjectModal";
-import VideoProjectCard from "@/components/studio/video/VideoProjectCard";
-import CarouselProjectCard from "@/components/studio/CarouselProjectCard";
+import StudioProjectCard from "@/components/projects/StudioProjectCard";
 import ProjectFilters, { FilterType, FilterStatus, SortBy } from "@/components/studio/ProjectFilters";
 import type { VideoProject } from "@/lib/video/types";
 
@@ -345,11 +344,13 @@ export default function StudioHomePage() {
           <>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {paginatedProjects.map((p: any) => (
-                p._type === "video" ? (
-                  <VideoProjectCard key={`v-${p.id}`} project={p} onDelete={reloadVideos} />
-                ) : (
-                  <CarouselProjectCard key={`c-${p.id}`} project={p} config={config} brandColor={brandColor} onDelete={reloadProjects} />
-                )
+                  <StudioProjectCard
+                    key={p._type === "video" ? `v-${p.id}` : `c-${p.id}`}
+                    project={p}
+                    type={p._type}
+                    config={config}
+                    onDelete={p._type === "video" ? reloadVideos : reloadProjects}
+                  />
               ))}
             </div>
 

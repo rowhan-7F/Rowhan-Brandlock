@@ -11,7 +11,7 @@ import {
 import { supabase } from "@/lib/supabase";
 
 // ============================================================
-//  BRANDLOCK — LANDING INSTITUTIONNELLE LUXURY V2
+//  BRANDLOCK. LANDING INSTITUTIONNELLE LUXURY V2
 //  Palette : Bordeaux + Bleu nuit + Or champagne + Crème
 //  Style : Magazine print de luxe × Banque suisse premium
 // ============================================================
@@ -77,19 +77,6 @@ export default function LandingPage() {
               alt="ROWHAN"
               className="h-8 sm:h-10 w-auto object-contain"
             />
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 shrink-0 mx-0 sm:mx-0.5" aria-label="Suisse"><rect width="32" height="32" fill="#B11E2F" rx="3" /><rect x="13" y="7" width="6" height="18" fill="white" /><rect x="7" y="13" width="18" height="6" fill="white" /></svg>
-            <div className="flex flex-col leading-[0.85]">
-              <span className="text-[10px] sm:text-base font-medium"
-                style={{ color: COLORS.ink, letterSpacing: "0.2em" }}
-              >
-                Brand
-              </span>
-              <span className="text-[10px] sm:text-base font-medium"
-                style={{ color: COLORS.ink, letterSpacing: "0.2em" }}
-              >
-                Governance
-              </span>
-            </div>
           </div>
 
           {/* Bouton Connexion */}
@@ -109,7 +96,7 @@ export default function LandingPage() {
       </nav>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  HERO — Image de fond + overlay luxe                     */}
+      {/*  HERO. Image de fond + overlay luxe                     */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden">
         {/* Image de fond */}
@@ -136,7 +123,7 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="relative max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center">
+        <div className="relative max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center min-h-[calc(100vh-80px)] flex flex-col items-center justify-center">
           {/* Eyebrow */}
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
@@ -214,7 +201,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  TRUST CENTER — 3 colonnes magazine                      */}
+      {/*  TRUST CENTER. 3 colonnes magazine                      */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
         <div className="max-w-6xl mx-auto">
@@ -227,7 +214,7 @@ export default function LandingPage() {
             <TrustCard
               icon={<Server size={20} />}
               title="Souveraineté absolue, hébergée à Genève"
-              description="Vos données restent en Suisse. Toujours. Infrastructure cloud opérée par Infomaniak depuis Genève. Aucune transit par des serveurs étrangers — par essence, jamais par hasard."
+              description="Vos données restent en Suisse. Toujours. Infrastructure cloud opérée par Infomaniak depuis Genève. Aucune transit par des serveurs étrangers. Par essence, jamais par hasard."
             />
             <TrustCard
               icon={<Scale size={20} />}
@@ -244,7 +231,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  6 GARANTIES — Fond bleu nuit pour break                 */}
+      {/*  6 GARANTIES. Fond bleu nuit pour break                 */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section
         className="px-6 py-24"
@@ -263,17 +250,17 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px mt-16" style={{ backgroundColor: `${COLORS.gold}25` }}>
             <GuaranteeCard num="01" icon={<Lock size={18} />} title="Le verrou architectural" description="Votre charte graphique n'est plus une simple suggestion, c'est une règle mathématique (JSON). L'outil verrouille les polices, les couleurs institutionnelles et les marges de sécurité (Safe Zones). Vos équipes intègrent leurs médias, le logiciel garantit un rendu parfait pour chaque réseau." />
-            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats verrouillée" description="Une production unique, déclinée naturellement à tous vos formats institutionnels et numériques. Les zones critiques de chaque canal sont protégées par calcul, jamais par approximation." />
-            <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Notre IA Whisper extrait la voix, applique votre charte. Typographies, couleurs, positionnements — fidèles à votre identité institutionnelle, sans intervention humaine." />
+            <GuaranteeCard num="02" icon={<Layers size={18} />} title="Adaptation multi-formats verrouillée" description="Une production unique, déclinée naturellement à tous vos formats institutionnels et numériques. Les zones critiques de chaque canal sont protégées par calcul. Jamais par approximation." />
+            <GuaranteeCard num="03" icon={<Captions size={18} />} title="Sous-titrage charté & automatisé" description="Notre IA Whisper extrait la voix, applique votre charte. Typographies, couleurs, positionnements. Fidèles à votre identité institutionnelle, sans intervention humaine." />
             <GuaranteeCard num="04" icon={<ShieldCheck size={18} />} title="Étanchéité absolue, technologie souveraine" description="Vos productions, vos discours, vos données restent en Suisse. L'intelligence artificielle opère localement, n'entraîne aucun modèle public. Le verrou est aussi celui du secret." />
             <GuaranteeCard num="05" icon={<Network size={18} />} title="Délégation maîtrisée" description="Vos départements, partenaires et agences produisent en autonomie. Votre Direction de la Communication conserve le contrôle absolu du moteur. Liberté pour les équipes, verrou pour l'institution." />
-            <GuaranteeCard num="06" icon={<Zap size={18} />} title="Le dernier kilomètre, automatisé" description="De la production à l'export final, les tâches chronophages disparaissent. Logos, bumpers, recadrage — intégrés par construction. Vos équipes gagnent des heures. Votre identité gagne en permanence." />
+            <GuaranteeCard num="06" icon={<Zap size={18} />} title="Le dernier kilomètre, automatisé" description="De la production à l'export final, les tâches chronophages disparaissent. Logos, bumpers, recadrage : intégrés par construction. Vos équipes gagnent des heures. Votre identité gagne en permanence." />
           </div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  CAS D'USAGE — Crème                                     */}
+      {/*  CAS D'USAGE. Crème                                     */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section className="px-6 py-24" style={{ backgroundColor: COLORS.cream }}>
         <div className="max-w-6xl mx-auto">
@@ -304,7 +291,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  AUDIT IA — Section éditoriale Or                        */}
+      {/*  AUDIT IA. Section éditoriale Or                        */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section
         className="px-6 py-24 relative overflow-hidden"
@@ -403,7 +390,7 @@ export default function LandingPage() {
               isOpen={openFaq === 2}
               onToggle={() => setOpenFaq(openFaq === 2 ? null : 2)}
               question="Comment êtes-vous certains que les données ne sortent pas de Suisse ?"
-              answer="Tous les traitements — sous-titrage Whisper, détection de visages, analyse de scènes — tournent sur nos serveurs Infomaniak à Genève. Aucun appel à OpenAI, Google ou Microsoft. Vos textes et vidéos ne quittent jamais le canton."
+              answer="Tous les traitements. sous-titrage Whisper, détection de visages, analyse de scènes. tournent sur nos serveurs Infomaniak à Genève. Aucun appel à OpenAI, Google ou Microsoft. Vos textes et vidéos ne quittent jamais le canton."
             />
             <FaqItem
               isOpen={openFaq === 3}
@@ -440,7 +427,7 @@ export default function LandingPage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════ */}
-      {/*  CLOSING CTA — Bordeaux dominant                          */}
+      {/*  CLOSING CTA. Bordeaux dominant                          */}
       {/* ═══════════════════════════════════════════════════════ */}
       <section
         className="px-6 py-28 relative overflow-hidden"
@@ -489,21 +476,11 @@ export default function LandingPage() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <img
-              src="/media/logo-Rowhan-noir.gif"
+              src="/media/logo.gif"
               alt="ROWHAN"
               className="h-8 w-auto object-contain"
               style={{ filter: "brightness(0) invert(1)" }}
             />
-            <div className="hidden sm:flex items-baseline gap-1.5">
-              <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5">
-                <rect width="32" height="32" fill={COLORS.bordeaux} rx="3" />
-                <rect x="13" y="7" width="6" height="18" fill="white" />
-                <rect x="7" y="13" width="18" height="6" fill="white" />
-              </svg>
-            </div>
-            <span className="text-[10px] uppercase tracking-widest" style={{ color: "#807972" }}>
-              Édition Institutionnelle
-            </span>
           </div>
 
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest" style={{ color: COLORS.gold }}>

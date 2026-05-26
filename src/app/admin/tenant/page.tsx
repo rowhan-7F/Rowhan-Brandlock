@@ -7,12 +7,15 @@ import {
   Plus, Loader2, AlertCircle, CheckCircle2, Clock,
   Calendar, X, Eye, Trash2, ChevronDown, ChevronUp,
   FileText, Send, Library, Paperclip, ImagePlus, Download,
-  File as FileIcon,
+  File as FileIcon, Filter,
 } from "lucide-react";
 import { supabase } from "../../../lib/supabase";
+import { useCurrentTenant } from "@/lib/useCurrentTenant";
 import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
+import AdminProjectCard from "@/components/projects/AdminProjectCard";
+import ProjectFilters, { FilterType, FilterStatus, SortBy } from "@/components/studio/ProjectFilters";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
 
@@ -80,15 +83,24 @@ type BriefImage = {
 
 export default function AdminTenantPage() {
   const router = useRouter();
+  const tenantState = useCurrentTenant();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [tenantName, setTenantName] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingImagesCount, setPendingImagesCount] = useState(0);
-  const [activeTab, setActiveTab] = useState<"briefs" | "pending" | "approved">("briefs");
+  const [activeTab, setActiveTab] = useState<"briefs" | "pending" | "approved">("pending");
   const [showNewTaskForm, setShowNewTaskForm] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // ⭐ Module video + filtres + config
+  const [videoProjects, setVideoProjects] = useState<any[]>([]);
+  const [filterType, setFilterType] = useState<FilterType>("all");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [sortBy, setSortBy] = useState<SortBy>("recent");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const fetchData = useCallback(async () => {
     try {
@@ -158,7 +170,7 @@ export default function AdminTenantPage() {
 
       let projQuery = supabase
         .from("studio_projects")
-        .select("id, title, status, created_at, updated_at, created_by, task_id")
+        .select("id, title, status, created_at, updated_at, created_by, task_id, state_json")
         .order("updated_at", { ascending: false });
 
       if (tenantId) {
@@ -167,6 +179,17 @@ export default function AdminTenantPage() {
 
       const { data: proj } = await projQuery;
       setProjects(proj || []);
+
+      // ⭐ Fetch video projects (memes tenants)
+      let videoQuery = supabase
+        .from("studio_video_projects")
+        .select("*")
+        .order("updated_at", { ascending: false });
+      if (tenantId) {
+        videoQuery = videoQuery.eq("tenant_id", tenantId);
+      }
+      const { data: videos } = await videoQuery;
+      setVideoProjects(videos || []);
 
       if (tenantId) {
         const { count } = await supabase
@@ -260,10 +283,10 @@ export default function AdminTenantPage() {
               />
             )}
             {activeTab === "pending" && (
-              <ProjectsList projects={pendingProjects} emptyText="Aucun projet en attente de validation" />
+              <ProjectsList projects={projects} videoProjects={videoProjects} config={tenantState.status === "ready" ? tenantState.config : null} emptyText="Aucun projet en attente de validation" allowedStatuses={["pending_approval"]} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} sortBy={sortBy} setSortBy={setSortBy} searchQuery={searchQuery} setSearchQuery={setSearchQuery} currentPage={currentPage} setCurrentPage={setCurrentPage} pageSize={PAGE_SIZE} />
             )}
             {activeTab === "approved" && (
-              <ProjectsList projects={approvedProjects} emptyText="Aucun projet approuvé pour le moment" />
+              <ProjectsList projects={projects} videoProjects={videoProjects} config={tenantState.status === "ready" ? tenantState.config : null} emptyText="Aucun projet approuve pour le moment" allowedStatuses={["approved", "published"]} filterType={filterType} setFilterType={setFilterType} filterStatus={filterStatus} setFilterStatus={setFilterStatus} sortBy={sortBy} setSortBy={setSortBy} searchQuery={searchQuery} setSearchQuery={setSearchQuery} currentPage={currentPage} setCurrentPage={setCurrentPage} pageSize={PAGE_SIZE} />
             )}
           </div>
         </div>
@@ -379,7 +402,7 @@ function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
 
 
 // ============================================================
-//  TASK CARD — Avec affichage des PDF + images
+//  TASK CARD ÔÇö Avec affichage des PDF + images
 // ============================================================
 function TaskCard({ task, onChange, user }: any) {
   const [expanded, setExpanded] = useState(false);
@@ -396,7 +419,7 @@ function TaskCard({ task, onChange, user }: any) {
   };
 
   const statusLabels: Record<string, { label: string; color: string }> = {
-    open: { label: "En attente…", color: "text-amber-600 bg-amber-50" },
+    open: { label: "En attenteÔÇª", color: "text-amber-600 bg-amber-50" },
     in_progress: { label: "En production", color: "text-blue-600 bg-blue-50" },
     completed: { label: "Terminé", color: "text-green-600 bg-green-50" },
     cancelled: { label: "Annulé", color: "text-neutral-400 bg-neutral-50" },
@@ -611,10 +634,10 @@ function AttachmentItem({ attachment }: { attachment: BriefAttachment }) {
     ? `${(attachment.file_size / 1024 / 1024).toFixed(1)} MB`
     : "";
 
-  const iconType = attachment.file_type.includes("pdf") ? "📄" :
-                   attachment.file_type.includes("word") ? "📝" :
-                   attachment.file_type.includes("excel") || attachment.file_type.includes("sheet") ? "📊" :
-                   attachment.file_type.includes("image") ? "🖼️" : "📎";
+  const iconType = attachment.file_type.includes("pdf") ? "­ƒôä" :
+                   attachment.file_type.includes("word") ? "­ƒôØ" :
+                   attachment.file_type.includes("excel") || attachment.file_type.includes("sheet") ? "­ƒôè" :
+                   attachment.file_type.includes("image") ? "­ƒû╝´©Å" : "­ƒôÄ";
 
   return (
     <a
@@ -639,37 +662,112 @@ function AttachmentItem({ attachment }: { attachment: BriefAttachment }) {
 // ============================================================
 //  PROJECTS LIST
 // ============================================================
-function ProjectsList({ projects, emptyText }: any) {
-  if (projects.length === 0) {
-    return <div className="text-center py-12 text-sm text-neutral-400">{emptyText}</div>;
-  }
+function ProjectsList({
+  projects,
+  videoProjects,
+  config,
+  emptyText,
+  allowedStatuses,
+  filterType, setFilterType,
+  filterStatus, setFilterStatus,
+  sortBy, setSortBy,
+  searchQuery, setSearchQuery,
+  currentPage, setCurrentPage,
+  pageSize,
+}: any) {
+  // Merge carrousels + videos en une liste unifiee
+  const allProjects = [
+    ...projects.map((p: any) => ({ ...p, _type: "carousel" as const })),
+    ...videoProjects.map((vp: any) => ({ ...vp, _type: "video" as const })),
+  ];
+
+  // Filtre par allowedStatuses (pending / approved / etc)
+  const statusBaseFiltered = allowedStatuses
+    ? allProjects.filter((p: any) => allowedStatuses.includes(p.status))
+    : allProjects;
+
+  // Filtre par type (all / carousel / video)
+  const typeFiltered = statusBaseFiltered.filter((p: any) => {
+    if (filterType === "all") return true;
+    return p._type === filterType;
+  });
+
+  // Filtre par statut detaille
+  const statusFiltered = typeFiltered.filter((p: any) => {
+    if (filterStatus === "all") return true;
+    return p.status === filterStatus;
+  });
+
+  // Filtre par recherche
+  const searchFiltered = statusFiltered.filter((p: any) => {
+    if (!searchQuery.trim()) return true;
+    return p.title?.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  // Tri
+  const sorted = [...searchFiltered].sort((a: any, b: any) => {
+    if (sortBy === "title") return (a.title || "").localeCompare(b.title || "");
+    if (sortBy === "oldest") return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
+  const paginatedProjects = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="space-y-3">
-      {projects.map((p: Project) => (
-        <Link
-          key={p.id}
-          href={`/admin/tenant/projects/${p.id}`}
-          className="block px-4 py-3 bg-neutral-50 hover:bg-orange-50 border border-neutral-200 hover:border-orange-200 rounded-lg transition"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-bold text-neutral-900 truncate">{p.title}</div>
-              <div className="text-[10px] text-neutral-500 mt-0.5">
-                {new Date(p.updated_at).toLocaleString("fr-CH")}
-              </div>
-            </div>
-            <Eye size={14} className="text-neutral-400" />
+    <div>
+      <ProjectFilters
+        filterType={filterType}
+        filterStatus={filterStatus}
+        sortBy={sortBy}
+        search={searchQuery}
+        onTypeChange={(v: any) => { setFilterType(v); setCurrentPage(1); }}
+        onStatusChange={(v: any) => { setFilterStatus(v); setCurrentPage(1); }}
+        onSortChange={setSortBy}
+        onSearchChange={(v: any) => { setSearchQuery(v); setCurrentPage(1); }}
+        totalCount={sorted.length}
+      />
+
+      {sorted.length === 0 ? (
+        (filterType !== "all" || filterStatus !== "all" || searchQuery.trim()) ? (
+          <div className="bg-white rounded-2xl border border-neutral-200 p-12 text-center">
+            <Filter size={32} className="text-neutral-300 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-neutral-900 mb-1">Aucun resultat</h3>
+            <p className="text-sm text-neutral-500">Essaie de modifier ou reinitialiser les filtres.</p>
           </div>
-        </Link>
-      ))}
+        ) : (
+          <div className="text-center py-12 text-sm text-neutral-400">{emptyText}</div>
+        )
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4">
+            {paginatedProjects.map((p: any) => (
+              <AdminProjectCard
+                key={p._type === "video" ? `v-${p.id}` : `c-${p.id}`}
+                project={p}
+                type={p._type}
+                config={config}
+              />
+            ))}
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-8">
+              <button type="button" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">Precedent</button>
+              <span className="px-3 py-1.5 text-xs font-bold text-neutral-700">Page {currentPage} / {totalPages}</span>
+              <button type="button" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="px-3 py-1.5 text-xs font-medium text-neutral-700 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 disabled:opacity-40 disabled:cursor-not-allowed">Suivant</button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
 
 
 // ============================================================
-//  NEW TASK MODAL — Avec upload PDF + images
+//  NEW TASK MODAL ÔÇö Avec upload PDF + images
 // ============================================================
 
 type PendingFile = {
@@ -1004,9 +1102,9 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
 function PendingFileItem({ pf, onRemove }: { pf: PendingFile; onRemove: () => void }) {
   const sizeMB = (pf.file.size / 1024 / 1024).toFixed(1);
   const ext = pf.file.name.split(".").pop()?.toLowerCase();
-  const icon = ext === "pdf" ? "📄" :
-               ext === "doc" || ext === "docx" ? "📝" :
-               ext === "xls" || ext === "xlsx" ? "📊" : "📎";
+  const icon = ext === "pdf" ? "­ƒôä" :
+               ext === "doc" || ext === "docx" ? "­ƒôØ" :
+               ext === "xls" || ext === "xlsx" ? "­ƒôè" : "­ƒôÄ";
 
   return (
     <div className="flex items-center gap-2 px-2.5 py-1.5 bg-orange-50 border border-orange-200 rounded-lg">
