@@ -44,7 +44,7 @@ function TeamPageInner() {
   const fetchData = useCallback(async (resolvedTenantId: string) => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      router.push("/login");
+      router.push("/");
       return;
     }
     const url = "/api/admin/team?tenantId=" + resolvedTenantId;
@@ -64,7 +64,7 @@ function TeamPageInner() {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/login");
+        router.push("/");
         return;
       }
 

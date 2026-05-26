@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Loader2, AlertCircle, CheckCircle2, XCircle,
-  RefreshCcw,
+  RefreshCcw, RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import StudioHeader from "@/components/StudioHeader";
@@ -202,7 +202,7 @@ export default function AdminProjectReviewPage({
   // ============================================================
   //  Actions de validation
   // ============================================================
-  const handleAction = async (action: "approve" | "reject" | "request_changes", message: string) => {
+  const handleAction = async (action: "approve" | "reject" | "request_changes" | "unapprove", message: string) => {
     setActionLoading(action);
     try {
       await saveSlideReviews(slideReviews);
@@ -253,6 +253,15 @@ export default function AdminProjectReviewPage({
     });
     if (!ok) return;
     await handleAction("reject", "");
+  };
+
+  const handleUnapprove = async () => {
+    const ok = await confirmDialog("Annuler l'approbation de ce projet ?", {
+      description: "Le projet repassera en \"À valider\". Le studio sera notifié.",
+      confirmLabel: "Annuler l'approbation",
+    });
+    if (!ok) return;
+    await handleAction("unapprove", "");
   };
 
   // ============================================================
@@ -496,6 +505,22 @@ export default function AdminProjectReviewPage({
                 {project.status === "published" && "Ce projet est publié."}
                 {project.status === "archived" && "Ce projet est archivé."}
               </div>
+              {project.status === "approved" && (
+                <button
+                  type="button"
+                  onClick={handleUnapprove}
+                  disabled={actionLoading === "unapprove"}
+                  className="mt-3 w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition disabled:opacity-50"
+                  style={{
+                    backgroundColor: "white",
+                    border: "1.5px solid #F59E0B",
+                    color: "#B45309",
+                  }}
+                >
+                  <RotateCcw size={14} strokeWidth={2.5} />
+                  {actionLoading === "unapprove" ? "Annulation..." : "Annuler l'approbation"}
+                </button>
+              )}
             </section>
           )}
         </aside>

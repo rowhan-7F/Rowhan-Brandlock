@@ -23,7 +23,11 @@ export default function AdminProjectCard({ project, type, config }: Props) {
   const router = useRouter();
 
   const handleClick = () => {
-    router.push(`/admin/tenant/projects/${project.id}`);
+    if (type === "video") {
+      router.push(`/admin/tenant/projects/video/${project.id}`);
+    } else {
+      router.push(`/admin/tenant/projects/${project.id}`);
+    }
   };
 
   // Badge "Urgent" si en attente de validation

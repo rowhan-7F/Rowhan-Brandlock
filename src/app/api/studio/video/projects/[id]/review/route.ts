@@ -6,15 +6,15 @@ import {
 } from "@/lib/auth-helpers";
 
 // ============================================================
-//  POST /api/studio/projects/[projectId]/review
-//  Actions de validation sur un projet par l'admin client
-//  Body : { action: "approve" | "reject" | "request_changes", message?: string }
+//  POST /api/studio/video/projects/[id]/review
+//  Actions de validation sur un projet VIDEO par l'admin client
+//  Body : { action: "approve" | "reject" | "request_changes" | "unapprove", message?: string }
 // ============================================================
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ projectId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const { projectId } = await params;
+  const { id } = await params;
   const auth = await getAuthenticatedUser(req);
   if (!auth.ok) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
@@ -22,20 +22,20 @@ export async function POST(
 
   const { user, supabase } = auth;
 
-  // Récupère le projet
+  // Recupere le projet
   const { data: project, error: fetchErr } = await supabase
-    .from("studio_projects")
-    .select("id, title, tenant_id, status, created_by, task_id")
-    .eq("id", projectId)
+    .from("studio_video_projects")
+    .select("id, title, tenant_id, status, created_by")
+    .eq("id", id)
     .maybeSingle();
 
   if (fetchErr || !project) {
     return NextResponse.json({ error: "Projet introuvable" }, { status: 404 });
   }
 
-  // Vérifier que l'user est bien admin de ce tenant
+  // Verifier que l'user est bien admin de ce tenant
   if (!isTenantAdmin(user, project.tenant_id)) {
-    return NextResponse.json({ error: "Accès refusé (admin uniquement)" }, { status: 403 });
+    return NextResponse.json({ error: "Acces refuse (admin uniquement)" }, { status: 403 });
   }
 
   let body: any;
@@ -54,38 +54,28 @@ export async function POST(
   // === APPROVE ===
   if (action === "approve") {
     const { error } = await supabase
-      .from("studio_projects")
-      .update({ status: "approved" })
-      .eq("id", projectId);
+      .from("studio_video_projects")
+      .update({ status: "approved", updated_at: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Marque la task associée comme completed (s'il y en a une)
-    if (project.task_id) {
-      await supabase
-        .from("studio_tasks")
-        .update({ status: "completed" })
-        .eq("id", project.task_id);
-    }
-
-    // Notification au graphiste
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {
         userId: project.created_by,
         tenantId: project.tenant_id,
         type: "project_approved",
-        title: "Projet approuvé ✅",
-        message: project.title,
-        relatedProjectId: projectId,
+        title: "Video approuvee",
+        message: project.title || "Video",
+        relatedProjectId: id,
       });
     }
 
-    // Si un message d'approbation est fourni, on l'ajoute comme commentaire
     if (message && typeof message === "string" && message.trim()) {
       await supabase.from("project_comments").insert({
-        project_id: projectId,
+        project_id: id,
         tenant_id: project.tenant_id,
         author_id: user.user_id,
         author_role: user.role || "tenant_admin",
@@ -99,30 +89,28 @@ export async function POST(
   // === REJECT ===
   if (action === "reject") {
     const { error } = await supabase
-      .from("studio_projects")
-      .update({ status: "rejected" })
-      .eq("id", projectId);
+      .from("studio_video_projects")
+      .update({ status: "rejected", updated_at: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Notification au graphiste
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {
         userId: project.created_by,
         tenantId: project.tenant_id,
         type: "project_rejected",
-        title: "Projet refusé ❌",
-        message: project.title + (message ? " — " + message.slice(0, 100) : ""),
-        relatedProjectId: projectId,
+        title: "Video refusee",
+        message: (project.title || "Video") + (message ? " - " + message.slice(0, 100) : ""),
+        relatedProjectId: id,
       });
     }
 
-    // Ajoute le message comme commentaire (obligatoire pour un refus)
     if (message && typeof message === "string" && message.trim()) {
       await supabase.from("project_comments").insert({
-        project_id: projectId,
+        project_id: id,
         tenant_id: project.tenant_id,
         author_id: user.user_id,
         author_role: user.role || "tenant_admin",
@@ -136,23 +124,22 @@ export async function POST(
   // === UNAPPROVE === (annuler approbation, remet en pending_approval)
   if (action === "unapprove") {
     const { error } = await supabase
-      .from("studio_projects")
-      .update({ status: "pending_approval" })
-      .eq("id", projectId);
+      .from("studio_video_projects")
+      .update({ status: "pending_approval", updated_at: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Notification au graphiste
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {
         userId: project.created_by,
         tenantId: project.tenant_id,
         type: "project_submitted",
-        title: "Projet remis en attente 🔄",
-        message: project.title + " — L'admin a annule l'approbation",
-        relatedProjectId: projectId,
+        title: "Video remise en attente",
+        message: (project.title || "Video") + " - L'admin a annule l'approbation",
+        relatedProjectId: id,
       });
     }
 
@@ -162,39 +149,37 @@ export async function POST(
   // === REQUEST_CHANGES === (renvoyer en draft pour modifs)
   if (action === "request_changes") {
     const { error } = await supabase
-      .from("studio_projects")
-      .update({ status: "draft" })
-      .eq("id", projectId);
+      .from("studio_video_projects")
+      .update({ status: "draft", updated_at: new Date().toISOString() })
+      .eq("id", id);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    // Notification au graphiste
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {
         userId: project.created_by,
         tenantId: project.tenant_id,
         type: "project_rejected",
-        title: "Modifications demandées 🔄",
-        message: project.title + (message ? " — " + message.slice(0, 100) : ""),
-        relatedProjectId: projectId,
+        title: "Modifications demandees",
+        message: (project.title || "Video") + (message ? " - " + message.slice(0, 100) : ""),
+        relatedProjectId: id,
       });
     }
 
-    // Ajoute le message comme commentaire
     if (message && typeof message === "string" && message.trim()) {
       await supabase.from("project_comments").insert({
-        project_id: projectId,
+        project_id: id,
         tenant_id: project.tenant_id,
         author_id: user.user_id,
         author_role: user.role || "tenant_admin",
-        content: "[Corrections demandées] " + message.trim().slice(0, 2000),
+        content: "[Corrections demandees] " + message.trim().slice(0, 2000),
       });
     }
 
     return NextResponse.json({ success: true, new_status: "draft" });
   }
 
-  return NextResponse.json({ error: "Action non gérée" }, { status: 400 });
+  return NextResponse.json({ error: "Action non geree" }, { status: 400 });
 }

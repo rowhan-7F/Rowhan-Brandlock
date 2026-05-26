@@ -24,11 +24,13 @@ type Comment = {
 
 type Props = {
   projectId: string;
+  projectType?: "carousel" | "video";
   brandColor?: string;
 };
 
 export default function ProjectMessagesIcon({
   projectId,
+  projectType = "carousel",
   brandColor = "#F26522",
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -62,7 +64,7 @@ export default function ProjectMessagesIcon({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      const res = await fetch(`/api/studio/projects/${projectId}/comments`, {
+      const res = await fetch(`/api/studio/${projectType === "video" ? "video/projects" : "projects"}/${projectId}/comments`, {
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
       if (res.ok) {
@@ -127,7 +129,7 @@ export default function ProjectMessagesIcon({
     setPosting(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`/api/studio/projects/${projectId}/comments`, {
+      const res = await fetch(`/api/studio/${projectType === "video" ? "video/projects" : "projects"}/${projectId}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

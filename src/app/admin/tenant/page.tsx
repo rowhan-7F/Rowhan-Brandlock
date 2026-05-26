@@ -108,7 +108,7 @@ export default function AdminTenantPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        router.push("/login");
+        router.push("/");
         return;
       }
 
@@ -237,8 +237,14 @@ export default function AdminTenantPage() {
     );
   }
 
-  const pendingProjects = projects.filter((p) => p.status === "pending_approval");
-  const approvedProjects = projects.filter((p) => p.status === "approved" || p.status === "published");
+  const pendingProjects = [
+    ...projects.filter((p) => p.status === "pending_approval"),
+    ...videoProjects.filter((p) => p.status === "pending_approval"),
+  ];
+  const approvedProjects = [
+    ...projects.filter((p) => p.status === "approved" || p.status === "published"),
+    ...videoProjects.filter((p) => p.status === "approved" || p.status === "published"),
+  ];
   const openTasks = tasks.filter((t) => t.status === "open" || t.status === "in_progress");
 
 
@@ -259,7 +265,12 @@ export default function AdminTenantPage() {
     // Fusionner carousels + videos en un seul feed
     const allProjects = [
       ...projects.map((p) => ({ ...p, _type: "carousel" as const })),
-      ...videoProjects.map((p) => ({ ...p, _type: "video" as const })),
+      ...videoProjects.map((p) => ({
+        ...p,
+        _type: "video" as const,
+        video_url: p.source_video_url,
+        thumbnail_url: p.thumbnail_url || null,
+      })),
     ].sort(
       (a, b) =>
         new Date(b.updated_at || b.created_at).getTime() -
@@ -269,6 +280,7 @@ export default function AdminTenantPage() {
     return (
       <AdminMobileFeed
         projects={allProjects}
+        tasks={tasks}
         config={tenantState.config}
         tenantName={tenantState.config?.tenant?.name || tenantName || "Brand"}
         brandPrimary={tenantState.config?.brandIdentity?.colors?.brandPrimary || "#B11E2F"}

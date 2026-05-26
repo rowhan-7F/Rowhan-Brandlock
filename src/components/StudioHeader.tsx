@@ -76,6 +76,7 @@ type Props = {
   tenantId?: string | null;
 
   showMessages?: boolean;
+  messagesProjectType?: "carousel" | "video";
   projectId?: string;
 
   showNotifications?: boolean;
@@ -101,6 +102,7 @@ export default function StudioHeader({
   adminMenuActive = "dashboard",
   tenantId = null,
   showMessages = false,
+  messagesProjectType = "carousel",
   projectId,
   showNotifications = false,
   exportAction,
@@ -190,7 +192,7 @@ export default function StudioHeader({
         {showAdminMenu && <AdminTenantMenu active={adminMenuActive} tenantId={tenantId} />}
 
         {showMessages && projectId && (
-          <ProjectMessagesIcon projectId={projectId} brandColor={BRAND_COLOR} />
+          <ProjectMessagesIcon projectId={projectId} brandColor={BRAND_COLOR} projectType={messagesProjectType} />
         )}
 
         {showNotifications && <NotificationsBell brandColor={BRAND_COLOR} />}
