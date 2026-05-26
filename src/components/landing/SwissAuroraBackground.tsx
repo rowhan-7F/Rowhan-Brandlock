@@ -258,7 +258,7 @@ vec3 floorWideGrid(vec3 ro, vec3 rd, float t){
   acc += gridCol * l2 * fog * 0.40;
   
   /* POINTS D'ENERGIE qui se baladent sur la grille large */
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 5; i++) {
     float fi = float(i);
     float lineZ = floor((p.z - driftZ) * 0.25) * 4.0 + h11(fi * 11.7) * 4.0;
     float speed = 2.0 + h11(fi * 7.3) * 1.5;
@@ -268,17 +268,17 @@ vec3 floorWideGrid(vec3 ro, vec3 rd, float t){
     vec2 dq = vec2(p.x - ptPos.x, p.z - ptPos.y);
     float dist = length(dq);
     
-    if (dist > 0.6) continue;
+    if (dist > 0.35) continue;
     
-    float core = exp(-dist * dist * 40.0);
-    float halo = exp(-dist * dist * 5.0) * 0.4;
+    float core = exp(-dist * dist * 120.0);
+    float halo = exp(-dist * dist * 20.0) * 0.15;
     
     vec3 ptCol;
-    if (i < 3)      ptCol = CYAN_LIGHT;
-    else if (i < 6) ptCol = AURORA_PINK;
-    else            ptCol = RED_LIGHT;
+    if (i < 2)      ptCol = CYAN_LIGHT;
+    else if (i < 4) ptCol = AURORA_PINK;
+    else            ptCol = INK_DIM;
     
-    acc += ptCol * (core + halo) * fog * 1.0;
+    acc += ptCol * (core + halo) * fog * 0.50;
   }
   
   return acc;
