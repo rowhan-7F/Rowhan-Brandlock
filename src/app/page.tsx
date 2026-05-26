@@ -85,7 +85,7 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => setLoginOpen(true)}
-            className="text-xs font-bold uppercase tracking-wider sm:tracking-widest px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all hover:shadow-md flex items-center gap-2"
+            className="text-xs font-bold uppercase tracking-wider sm:tracking-widest px-3 sm:px-5 py-2 sm:py-2.5 rounded-full transition-all flex items-center gap-2 btn-aurora-hover"
             style={{
               backgroundColor: COLORS.ink,
               color: COLORS.cream,
@@ -172,9 +172,8 @@ export default function LandingPage() {
             style={{ color: "#EFE9DD" }}
           >
               L'ADN visuel de votre institution, verrouillé à la source par nos algorithmes.
-              La fidélité à votre identité devient une <em style={{ color: COLORS.gold, fontStyle: "italic" }}>évidence technique</em>.
-              Une promesse tenue par la technologie.
-              Conçu à Genève. Hébergé en Suisse. Conforme par <em style={{ color: COLORS.gold, fontStyle: "italic" }}>essence</em>.
+              La fidélité à votre identité devient une <em style={{ color: COLORS.gold, fontStyle: "italic" }}>évidence technique</em>.<br /><br />
+              Conçu à Genève, hébergé en Suisse, conforme par <em style={{ color: COLORS.gold, fontStyle: "italic" }}>essence</em>.
           </p>
 
           {/* CTA principal */}

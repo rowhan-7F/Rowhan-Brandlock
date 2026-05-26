@@ -20,6 +20,8 @@ import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
 
 // ⚠ SUPPRIMÉ : import LogoutButton, ArrowLeft (logout intégré dans AppHeader, back arrow via prop)
+import { useIsMobile } from "@/hooks/useMediaQuery";
+import AdminMobileFeed from "@/components/admin/AdminMobileFeed";
 
 // ============================================================
 //  TYPES
@@ -210,6 +212,9 @@ export default function AdminTenantPage() {
     fetchData();
   }, [fetchData]);
 
+  // Mobile responsive switch
+  const isMobile = useIsMobile();
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-neutral-50">
@@ -247,6 +252,34 @@ export default function AdminTenantPage() {
     window.location.href = "/";
   };
 
+  // ─────────────────────────────────────────────────────────
+  // MOBILE : feed vertical + boutons sticky + bottom sheet
+  // ─────────────────────────────────────────────────────────
+  if (isMobile && tenantState.status === "ready") {
+    // Fusionner carousels + videos en un seul feed
+    const allProjects = [
+      ...projects.map((p) => ({ ...p, _type: "carousel" as const })),
+      ...videoProjects.map((p) => ({ ...p, _type: "video" as const })),
+    ].sort(
+      (a, b) =>
+        new Date(b.updated_at || b.created_at).getTime() -
+        new Date(a.updated_at || a.created_at).getTime()
+    );
+
+    return (
+      <AdminMobileFeed
+        projects={allProjects}
+        config={tenantState.config}
+        tenantName={tenantState.config?.tenant?.name || tenantName || "Brand"}
+        brandPrimary={tenantState.config?.brandIdentity?.colors?.brandPrimary || "#B11E2F"}
+        onRefresh={fetchData}
+      />
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────
+  // DESKTOP : interface admin classique
+  // ─────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-neutral-50">
       {/* ⭐ NOUVEAU AppHeader unifié */}
@@ -371,7 +404,7 @@ function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-sm font-bold text-neutral-900">Vos briefs</h2>
-          <p className="text-xs text-neutral-500 mt-0.5">Le studio verra automatiquement les briefs ouverts</p>
+          <p className="text-xs text-neutral-500 mt-0.5">Vos utilisateurs verront automatiquement les briefs ouverts</p>
         </div>
         <button
           type="button"
@@ -1024,7 +1057,7 @@ function NewTaskModal({ onClose, onCreated }: { onClose: () => void; onCreated: 
               Images à utiliser
             </label>
             <p className="text-[10px] text-neutral-500 mb-2">
-              Les images que vous ajoutez sont automatiquement validées et visibles en priorité pour le studio.
+              Les images que vous ajoutez sont automatiquement validées et visibles en priorité pour vos utilisateurs.
             </p>
             <input
               ref={imageInputRef}

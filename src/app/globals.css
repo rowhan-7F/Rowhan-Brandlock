@@ -315,3 +315,90 @@ textarea {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ============================================================
+ * BANDE GRADIENT ANIMEE TOP - Aurora institutional
+ * ============================================================ */
+.aurora-top-band {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 2.5px;
+  z-index: 100;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    #182454 0%,
+    #4F267F 20%,
+    #B91D38 40%,
+    #4F267F 60%,
+    #182454 80%,
+    #4F267F 100%
+  );
+  background-size: 200% 100%;
+  animation: aurora-band-flow 12s ease-in-out infinite;
+}
+
+@keyframes aurora-band-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* ============================================================
+ * BOUTON CONNEXION - Effet AURORA hover (s'allume vivant)
+ * ============================================================ */
+.btn-aurora-hover {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  transition: box-shadow 0.4s ease, transform 0.3s ease;
+}
+
+.btn-aurora-hover::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    #182454 0%,
+    #4F267F 25%,
+    #B91D38 50%,
+    #4F267F 75%,
+    #182454 100%
+  );
+  background-size: 200% 100%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+.btn-aurora-hover:hover::before {
+  opacity: 1;
+  animation: btn-aurora-flow 4s ease-in-out infinite;
+}
+
+.btn-aurora-hover:hover {
+  transform: translateY(-1px);
+}
+
+@keyframes btn-aurora-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

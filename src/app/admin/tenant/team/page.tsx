@@ -197,7 +197,7 @@ function TeamPageInner() {
             style={{ backgroundColor: BRAND_BORDEAUX }}
           >
             <Plus size={14} />
-            Ajouter un studio
+            Ajouter un utilisateur
           </button>
         </div>
 
@@ -205,7 +205,7 @@ function TeamPageInner() {
           <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
             <User size={28} className="mx-auto text-neutral-300 mb-3" />
             <p className="text-sm text-neutral-500">Aucun membre dans cette equipe pour l'instant.</p>
-            <p className="text-xs text-neutral-400 mt-1">Cliquez sur "Ajouter un studio" pour commencer.</p>
+            <p className="text-xs text-neutral-400 mt-1">Cliquez sur "Ajouter un utilisateur" pour commencer.</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -336,7 +336,7 @@ function AddStudioModal({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur creation");
 
-      toast.success("Studio ajoute", {
+      toast.success("Utilisateur ajouté", {
         description: "Transmettez l'email et le mot de passe a " + email + ".",
       });
       onSuccess();
@@ -353,7 +353,7 @@ function AddStudioModal({
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Nouveau</div>
-            <h3 className="text-base font-bold text-neutral-900">Studio</h3>
+            <h3 className="text-base font-bold text-neutral-900">Utilisateur</h3>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition">
             <X size={18} />
@@ -428,7 +428,7 @@ function AddStudioModal({
 
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-1.5">
-              Studio *
+              Utilisateur *
             </label>
             <select
               value={service}

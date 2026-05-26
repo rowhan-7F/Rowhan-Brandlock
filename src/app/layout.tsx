@@ -27,6 +27,8 @@ export default function RootLayout({
   return (
     <html lang="fr">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* Bande gradient aurora animee en haut */}
+        <div className="aurora-top-band" aria-hidden="true" />
         {children}
 
         {/* ⭐ TOASTER LUXURY — Position top-right, animations fluides */}
