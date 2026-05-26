@@ -1,5 +1,7 @@
 "use client";
 
+import SwissAuroraBackground from "@/components/landing/SwissAuroraBackground";
+
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -123,7 +125,21 @@ export default function LandingPage() {
           }}
         />
 
-        <div className="relative max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center min-h-[calc(100vh-80px)] flex flex-col items-center justify-center">
+          {/* Swiss Aurora Background WebGL2 - PLEINE LARGEUR */}
+          <SwissAuroraBackground />
+
+          {/* Degrade noir TOP : 50% en haut -> 0% au centre */}
+          <div
+            className="absolute inset-x-0 top-0 h-1/2 pointer-events-none z-[1]"
+            style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" }}
+          />
+          {/* Degrade noir BOTTOM : 0% au centre -> 50% en bas */}
+          <div
+            className="absolute inset-x-0 bottom-0 h-1/2 pointer-events-none z-[1]"
+            style={{ background: "linear-gradient(to top, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0) 100%)" }}
+          />
+
+        <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center min-h-[calc(100vh-80px)] flex flex-col items-center justify-center">
           {/* Eyebrow */}
           <div
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
