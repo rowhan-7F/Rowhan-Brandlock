@@ -142,16 +142,16 @@ export default function LandingPage() {
         <div className="relative z-10 max-w-5xl mx-auto px-6 py-12 lg:py-20 text-center min-h-[calc(100vh-80px)] flex flex-col items-center justify-center">
           {/* Eyebrow */}
           <div
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-10"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.25em] mb-5 mt-0"
             style={{
-              backgroundColor: "rgba(255, 255, 255, 0.70)",
-              border: `1px solid ${COLORS.bordeaux}30`,
-              color: COLORS.bordeaux,
+              backgroundColor: "transparent",
+              border: "none",
+              color: "white",
             }}
           >
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.bordeaux }}></span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: "white" }}></span>
             Édition Institutionnelle Suisse
-            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: COLORS.bordeaux }}></span>
+            <span className="w-1 h-1 rounded-full" style={{ backgroundColor: "white" }}></span>
           </div>
 
           {/* Titre énorme magazine */}
@@ -169,7 +169,7 @@ export default function LandingPage() {
 
           <p
             className="text-base lg:text-lg leading-[1.7] max-w-2xl mx-auto mb-12"
-            style={{ color: "#EFE9DD" }}
+              style={{ color: "#EFE9DD", textShadow: "0 1px 1px rgba(0,0,0,0.25), 0 2px 4px rgba(0,0,0,0.15)" }}
           >
               L'ADN visuel de votre institution, verrouillé à la source par nos algorithmes.
               La fidélité à votre identité devient une <em style={{ color: COLORS.gold, fontStyle: "italic" }}>évidence technique</em>.<br /><br />
@@ -180,14 +180,9 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => setProspectOpen(true)}
-            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
-            style={{
-                backgroundColor: COLORS.bordeaux,
-                color: "white",
-              boxShadow: "0 20px 50px -20px rgba(0,0,0,0.5)",
-            }}
+            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all btn-cta-luxe"
           >
-            Demander une présentation technique
+              Accéder
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </button>
 
@@ -468,14 +463,9 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={() => setProspectOpen(true)}
-            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all hover:-translate-y-0.5"
-            style={{
-                backgroundColor: COLORS.bordeaux,
-                color: "white",
-              boxShadow: "0 20px 50px -20px rgba(0,0,0,0.4)",
-            }}
+            className="group inline-flex items-center gap-3 px-8 py-4 rounded-full text-xs font-black uppercase tracking-[0.2em] transition-all btn-cta-luxe"
           >
-            Organiser une présentation technique
+              Accéder
             <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
@@ -909,7 +899,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
           <button
             type="submit"
             disabled={loading || !email.trim() || !password.trim()}
-            className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5"
+            className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             style={{
               backgroundColor: COLORS.ink,
               color: COLORS.cream,
@@ -1152,12 +1142,7 @@ function ProspectModal({ onClose }: { onClose: () => void }) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 hover:-translate-y-0.5"
-                  style={{
-                    backgroundColor: COLORS.bordeaux,
-                    color: "white",
-                    boxShadow: `0 10px 25px -10px ${COLORS.bordeaux}80`,
-                  }}
+                  className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {submitting ? (
                     <>

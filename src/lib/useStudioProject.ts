@@ -74,6 +74,16 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
 
   // Met à jour les refs à chaque render
   useEffect(() => {
+    // FIX 1 PREVENTIF : si projectId change, on cancel le timer en cours
+    // pour eviter qu'un save fantome de l'ancien projet parte
+    if (projectIdRef.current !== projectId) {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      latestStateJsonRef.current = null;
+    }
+    
     projectIdRef.current = projectId;
     tenantIdRef.current = tenantId;
   }, [projectId, tenantId]);
@@ -164,6 +174,13 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
       if (!res.ok) {
         const errorData = await res.json();
         throw new Error(errorData.error || "Erreur sauvegarde");
+      }
+
+      // FIX 3 PREVENTIF : si le projectId a change pendant le save,
+      // on ignore le resultat pour pas corrompre le nouvel etat
+      if (projectIdRef.current !== pId) {
+        console.warn("[useStudioProject] save result ignored : projectId changed");
+        return;
       }
 
       setState((s) => ({ ...s, saveStatus: "saved" as SaveStatus }));

@@ -1,13 +1,13 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 /* ============================================================
- * PALETTE LUXURY BRANDLOCK — VARIABLES CSS GLOBALES
+ * PALETTE LUXURY BRANDLOCK â€” VARIABLES CSS GLOBALES
  * ============================================================ */
 
 :root {
-  /* ──────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   /*  COULEURS PRIMAIRES                                       */
-  /* ──────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --brand-bordeaux: #B11E2F;
   --brand-bordeaux-dark: #7A1320;
   --brand-bordeaux-light: #D4515F;
@@ -26,17 +26,17 @@
 
   --brand-warm-gray: #807972;
 
-  /* ──────────────────────────────────────────────────────── */
-  /*  BACKGROUND & FOREGROUND (utilisés par body)              */
-  /* ──────────────────────────────────────────────────────── */
-  --background: var(--brand-cream);     /* Crème LUXURY au lieu du gris froid */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /*  BACKGROUND & FOREGROUND (utilisÃ©s par body)              */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  --background: var(--brand-cream);     /* CrÃ¨me LUXURY au lieu du gris froid */
   --foreground: var(--brand-ink);
 
-  /* ──────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   /*  TOKENS HSL (pour shadcn-ui si tu l'utilises)             */
-  /* ──────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   --primary: 354 73% 41%;             /* bordeaux */
-  --primary-foreground: 30 25% 95%;   /* crème */
+  --primary-foreground: 30 25% 95%;   /* crÃ¨me */
 
   --secondary: 39 49% 65%;            /* gold */
   --secondary-foreground: 215 38% 15%;/* ink */
@@ -229,8 +229,8 @@ select:focus-visible {
 }
 
 /* ============================================================
- * REPLACEMENTS ORANGE → BORDEAUX
- * (Surcharge les anciennes classes orange éparpillées dans le code)
+ * REPLACEMENTS ORANGE â†’ BORDEAUX
+ * (Surcharge les anciennes classes orange Ã©parpillÃ©es dans le code)
  * ============================================================ */
 .text-orange-500,
 .text-orange-600 {
@@ -292,7 +292,7 @@ mark {
   color-interpolation-filters: sRGB !important;
 }
 
-/* Smooth transitions sur les éléments interactifs */
+/* Smooth transitions sur les Ã©lÃ©ments interactifs */
 button,
 a,
 input,
@@ -400,5 +400,156 @@ textarea {
   }
   100% {
     background-position: 0% 50%;
+  }
+}
+
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+   CTA SHIMMER (Apple/Vercel pattern)
+   Trait blanc subtle qui traverse lentement le bouton
+   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.btn-shimmer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.12) 45%,
+    rgba(255, 255, 255, 0.18) 50%,
+    rgba(255, 255, 255, 0.12) 55%,
+    transparent 70%
+  );
+  background-size: 250% 100%;
+  animation: btn-shimmer-move 5s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.btn-shimmer > * {
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes btn-shimmer-move {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* Pause si l'utilisateur prefere reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn-shimmer::before {
+    animation: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CTA LUXURY (Hermès / Apple pattern)
+   - Shimmer seamless (pas de saccade visible)
+   - Hover negatif (rouge -> blanc avec texte rouge)
+   - Easing premium cubic-bezier
+   ═══════════════════════════════════════════════════════════ */
+
+.btn-cta-luxe {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background-color: #B11E2F;
+  color: #ffffff;
+  border: none;
+  box-shadow:
+    0 4px 20px rgba(177, 30, 47, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.2);
+  transition:
+    background-color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+    color 400ms cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* HOVER NEGATIF - Pattern Apple Store */
+.btn-cta-luxe:hover {
+  background-color: #ffffff;
+  color: #B11E2F;
+  box-shadow:
+    0 8px 30px rgba(177, 30, 47, 0.25),
+    0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-cta-luxe:active {
+  transform: translateY(0);
+}
+
+/* SHIMMER - couche par-dessus, en mode multiply pour s'adapter au hover */
+.btn-cta-luxe::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -50%;
+  width: 40%;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 30%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0.06) 70%,
+    transparent 100%
+  );
+  animation: btn-cta-shimmer 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Pas de shimmer en hover (le focus est sur le texte rouge) */
+.btn-cta-luxe:hover::before {
+  opacity: 0;
+  transition: opacity 300ms ease-out;
+}
+
+.btn-cta-luxe > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* Animation SEAMLESS : passage + grosse pause invisible */
+@keyframes btn-cta-shimmer {
+  0% {
+    left: -50%;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  35% {
+    left: 150%;
+    opacity: 1;
+  }
+  36% {
+    opacity: 0;
+  }
+  100% {
+    left: 150%;
+    opacity: 0;
+  }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .btn-cta-luxe::before {
+    animation: none;
+    opacity: 0;
+  }
+  .btn-cta-luxe {
+    transition: none;
   }
 }
