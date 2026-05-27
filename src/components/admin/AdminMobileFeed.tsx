@@ -18,6 +18,7 @@ import {
   Film,
   RotateCcw,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -92,6 +93,7 @@ export default function AdminMobileFeed({
   // ─── State ──────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"briefs" | "pending" | "approved">("pending");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [showNewBriefModal, setShowNewBriefModal] = useState(false);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
@@ -334,19 +336,31 @@ export default function AdminMobileFeed({
           <button
             type="button"
             onClick={() => setActiveTab("briefs")}
-            className="flex-none px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors"
+            className="w-1/4 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors"
             style={{
               color: activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
               borderBottom: activeTab === "briefs" ? `2px solid ${COLORS.bordeaux}` : "2px solid transparent",
             }}
           >
-            Briefs ({openTasks.length})
+            Briefs
+            {openTasks.length > 0 && (
+              <span
+                className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                style={{
+                  backgroundColor:
+                    activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
+                  color: "white",
+                }}
+              >
+                {openTasks.length}
+              </span>
+            )}
           </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("pending")}
-          className="flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
+          className="w-1/2 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
           style={{
             color:
               activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray,
@@ -375,7 +389,7 @@ export default function AdminMobileFeed({
         <button
           type="button"
           onClick={() => setActiveTab("approved")}
-          className="flex-1 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
+          className="w-1/4 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
           style={{
             color:
               activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray,
@@ -546,6 +560,35 @@ export default function AdminMobileFeed({
       )}
 
       {/* ═══════════════════════════════════════════════════════ */}
+        {/* FAB Creer brief (uniquement sur tab briefs) */}
+        {activeTab === "briefs" && (
+          <button
+            type="button"
+            onClick={() => setShowNewBriefModal(true)}
+            className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-95"
+            style={{
+              backgroundColor: COLORS.bordeaux,
+              boxShadow: "0 8px 24px rgba(177,30,47,0.5), 0 2px 8px rgba(0,0,0,0.15)",
+            }}
+            aria-label="Creer un brief"
+          >
+            <Plus size={24} color="white" strokeWidth={3} />
+          </button>
+        )}
+
+        {/* Modal creation brief mobile */}
+        {showNewBriefModal && (
+          <NewBriefMobileModal
+            onClose={() => setShowNewBriefModal(false)}
+            onCreated={() => {
+              setShowNewBriefModal(false);
+              onRefresh();
+            }}
+          />
+        )}
+
+
+
       {/* BURGER DRAWER                                            */}
       {/* ═══════════════════════════════════════════════════════ */}
       {drawerOpen && (
@@ -1212,6 +1255,184 @@ function BriefCardMobile({ task }: { task: Task }) {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+//  NEW BRIEF MOBILE MODAL
+// ═══════════════════════════════════════════════════════════
+
+function NewBriefMobileModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [brief, setBrief] = useState("");
+  const [priority, setPriority] = useState<"low" | "normal" | "high" | "urgent">("normal");
+  const [deadline, setDeadline] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const priorityOptions: { value: "low" | "normal" | "high" | "urgent"; label: string; color: string }[] = [
+    { value: "low", label: "Basse", color: "#71717A" },
+    { value: "normal", label: "Normale", color: "#1D4ED8" },
+    { value: "high", label: "Haute", color: "#C2410C" },
+    { value: "urgent", label: "Urgent", color: "#B91C1C" },
+  ];
+
+  const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast.error("Le titre est obligatoire");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch("/api/admin/tasks", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          title: title.trim(),
+          brief: brief.trim() || null,
+          priority,
+          deadline: deadline || null,
+        }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || "Erreur creation");
+      }
+      toast.success("Brief cree", { description: "Le studio est notifie." });
+      onCreated();
+    } catch (err: any) {
+      toast.error("Erreur", { description: err.message });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div
+        className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[90vh]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: COLORS.ink }}>
+            Nouveau brief
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="p-2 -m-2 rounded-full disabled:opacity-50"
+          >
+            <X size={20} style={{ color: COLORS.warmGray }} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+          {/* Titre */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
+              Titre *
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ex: Post LinkedIn Q1"
+              className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
+              maxLength={200}
+            />
+          </div>
+
+          {/* Brief */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
+              Description
+            </label>
+            <textarea
+              value={brief}
+              onChange={(e) => setBrief(e.target.value)}
+              placeholder="Description du brief, ton, objectifs..."
+              rows={4}
+              className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200 resize-none"
+              maxLength={5000}
+            />
+          </div>
+
+          {/* Priorité */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
+              Priorité
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {priorityOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPriority(opt.value)}
+                  className="py-2 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all"
+                  style={{
+                    backgroundColor: priority === opt.value ? opt.color : "#F5F5F4",
+                    color: priority === opt.value ? "white" : opt.color,
+                    border: priority === opt.value ? `1px solid ${opt.color}` : "1px solid transparent",
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Deadline */}
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
+              Deadline (optionnel)
+            </label>
+            <input
+              type="date"
+              value={deadline}
+              onChange={(e) => setDeadline(e.target.value)}
+              className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-neutral-100 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg disabled:opacity-50"
+            style={{ color: COLORS.warmGray, backgroundColor: "#F5F5F4" }}
+          >
+            Annuler
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting || !title.trim()}
+            className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition disabled:opacity-50"
+            style={{
+              backgroundColor: COLORS.bordeaux,
+              color: "white",
+            }}
+          >
+            {submitting ? "Creation..." : "Creer"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

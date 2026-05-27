@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import BrandAssetsTenantSection from "@/components/admin/BrandAssetsTenantSection";
+import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
 
 function TenantBrandAssetsPageInner() {
   const router = useRouter();
@@ -96,6 +97,8 @@ function TenantBrandAssetsPageInner() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AdminMobileHeader title="Brand Assets" tenantName={tenantName} />
+        <div className="hidden md:block">
       <StudioHeader
         backHref={isSuperAdminView ? "/super-admin/clients" : "/admin/tenant"}
         eyebrowMain={isSuperAdminView ? "SUPER ADMIN" : "ADMINISTRATION"}
@@ -108,6 +111,7 @@ function TenantBrandAssetsPageInner() {
         showLogout={true}
         onLogout={handleLogout}
       />
+        </div>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="mb-6">

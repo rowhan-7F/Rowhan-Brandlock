@@ -12,6 +12,7 @@ import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
+import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
 
 const BRAND_BORDEAUX = "#B11E2F";
 
@@ -167,6 +168,8 @@ function TeamPageInner() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+        <AdminMobileHeader title="Mon équipe" tenantName={tenantName || "Brand"} />
+        <div className="hidden md:block">
       <StudioHeader
         backHref={isSuperAdminView ? "/super-admin/clients" : "/admin/tenant"}
         eyebrowMain={isSuperAdminView ? "SUPER ADMIN" : "ADMINISTRATION"}
@@ -179,6 +182,7 @@ function TeamPageInner() {
         showLogout={true}
         onLogout={handleLogout}
       />
+        </div>
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-6">
@@ -208,7 +212,7 @@ function TeamPageInner() {
             <p className="text-xs text-neutral-400 mt-1">Cliquez sur "Ajouter un utilisateur" pour commencer.</p>
           </div>
         ) : (
-          <div className="space-y-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {members.map((m) => (
               <MemberCard
                 key={m.user_id}
@@ -241,44 +245,68 @@ function MemberCard({ member, onDelete }: { member: TeamMember; onDelete: () => 
   const isAdmin = member.role === "tenant_admin";
 
   return (
-    <div className="bg-white rounded-xl border border-neutral-200 p-4 flex items-center justify-between hover:border-neutral-300 transition">
-      <div className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="w-10 h-10 rounded-full bg-neutral-100 flex items-center justify-center shrink-0">
-          <User size={18} className="text-neutral-500" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-bold text-neutral-900 truncate">
-              {member.display_name || member.email.split("@")[0]}
-            </span>
-            {isAdmin && (
-              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded text-white" style={{ backgroundColor: BRAND_BORDEAUX }}>
-                Admin
-              </span>
-            )}
+      <div className="group bg-white rounded-2xl border border-neutral-200 p-5 hover:border-neutral-300 hover:shadow-lg transition-all flex flex-col">
+        {/* Avatar avec initiales en gradient */}
+        <div className="flex justify-center mb-4">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center text-white font-black text-lg shadow-md"
+            style={{
+              background: isAdmin
+                ? `linear-gradient(135deg, ${BRAND_BORDEAUX} 0%, #7A1320 100%)`
+                : `linear-gradient(135deg, #1A2332 0%, #2A3445 100%)`,
+            }}
+          >
+            {(member.display_name || member.email).slice(0, 2).toUpperCase()}
           </div>
-          <div className="text-xs text-neutral-500 truncate flex items-center gap-1.5 mt-0.5">
+        </div>
+
+        {/* Nom */}
+        <div className="text-center mb-1">
+          <h3 className="text-sm font-bold text-neutral-900 truncate">
+            {member.display_name || member.email.split("@")[0]}
+          </h3>
+        </div>
+
+        {/* Email */}
+        <div className="text-center mb-4">
+          <p className="text-xs text-neutral-500 truncate flex items-center justify-center gap-1.5">
             <Mail size={11} />
             {member.email}
-          </div>
-          <div className="text-[10px] text-neutral-400 mt-0.5 flex items-center gap-1.5">
+          </p>
+        </div>
+
+        {/* Separator + Role badge */}
+        <div className="flex items-center justify-center gap-2 mb-3 py-2 border-t border-b border-neutral-100">
+          <span
+            className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded text-white"
+            style={{ backgroundColor: isAdmin ? BRAND_BORDEAUX : "#1A2332" }}
+          >
+            {isAdmin ? "Admin" : "Graphiste"}
+          </span>
+        </div>
+
+        {/* Service / metier */}
+        <div className="text-center mb-4 flex-1">
+          <div className="text-[10px] text-neutral-400 flex items-center justify-center gap-1.5">
             <Briefcase size={10} />
             {serviceLabel}
           </div>
         </div>
+
+        {/* Action Delete (bas, discret) */}
+        {!isAdmin && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="w-full mt-2 py-2 text-[10px] font-bold uppercase tracking-wider text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100"
+            title="Supprimer"
+          >
+            <Trash2 size={11} />
+            Retirer
+          </button>
+        )}
       </div>
-      {!isAdmin && (
-        <button
-          type="button"
-          onClick={onDelete}
-          className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition shrink-0"
-          title="Supprimer"
-        >
-          <Trash2 size={14} />
-        </button>
-      )}
-    </div>
-  );
+    );
 }
 
 function AddStudioModal({

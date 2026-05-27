@@ -16,6 +16,7 @@ import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
+import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
 
 // ⚠ SUPPRIMÉ : import LogoutButton, ArrowLeft (gérés par AppHeader)
 
@@ -172,7 +173,9 @@ function AdminLibraryPageInner() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
+      <AdminMobileHeader title="Bibliothèque" tenantName="Brand" />
       {/* ⭐ NOUVEAU AppHeader unifié */}
+        <div className="hidden md:block">
       <StudioHeader
         backHref="/admin/tenant"
         eyebrowMain="ADMINISTRATION"
@@ -185,6 +188,7 @@ function AdminLibraryPageInner() {
         showLogout={true}
         onLogout={handleLogout}
       />
+        </div>
 
       <div className="max-w-7xl mx-auto p-6">
         {/* FILTRES + RECHERCHE */}

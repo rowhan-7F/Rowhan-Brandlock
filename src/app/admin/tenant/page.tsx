@@ -409,7 +409,36 @@ function TabButton({ active, onClick, label, count }: any) {
 //  BRIEFS TAB
 // ============================================================
 function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
-  const openTasks = tasks.filter((t: Task) => t.status === "open" || t.status === "in_progress");
+  const [tasksWithStatus, setTasksWithStatus] = useState<(Task & { _projectStatus?: string })[]>([]);
+
+  // ⭐ Enrichir chaque task avec le status du projet lie
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const enriched = await Promise.all(
+        tasks.map(async (t: Task) => {
+          if (!t.linked_project_id) return t;
+          const { data } = await supabase
+            .from("studio_projects")
+            .select("status")
+            .eq("id", t.linked_project_id)
+            .maybeSingle();
+          return { ...t, _projectStatus: data?.status };
+        })
+      );
+      if (!cancelled) setTasksWithStatus(enriched);
+    })();
+    return () => { cancelled = true; };
+  }, [tasks]);
+
+  // Filter : task active ET projet pas approuve/archive/publie
+  const openTasks = tasksWithStatus.filter((t) => {
+    const taskActive = t.status === "open" || t.status === "in_progress";
+    const projectFinished = t._projectStatus === "approved" ||
+                            t._projectStatus === "published" ||
+                            t._projectStatus === "archived";
+    return taskActive && !projectFinished;
+  });
 
   return (
     <div>

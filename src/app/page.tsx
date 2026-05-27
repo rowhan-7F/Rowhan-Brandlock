@@ -1142,7 +1142,7 @@ function ProspectModal({ onClose }: { onClose: () => void }) {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="btn-cta-luxe w-full px-4 py-3.5 font-bold text-xs uppercase tracking-[0.2em] rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {submitting ? (
                     <>
