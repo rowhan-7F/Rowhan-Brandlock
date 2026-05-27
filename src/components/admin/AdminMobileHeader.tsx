@@ -77,7 +77,7 @@ export default function AdminMobileHeader({
                 </span>
               </div>
               <p
-                className="text-[10px] mt-0.5 truncate"
+                className="text-[10px] truncate -mt-0.5"
                 style={{ color: COLORS.warmGray }}
               >
                 {tenantName}

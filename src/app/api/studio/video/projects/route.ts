@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { VIDEO_PLATFORM_TO_FORMAT, ALL_VIDEO_PLATFORMS, VideoPlatform } from "@/lib/video/types";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -73,7 +74,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { title, mode, format, task_id } = body;
+    const { title, mode, platform, task_id } = body;
+
+    // Sprint 2.5 : derive format technique depuis platform UX
+    const format = VIDEO_PLATFORM_TO_FORMAT[platform as VideoPlatform];
+    const templateKey = "video_" + platform;
 
     if (!title?.trim()) {
       return NextResponse.json(
@@ -97,10 +102,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validFormats = ["9_16", "1_1", "16_9"];
-    if (!validFormats.includes(format)) {
+    // Sprint 2.5 : valider platform (au lieu de format)
+    if (!ALL_VIDEO_PLATFORMS.includes(platform as VideoPlatform)) {
       return NextResponse.json(
-        { error: `Format invalide. Valeurs acceptées : ${validFormats.join(", ")}` },
+        { error: "Plateforme invalide. Valeurs acceptees : " + ALL_VIDEO_PLATFORMS.join(", ") },
         { status: 400 }
       );
     }
@@ -135,6 +140,7 @@ export async function POST(req: NextRequest) {
         title: title.trim(),
         mode,
         format,
+        platform,
         status: "draft",
         task_id: task_id || null,
       })

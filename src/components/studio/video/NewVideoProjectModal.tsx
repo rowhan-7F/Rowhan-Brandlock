@@ -14,9 +14,11 @@ import { toast } from "@/lib/toast";
 import {
   ActiveVideoMode,
   VideoFormat,
+  VideoPlatform,
+  ALL_VIDEO_PLATFORMS,
+  VIDEO_PLATFORM_INFO,
   VIDEO_MODE_INFO,
 } from "@/lib/video/types";
-import FormatSelector from "./FormatSelector";
 
 type Task = {
   id: string;
@@ -41,7 +43,7 @@ export default function NewVideoProjectModal({
 
   const [title, setTitle] = useState("");
   const [mode, setMode] = useState<ActiveVideoMode>(DEFAULT_MODE);
-  const [format, setFormat] = useState<VideoFormat>("9_16");
+  const [platform, setPlatform] = useState<VideoPlatform>("instagram_reel");
   const [taskId, setTaskId] = useState<string>("");
 
   const [openTasks, setOpenTasks] = useState<Task[]>([]);
@@ -74,7 +76,7 @@ export default function NewVideoProjectModal({
     if (!open) {
       setTitle("");
       setMode(DEFAULT_MODE);
-      setFormat("9_16");
+      setPlatform("instagram_reel");
       setTaskId("");
     }
   }, [open]);
@@ -101,7 +103,7 @@ export default function NewVideoProjectModal({
         body: JSON.stringify({
           title: title.trim(),
           mode,
-          format,
+          platform,
           task_id: taskId || undefined,
         }),
       });
@@ -206,8 +208,41 @@ export default function NewVideoProjectModal({
           </div>
 
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2">Format *</label>
-            <FormatSelector value={format} onChange={setFormat} disabled={submitting} />
+            <label className="block text-[10px] font-black uppercase tracking-widest text-neutral-500 mb-2">Plateforme cible *</label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {ALL_VIDEO_PLATFORMS.map((p) => {
+                const info = VIDEO_PLATFORM_INFO[p];
+                const selected = platform === p;
+                const ratioStyle =
+                  info.aspectRatio === "9:16" ? { width: "20px", height: "36px" } :
+                  info.aspectRatio === "16:9" ? { width: "48px", height: "27px" } :
+                  { width: "32px", height: "32px" };
+                const btnClass = "relative p-3 rounded-xl border-2 transition-all text-left " +
+                  (selected
+                    ? "border-[#B11E2F] bg-[#B11E2F]/5 ring-2 ring-[#B11E2F]/20"
+                    : "border-neutral-200 hover:border-neutral-300 bg-white") +
+                  (submitting ? " opacity-50 cursor-not-allowed" : "");
+                return (
+                  <button key={p} type="button" onClick={() => setPlatform(p)} disabled={submitting} className={btnClass}>
+                    <div className="flex items-center justify-center h-12 mb-2">
+                      <div className="border-2 bg-neutral-50" style={{ ...ratioStyle, borderColor: selected ? "#B11E2F" : "#D4D4D8" }} />
+                    </div>
+                    <div className="space-y-0.5">
+                      <div className="text-[11px] font-bold text-neutral-900 truncate">{info.label}</div>
+                      <div className="text-[9px] text-neutral-500">{info.platformName} - {info.aspectRatio}</div>
+                    </div>
+                    {selected && (
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#B11E2F] flex items-center justify-center">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] text-neutral-500 italic">{VIDEO_PLATFORM_INFO[platform].description}</p>
           </div>
 
           <div>

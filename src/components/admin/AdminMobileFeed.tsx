@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Loader2,
   Plus,
+  ClipboardList,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -297,7 +298,7 @@ export default function AdminMobileFeed({
               </div>
               {/* Ligne 2 : tenant name */}
               <p
-                className="text-[10px] mt-0.5 truncate"
+                className="text-[10px] truncate -mt-0.5"
                 style={{ color: COLORS.warmGray }}
               >
                 {tenantName}
@@ -336,13 +337,14 @@ export default function AdminMobileFeed({
           <button
             type="button"
             onClick={() => setActiveTab("briefs")}
-            className="w-1/4 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors"
+            className="w-1/4 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
             style={{
               color: activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
               borderBottom: activeTab === "briefs" ? `2px solid ${COLORS.bordeaux}` : "2px solid transparent",
             }}
           >
-            Briefs
+              <ClipboardList size={18} className="md:hidden" />
+              <span className="hidden md:inline">Briefs</span>
             {openTasks.length > 0 && (
               <span
                 className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
@@ -360,7 +362,7 @@ export default function AdminMobileFeed({
         <button
           type="button"
           onClick={() => setActiveTab("pending")}
-          className="w-1/2 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
+          className="w-1/2 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative flex items-center justify-center gap-1"
           style={{
             color:
               activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray,
@@ -389,13 +391,14 @@ export default function AdminMobileFeed({
         <button
           type="button"
           onClick={() => setActiveTab("approved")}
-          className="w-1/4 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative"
+          className="w-1/4 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative flex items-center justify-center gap-1"
           style={{
             color:
               activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray,
           }}
         >
-          Approuvés
+            <CheckCircle2 size={18} className="md:hidden" />
+            <span className="hidden md:inline">Approuvés</span>
           {approvedCount > 0 && (
             <span
               className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"

@@ -1,0 +1,182 @@
+{
+  "video_instagram_reel": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1080,
+      "height": 1920
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 16,
+      "fontSize": 56,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 320,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "instagram_reel",
+    "description": "Instagram Reel - UI Reel : like/comment/share/save sur la droite, description en bas"
+  },
+  "video_tiktok": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1080,
+      "height": 1920
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 16,
+      "fontSize": 56,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 380,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "tiktok",
+    "description": "TikTok - UI laterale (icones droite), description haut et bas"
+  },
+  "video_youtube_shorts": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1080,
+      "height": 1920
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 16,
+      "fontSize": 56,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 200,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "youtube_shorts",
+    "description": "YouTube Shorts - UI minimale, plus de place pour le contenu"
+  },
+  "video_instagram_square": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1080,
+      "height": 1080
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 14,
+      "fontSize": 48,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 80,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "instagram_square",
+    "description": "Instagram Feed Video - Carre, marge bas pour caption"
+  },
+  "video_linkedin_square": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1200,
+      "height": 1200
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 16,
+      "fontSize": 52,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 100,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "linkedin_square",
+    "description": "LinkedIn Video - Carre 1200x1200 pour qualite, marges generales"
+  },
+  "video_youtube": {
+    "fps": 30,
+    "intros": [],
+    "outros": [],
+    "dimensions": {
+      "width": 1920,
+      "height": 1080
+    },
+    "allowedModes": [
+      "studio_clean",
+      "voice_music",
+      "field_event",
+      "premium_demux"
+    ],
+    "subtitleStyle": {
+      "color": "#FFFFFF",
+      "padding": 18,
+      "fontSize": 56,
+      "position": "bottom",
+      "fontFamily": "Helvetica Neue Bold, Arial Black, sans-serif",
+      "lineHeight": 1.2,
+      "marginBottom": 80,
+      "letterSpacing": 0,
+      "backgroundColor": "rgba(0, 0, 0, 0.85)"
+    },
+    "colorGradingLUT": null,
+    "audioBrandJingle": null,
+    "platform": "youtube",
+    "description": "YouTube standard - Horizontal cinema, sous-titres bas"
+  }
+}

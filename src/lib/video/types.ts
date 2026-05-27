@@ -25,6 +25,90 @@ export type ActiveVideoMode =
 
 export type VideoFormat = "9_16" | "1_1" | "16_9";
 
+// ============================================================
+//  VIDEO PLATFORM (Sprint 2.5 - UX layer over technical format)
+//  Chaque plateforme a un format technique sous-jacent + ses safeZones.
+// ============================================================
+
+export type VideoPlatform =
+  | "instagram_reel"
+  | "tiktok"
+  | "youtube_shorts"
+  | "instagram_square"
+  | "linkedin_square"
+  | "youtube";
+
+export const VIDEO_PLATFORM_TO_FORMAT: Record<VideoPlatform, VideoFormat> = {
+  instagram_reel: "9_16",
+  tiktok: "9_16",
+  youtube_shorts: "9_16",
+  instagram_square: "1_1",
+  linkedin_square: "1_1",
+  youtube: "16_9",
+};
+
+export type VideoPlatformInfo = {
+  label: string;
+  platformName: string;
+  description: string;
+  aspectRatio: string;
+  templateKey: string;
+};
+
+export const VIDEO_PLATFORM_INFO: Record<VideoPlatform, VideoPlatformInfo> = {
+  instagram_reel: {
+    label: "IG Reel",
+    platformName: "Instagram",
+    description: "Reels Instagram, marges UI haut/bas optimisees",
+    aspectRatio: "9:16",
+    templateKey: "video_instagram_reel",
+  },
+  tiktok: {
+    label: "TikTok",
+    platformName: "TikTok",
+    description: "Marges UI laterales TikTok preservees",
+    aspectRatio: "9:16",
+    templateKey: "video_tiktok",
+  },
+  youtube_shorts: {
+    label: "YouTube Shorts",
+    platformName: "YouTube",
+    description: "Marges minimales pour Shorts",
+    aspectRatio: "9:16",
+    templateKey: "video_youtube_shorts",
+  },
+  instagram_square: {
+    label: "IG Feed Video",
+    platformName: "Instagram",
+    description: "Carre pour le feed Instagram",
+    aspectRatio: "1:1",
+    templateKey: "video_instagram_square",
+  },
+  linkedin_square: {
+    label: "LinkedIn",
+    platformName: "LinkedIn",
+    description: "Carre professionnel LinkedIn",
+    aspectRatio: "1:1",
+    templateKey: "video_linkedin_square",
+  },
+  youtube: {
+    label: "YouTube",
+    platformName: "YouTube",
+    description: "Horizontal cinema, longue forme",
+    aspectRatio: "16:9",
+    templateKey: "video_youtube",
+  },
+};
+
+export const ALL_VIDEO_PLATFORMS: VideoPlatform[] = [
+  "instagram_reel",
+  "tiktok",
+  "youtube_shorts",
+  "instagram_square",
+  "linkedin_square",
+  "youtube",
+];
+
 export type VideoStatus =
   | "draft"
   | "uploaded"

@@ -197,11 +197,11 @@ function TeamPageInner() {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition hover:opacity-90"
+            className="hidden md:inline-flex items-center gap-2 px-4 py-2 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition hover:opacity-90"
             style={{ backgroundColor: BRAND_BORDEAUX }}
           >
             <Plus size={14} />
-            Ajouter un utilisateur
+              <span className="hidden md:inline">Ajouter un utilisateur</span>
           </button>
         </div>
 
@@ -222,6 +222,20 @@ function TeamPageInner() {
             ))}
           </div>
         )}
+        {/* FAB Ajouter utilisateur (mobile uniquement) */}
+        <button
+          type="button"
+          onClick={() => setShowAddModal(true)}
+          className="md:hidden fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-95"
+          style={{
+            backgroundColor: BRAND_BORDEAUX,
+            boxShadow: "0 8px 24px rgba(177,30,47,0.5), 0 2px 8px rgba(0,0,0,0.15)",
+          }}
+          aria-label="Ajouter un utilisateur"
+        >
+          <Plus size={24} color="white" strokeWidth={3} />
+        </button>
+
       </main>
 
       {showAddModal && tenantId && (

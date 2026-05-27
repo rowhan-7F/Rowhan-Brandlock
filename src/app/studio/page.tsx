@@ -18,6 +18,7 @@ import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
 // ⭐ Module vidéo
 import NewVideoProjectModal from "@/components/studio/video/NewVideoProjectModal";
+import NewCarouselProjectModal from "@/components/studio/NewCarouselProjectModal";
 import StudioProjectCard from "@/components/projects/StudioProjectCard";
 import ProjectFilters, { FilterType, FilterStatus, SortBy } from "@/components/studio/ProjectFilters";
 import type { VideoProject } from "@/lib/video/types";
@@ -59,6 +60,7 @@ export default function StudioHomePage() {
   const [videoProjects, setVideoProjects] = useState<VideoProject[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(true);
   const [showNewVideoModal, setShowNewVideoModal] = useState(false);
+  const [showNewCarouselModal, setShowNewCarouselModal] = useState(false);
 
   // Phase 12 peaufinage : filtres unifies dashboard
   const [filterType, setFilterType] = useState<FilterType>("all");
@@ -292,7 +294,7 @@ export default function StudioHomePage() {
 
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={handleCreate}
+              onClick={() => setShowNewCarouselModal(true)}
               disabled={creating}
               className="text-white text-sm font-bold uppercase tracking-wider px-6 py-3.5 rounded-xl transition flex items-center gap-2 disabled:opacity-40 shadow-sm hover:shadow-md"
               style={{ backgroundColor: "#B11E2F" }}
@@ -338,7 +340,7 @@ export default function StudioHomePage() {
               <p className="text-sm text-neutral-500">Essaie de modifier ou reinitialiser les filtres.</p>
             </div>
           ) : (
-            <EmptyState brandColor={brandColor} onCreate={handleCreate} creating={creating} />
+            <EmptyState brandColor={brandColor} onCreate={() => setShowNewCarouselModal(true)} creating={creating} />
           )
         ) : (
           <>
@@ -388,6 +390,13 @@ export default function StudioHomePage() {
       <NewVideoProjectModal
         open={showNewVideoModal}
         onClose={() => setShowNewVideoModal(false)}
+        brandColor={brandColor}
+      />
+
+      {/* MODAL creation carrousel (SPRINT 2 - multi-format) */}
+      <NewCarouselProjectModal
+        open={showNewCarouselModal}
+        onClose={() => setShowNewCarouselModal(false)}
         brandColor={brandColor}
       />
     </div>
