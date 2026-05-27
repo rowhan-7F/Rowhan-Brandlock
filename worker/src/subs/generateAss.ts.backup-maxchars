@@ -78,8 +78,8 @@ const FORMAT_SUBTITLE_CONFIGS: Record<FormatKey, SubtitleConfig> = {
     marginL: 50,
     marginR: 50,
     marginV: 230,
-    maxCharsPerLine: 22,
-    maxCharsPerSegment: 44,
+    maxCharsPerLine: 26,
+    maxCharsPerSegment: 52,
   },
   "1_1": {
     // 1080×1080 — carré (Instagram posts)
@@ -87,8 +87,8 @@ const FORMAT_SUBTITLE_CONFIGS: Record<FormatKey, SubtitleConfig> = {
     marginL: 40,
     marginR: 40,
     marginV: 130,
-    maxCharsPerLine: 26,
-    maxCharsPerSegment: 52,
+    maxCharsPerLine: 30,
+    maxCharsPerSegment: 60,
   },
   "16_9": {
     // 1920×1080 — landscape (YouTube, LinkedIn)
@@ -96,7 +96,7 @@ const FORMAT_SUBTITLE_CONFIGS: Record<FormatKey, SubtitleConfig> = {
     marginL: 100,
     marginR: 100,
     marginV: 130,
-    maxCharsPerLine: 50,
+    maxCharsPerLine: 60,
     maxCharsPerSegment: 80,
   },
 };

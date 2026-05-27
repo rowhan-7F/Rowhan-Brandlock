@@ -6,8 +6,6 @@ import {
   resolveColor,
   placementToStyle,
 } from "./slideComponents";
-import { computeFinalComponent } from "@/lib/formatOverrides";
-import type { SlideState } from "@/lib/useStudioProject";
 
 // ============================================================
 //  TYPES
@@ -20,10 +18,6 @@ export type SlideRendererProps = {
   inputValues: Record<string, any>;
   templateKey?: string;
   scale?: number;
-  /** Sprint 3+4 : slide complete pour acceder aux formatOverrides */
-  slide?: SlideState;
-  /** Sprint 3+4 : format actif (override templateKey si fourni) */
-  activeFormat?: string;
   showSafeZones?: boolean;
 };
 
@@ -126,8 +120,6 @@ export default function SlideRenderer({
   inputValues,
   templateKey = "carrousel_instagram",
   scale = 0.25,
-  slide,
-  activeFormat,
   showSafeZones = false,
 }: SlideRendererProps) {
   useEffect(() => {
@@ -140,18 +132,6 @@ export default function SlideRenderer({
   }
 
   const variantConfig = resolveVariantConfig(template, variant, subVariant);
-
-  // Sprint 3+4 : helper local pour resoudre les overrides par format
-  const effectiveFormat = activeFormat || templateKey || "carrousel_instagram";
-  const effectiveTemplate = config?.exportTemplates?.[effectiveFormat] || template;
-  const effectiveDimensions = {
-    width: effectiveTemplate?.canvas?.widthPx || 1080,
-    height: effectiveTemplate?.canvas?.heightPx || 1350,
-  };
-  const getFinalComponent = (componentKey: string, baseComp: any) => {
-    if (!slide) return baseComp;
-    return computeFinalComponent(baseComp, slide, componentKey, effectiveFormat, effectiveDimensions);
-  };
   if (!variantConfig) {
     console.warn('[SlideRenderer DEBUG]', { 
       templateKey, 
@@ -164,13 +144,10 @@ export default function SlideRenderer({
     return <FallbackSlide message={`Variant '${variant}' / sub '${subVariant || ""}' introuvable`} scale={scale} />;
   }
 
-  // Sprint 3+4 : utiliser effectiveTemplate.canvas (format actif)
-  // Sprint 3+4 : le schema utilise dimensions.width (pas canvas.widthPx)
-  const baseWidth = effectiveTemplate?.dimensions?.width || template?.dimensions?.width || effectiveTemplate?.canvas?.widthPx || 1080;
-  const baseHeight = effectiveTemplate?.dimensions?.height || template?.dimensions?.height || effectiveTemplate?.canvas?.heightPx || 1350;
+  const baseWidth = template.dimensions?.width || 1080;
+  const baseHeight = template.dimensions?.height || 1350;
   const scaledWidth = baseWidth * scale;
   const scaledHeight = baseHeight * scale;
-
 
   const components = variantConfig.components || {};
   const layoutRules = variantConfig.layoutRules || {};
@@ -359,9 +336,6 @@ export default function SlideRenderer({
           return 0;
         })
         .map(([componentKey, componentConfigRaw]: [string, any]) => {
-          // Sprint 3+4 : apply format overrides (manual locks)
-          const componentConfig = getFinalComponent(componentKey, componentConfigRaw);
-
         if (componentConfigRaw?.enabled === false) return null;
         if (componentKey === "backgroundMedia") return null;
 

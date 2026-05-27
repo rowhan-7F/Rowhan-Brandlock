@@ -4,10 +4,10 @@
 //  download -> extract WAV -> upload -> Whisper.cpp -> sanitizer -> save
 //
 //  Migration 2026-05-22 : Infomaniak Whisper -> Whisper.cpp self-hosted
-//  BÃ©nÃ©fices :
-//  - SouverainetÃ© Suisse maximale (zÃ©ro cloud externe)
+//  Bénéfices :
+//  - Souveraineté Suisse maximale (zéro cloud externe)
 //  - Token-level timestamps natifs (filtre hallucinations FR)
-//  - Plus de drift sur vidÃ©os longues (>60s)
+//  - Plus de drift sur vidéos longues (>60s)
 //  - Suppression VAD + anchors binary search (devenus inutiles)
 //  - ~50% moins de code, ~10x plus maintenable
 // ============================================================
@@ -43,9 +43,9 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 
   try {
     // ====================================
-    //  Ã‰TAPE 1/8 â€” Charger le projet
+    //  ÉTAPE 1/8 — Charger le projet
     // ====================================
-    await updateProgress(jobId, 5, "RÃ©cupÃ©ration du projet...");
+    await updateProgress(jobId, 5, "Récupération du projet...");
 
     const { data: projectData, error: projectErr } = await supabase
       .from("studio_video_projects")
@@ -66,11 +66,11 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     log.project(project.title, project.tenant_id);
 
     // ====================================
-    //  Ã‰TAPE 2/8 â€” Download media source
-    //  â­ Phase X1 : PrioritÃ© au voice-off si prÃ©sent
+    //  ÉTAPE 2/8 — Download media source
+    //  ⭐ Phase X1 : Priorité au voice-off si présent
     //  Le voice-off est plus propre que l'audio source (pas de bruit ambiant,
-    //  pas de musique, Ã©locution claire) â†’ transcription mieux synchronisÃ©e
-    //  avec ce que l'utilisateur entendra dans la vidÃ©o finale.
+    //  pas de musique, élocution claire) → transcription mieux synchronisée
+    //  avec ce que l'utilisateur entendra dans la vidéo finale.
     // ====================================
     const voiceoverAudio = project.state_json?.voiceover_audio as
       | { url?: string; filename?: string }
@@ -86,8 +86,8 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     let transcribedFrom: "voiceover" | "video";
 
     if (voUrlMatch) {
-      // â­ Voice-off dÃ©tectÃ© â†’ on transcribe le voice-off
-      await updateProgress(jobId, 10, "TÃ©lÃ©chargement de la voice-off (prioritaire)...");
+      // ⭐ Voice-off détecté → on transcribe le voice-off
+      await updateProgress(jobId, 10, "Téléchargement de la voice-off (prioritaire)...");
 
       const voiceoverStoragePath = voUrlMatch[1];
       const ext = voiceoverAudio?.filename?.split(".").pop() || "mp3";
@@ -101,19 +101,12 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 
       localVideoPath = localPath;
       transcribedFrom = "voiceover";
-      log.info(`[transcribe] Phase X1 â€” Voice-off detected, transcribing voice-off audio`);
+      log.info(`[transcribe] Phase X1 — Voice-off detected, transcribing voice-off audio`);
     } else {
-      // Pas de voice-off â†’ vidÃ©o source (comportement par dÃ©faut)
-      await updateProgress(jobId, 10, "TÃ©lÃ©chargement de la vidÃ©o source...");
+      // Pas de voice-off → vidéo source (comportement par défaut)
+      await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
 
-      // Fix path : extraire depuis source_video_url si disponible (sinon fallback)
-      let sourcePath: string;
-      if (project.source_video_url) {
-        const urlMatch = project.source_video_url.match(/video-sources\/(.+?)(\?|$)/);
-        sourcePath = urlMatch?.[1] ?? `${project.tenant_id}/${project.id}/source.${project.source_format}`;
-      } else {
-        sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
-      }
+      const sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
       const { localPath } = await downloadFromStorage({
         jobId,
         bucket: "video-sources",
@@ -126,13 +119,13 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  Ã‰TAPE 3/8 â€” Extract audio WAV 16kHz mono
+    //  ÉTAPE 3/8 — Extract audio WAV 16kHz mono
     // ====================================
     await updateProgress(
         jobId,
         25,
         transcribedFrom === "voiceover"
-          ? "Conversion voice-off â†’ WAV 16kHz..."
+          ? "Conversion voice-off → WAV 16kHz..."
           : "Extraction de la piste audio (FFmpeg)..."
       );
 
@@ -143,7 +136,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     });
 
     // ====================================
-    //  ETAPE 4.5/8 â€” Audio Enhancement (Phase 8.B)
+    //  ETAPE 4.5/8 — Audio Enhancement (Phase 8.B)
     //  Applique un filtre FFmpeg selon project.mode :
     //  - studio_clean   : passthrough
     //  - voice_music    : highpass + denoise leger
@@ -162,7 +155,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     log.info("Audio enhancement: applied=" + enhanceApplied + " (mode=" + project.mode + " -> active=" + enhanceActiveMode + ")");
 
     // ====================================
-    //  Ã‰TAPE 4/8 â€” Upload audio.wav vers Supabase Storage
+    //  ÉTAPE 4/8 — Upload audio.wav vers Supabase Storage
     // ====================================
     await updateProgress(jobId, 35, "Upload de l'audio extrait...");
 
@@ -181,7 +174,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
       .eq("id", projectId);
 
     // ====================================
-    //  â­ Ã‰TAPE 5/8 â€” Whisper.cpp (transcription locale souveraine)
+    //  ⭐ ÉTAPE 5/8 — Whisper.cpp (transcription locale souveraine)
     // ====================================
     await updateProgress(jobId, 40, "Transcription Whisper.cpp en cours...");
 
@@ -242,7 +235,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  Ã‰TAPE 6/8 â€” Apply sanitizer (lexique tenant)
+    //  ÉTAPE 6/8 — Apply sanitizer (lexique tenant)
     // ====================================
     await updateProgress(jobId, 92, "Application du lexique tenant...");
 
@@ -252,26 +245,26 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     );
 
     // ====================================
-    //  Ã‰TAPE 7/8 â€” Save transcript en DB
+    //  ÉTAPE 7/8 — Save transcript en DB
     // ====================================
     await updateProgress(jobId, 97, "Sauvegarde du transcript...");
     log.save();
 
     // Reconstruction des VRAIS mots depuis les sub-tokens BPE Whisper.
-    // Sans Ã§a, "Fabien" reste dÃ©coupÃ© en " Fab" + "ien" dans les subs.
-    // On reconstruit segment par segment pour prÃ©server les frontiÃ¨res naturelles.
+    // Sans ça, "Fabien" reste découpé en " Fab" + "ien" dans les subs.
+    // On reconstruit segment par segment pour préserver les frontières naturelles.
     const segmentsWithRealWords = whisperResult.segments.map((seg) => ({
         raw: seg,
         words: reconstructWordsFromTokens(seg.tokens),
       }));
   
       // Conversion ms -> secondes pour generateAss.ts.
-      // â­ FIX TIMING : on resserre start/end sur le PREMIER et DERNIER mot rÃ©el,
-      //    pas sur les frontiÃ¨res du segment Whisper (qui incluent les silences).
-      //    Ã‰vite que les subs apparaissent pendant les pauses.
+      // ⭐ FIX TIMING : on resserre start/end sur le PREMIER et DERNIER mot réel,
+      //    pas sur les frontières du segment Whisper (qui incluent les silences).
+      //    Évite que les subs apparaissent pendant les pauses.
       const legacySegments = segmentsWithRealWords.map(({ raw, words }) => {
         if (words.length === 0) {
-          // Fallback rare : segment sans mots reconstituÃ©s (devrait pas arriver)
+          // Fallback rare : segment sans mots reconstitués (devrait pas arriver)
           return {
             start: raw.from_ms / 1000,
             end: raw.to_ms / 1000,
@@ -311,7 +304,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
         applied_replacements_count: appliedReplacements,
         engine: "whisper.cpp-large-v3",
         hallucinations_filtered: whisperResult.hallucinations_filtered,
-        source: transcribedFrom, // â­ Phase X1 : "voiceover" ou "video"
+        source: transcribedFrom, // ⭐ Phase X1 : "voiceover" ou "video"
       },
     };
 
@@ -329,7 +322,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
     }
 
     // ====================================
-    //  Ã‰TAPE 8/8 â€” Mark job completed
+    //  ÉTAPE 8/8 — Mark job completed
     // ====================================
     await supabase.rpc("complete_video_job", {
       p_job_id: jobId,
@@ -353,7 +346,7 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 }
 
 // ============================================================
-//  Helper â€” Update progress sans casser le job si update Ã©choue
+//  Helper — Update progress sans casser le job si update échoue
 // ============================================================
 
 async function updateProgress(

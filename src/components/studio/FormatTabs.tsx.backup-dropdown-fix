@@ -1,0 +1,191 @@
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
+import { Plus, X, Star } from "lucide-react";
+
+// ============================================================
+//  TYPES
+// ============================================================
+
+export type FormatTabsProps = {
+  /** Templates disponibles dans le tenant config (exportTemplates) */
+  allTemplates: Record<string, any>;
+  /** Formats actuellement actifs dans le projet */
+  activeFormats: string[];
+  /** Format actuellement en cours d edition */
+  activeEditingFormat: string;
+  /** Format principal du projet (cree a la creation, non supprimable) */
+  primaryFormat: string;
+  /** Compteur d overrides manuels par format */
+  overridesCount: Record<string, number>;
+  /** Couleur primaire du tenant (defaut bordeaux) */
+  primaryColor?: string;
+  /** Callbacks */
+  onSelectFormat: (formatKey: string) => void;
+  onAddFormat: (formatKey: string) => void;
+  onRemoveFormat?: (formatKey: string) => void;
+};
+
+// ============================================================
+//  HELPER : Label friendly pour un format
+// ============================================================
+
+function getFormatLabel(formatKey: string, template: any): string {
+  if (template?.label) return template.label;
+  
+  // Fallback : derive du formatKey
+  return formatKey
+    .replace(/^carrousel_/, "")
+    .replace(/^video_/, "")
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+// ============================================================
+//  COMPOSANT PRINCIPAL
+// ============================================================
+
+export default function FormatTabs({
+  allTemplates,
+  activeFormats,
+  activeEditingFormat,
+  primaryFormat,
+  overridesCount,
+  primaryColor = "#B11E2F",
+  onSelectFormat,
+  onAddFormat,
+  onRemoveFormat,
+}: FormatTabsProps) {
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  
+  // Fermer le menu si clic en dehors
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [addMenuOpen]);
+  
+  // Templates disponibles a l ajout (pas deja dans activeFormats)
+  // Filtrer aussi : seulement les carousels (pas les videos dans un studio carousel)
+  const availableTemplates = Object.entries(allTemplates || {})
+    .filter(([key]) => !activeFormats.includes(key))
+    .filter(([key]) => {
+      // Categorie depuis le primary (carousel ou video)
+      const primaryCategory = primaryFormat.startsWith("carrousel_") ? "carrousel" : "video";
+      const keyCategory = key.startsWith("carrousel_") ? "carrousel" : "video";
+      return primaryCategory === keyCategory;
+    });
+  
+  return (
+    <div className="flex items-center gap-2 px-6 py-3 border-b border-neutral-200 bg-white overflow-x-auto">
+      {activeFormats.map((formatKey) => {
+        const template = allTemplates[formatKey];
+        const label = getFormatLabel(formatKey, template);
+        const isActive = formatKey === activeEditingFormat;
+        const isPrimary = formatKey === primaryFormat;
+        const count = overridesCount[formatKey] || 0;
+        const canRemove = !isPrimary && onRemoveFormat;
+        
+        const buttonClass = [
+          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all border-2",
+          isActive
+            ? "border-[color:var(--bl-primary)] bg-[color:var(--bl-primary)]/5 text-[color:var(--bl-primary)]"
+            : "border-transparent bg-neutral-50 text-neutral-600 hover:bg-neutral-100",
+        ].join(" ");
+        
+        return (
+          <div
+            key={formatKey}
+            className="relative group shrink-0"
+            style={{ ["--bl-primary" as any]: primaryColor }}
+          >
+            <button
+              type="button"
+              onClick={() => onSelectFormat(formatKey)}
+              className={buttonClass}
+            >
+              {isPrimary && <Star size={10} className="opacity-60" />}
+              <span>{label}</span>
+              
+              {count > 0 && (
+                <span
+                  className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black"
+                  style={{
+                    backgroundColor: isActive ? primaryColor : "#737373",
+                    color: "white",
+                  }}
+                  title={count + " modification(s) manuelle(s)"}
+                >
+                  {count}
+                </span>
+              )}
+              
+              {canRemove && (
+                <X
+                  size={12}
+                  className="opacity-0 group-hover:opacity-60 hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (confirm("Supprimer ce format du projet ? Les modifications manuelles seront perdues.")) {
+                      onRemoveFormat!(formatKey);
+                    }
+                  }}
+                />
+              )}
+            </button>
+          </div>
+        );
+      })}
+      
+      {availableTemplates.length > 0 && (
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setAddMenuOpen((v) => !v)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold text-neutral-500 border-2 border-dashed border-neutral-300 hover:border-neutral-400 hover:text-neutral-700 transition-all"
+            title="Ajouter un format au projet"
+          >
+            <Plus size={12} />
+            <span>Ajouter format</span>
+          </button>
+          
+          {addMenuOpen && (
+            <div className="absolute top-full left-0 mt-1 z-50 bg-white rounded-lg shadow-lg border border-neutral-200 py-1 min-w-[200px]">
+              {availableTemplates.map(([key, template]) => {
+                const label = getFormatLabel(key, template);
+                const canvas = template?.canvas;
+                const dim = canvas ? canvas.widthPx + "x" + canvas.heightPx : "";
+                
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      onAddFormat(key);
+                      setAddMenuOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 hover:bg-neutral-50 transition-colors flex items-center justify-between"
+                  >
+                    <span className="text-xs font-bold text-neutral-900">{label}</span>
+                    {dim && (
+                      <span className="text-[10px] text-neutral-400 font-mono">{dim}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -57,9 +57,9 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
 
   try {
     // ====================================
-    //  Ã‰TAPE 1 â€” Load project
+    //  ÉTAPE 1 — Load project
     // ====================================
-    await updateProgress(jobId, 5, "RÃ©cupÃ©ration du projet...");
+    await updateProgress(jobId, 5, "Récupération du projet...");
 
     const { data: projectData, error: projectErr } = await supabase
       .from("studio_video_projects")
@@ -92,18 +92,11 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     log.info(`Found ${transcript.segments.length} subtitle segments`);
 
     // ====================================
-    //  Ã‰TAPE 2 â€” Download source MP4
+    //  ÉTAPE 2 — Download source MP4
     // ====================================
-    await updateProgress(jobId, 10, "TÃ©lÃ©chargement de la vidÃ©o source...");
+    await updateProgress(jobId, 10, "Téléchargement de la vidéo source...");
 
-  // Fix path : extraire depuis source_video_url si disponible (sinon fallback)
-  let sourcePath: string;
-  if (project.source_video_url) {
-    const urlMatch = project.source_video_url.match(/video-sources\/(.+?)(\?|$)/);
-    sourcePath = urlMatch?.[1] ?? `${project.tenant_id}/${project.id}/source.${project.source_format}`;
-  } else {
-    sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
-  }
+    const sourcePath = `${project.tenant_id}/${project.id}/source.${project.source_format}`;
     const { localPath: localVideoPath } = await downloadFromStorage({
       jobId,
       bucket: "video-sources",
@@ -114,7 +107,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     const jobTmpDir = path.dirname(localVideoPath);
 
     // ====================================
-    //  Ã‰TAPE 2.5 â€” Voice-off (optionnel)
+    //  ÉTAPE 2.5 — Voice-off (optionnel)
     // ====================================
     let localVoiceoverPath: string | undefined;
     let audioMix:
@@ -125,7 +118,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     const audioMixState = project.state_json?.audio_mix;
 
     if (voiceoverAudio?.url) {
-      await updateProgress(jobId, 16, "TÃ©lÃ©chargement de la voice-off...");
+      await updateProgress(jobId, 16, "Téléchargement de la voice-off...");
 
       const urlMatch = voiceoverAudio.url.match(
         /\/storage\/v1\/object\/public\/video-voiceovers\/(.+)$/
@@ -159,7 +152,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     }
 
     // ====================================
-    //  Ã‰TAPE 2.6 â€” B-rolls (optionnel, plusieurs possibles)
+    //  ÉTAPE 2.6 — B-rolls (optionnel, plusieurs possibles)
     // ====================================
     const stateBrolls = project.state_json?.brolls;
     const localBrolls: BurnSubsBroll[] = [];
@@ -168,7 +161,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
       await updateProgress(
         jobId,
         20,
-        `TÃ©lÃ©chargement de ${stateBrolls.length} b-roll${
+        `Téléchargement de ${stateBrolls.length} b-roll${
           stateBrolls.length > 1 ? "s" : ""
         }...`
       );
@@ -217,9 +210,9 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     }
 
     // ====================================
-    //  Ã‰TAPE 3 â€” Generate .ass file
+    //  ÉTAPE 3 — Generate .ass file
     // ====================================
-    await updateProgress(jobId, 25, "GÃ©nÃ©ration des sous-titres .ass...");
+    await updateProgress(jobId, 25, "Génération des sous-titres .ass...");
 
     const targetDims =
       FORMAT_DIMENSIONS[project.format] || { width: 1080, height: 1920 };
@@ -261,7 +254,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     log.info(`Generated .ass with ${segmentCount} segments`);
 
     // ====================================
-    //  Ã‰TAPE 4 â€” Burn subs + audio mix + overlays
+    //  ÉTAPE 4 — Burn subs + audio mix + overlays
     // ====================================
     const features: string[] = ["subs"];
     if (localVoiceoverPath) features.push("voice-off");
@@ -295,7 +288,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     clearInterval(progressTicker);
 
     // ====================================
-    //  â­ Ã‰TAPE 4.5 â€” Brand Assets compose + concat (Phase 7.6)
+    //  ⭐ ÉTAPE 4.5 — Brand Assets compose + concat (Phase 7.6)
     // ====================================
     let finalRenderPath = outputPath;
     let finalSize = outputSize;
@@ -343,7 +336,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
           bgVariantId: string | undefined,
           assetType: "intro" | "outro"
         ): Promise<string | null> => {
-          // Pick BG : variant approuvÃ©e OU default
+          // Pick BG : variant approuvée OU default
           let bgUrl: string | null = null;
           let bgKind: BrandAssetBgKind | null = null;
 
@@ -438,7 +431,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
           if (p) composedClips.push({ type: "outro", path: p });
         }
 
-        // Concat si au moins 1 clip Ã  ajouter
+        // Concat si au moins 1 clip à ajouter
         if (composedClips.length > 0) {
           await updateProgress(
             jobId,
@@ -465,7 +458,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
           finalSize = concatedSize;
 
           log.info(
-            `[brand-assets] Final concated: ${concatList.length} segments â†’ ${(
+            `[brand-assets] Final concated: ${concatList.length} segments → ${(
               concatedSize /
               1024 /
               1024
@@ -476,9 +469,9 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     }
 
     // ====================================
-    //  Ã‰TAPE 5 â€” Upload final video
+    //  ÉTAPE 5 — Upload final video
     // ====================================
-    await updateProgress(jobId, 90, "Upload de la vidÃ©o finale...");
+    await updateProgress(jobId, 90, "Upload de la vidéo finale...");
 
     const finalStoragePath = `${project.tenant_id}/${project.id}/final.mp4`;
     await uploadToStorage({
@@ -489,7 +482,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     });
 
     // ====================================
-    //  Ã‰TAPE 6 â€” Update DB
+    //  ÉTAPE 6 — Update DB
     // ====================================
     await updateProgress(jobId, 95, "Finalisation...");
 
@@ -539,7 +532,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     }
 
     // ====================================
-    //  Ã‰TAPE 7 â€” Mark job completed
+    //  ÉTAPE 7 — Mark job completed
     // ====================================
     await supabase.rpc("complete_video_job", {
       p_job_id: jobId,

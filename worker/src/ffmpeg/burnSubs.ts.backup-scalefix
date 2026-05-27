@@ -135,7 +135,7 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
     // Mode simple : juste burn subs (back-compat)
     args = [
       "-i", videoPath,
-      "-vf", `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black,subtitles='${assBasename}'`,
+      "-vf", `subtitles='${assBasename}'`,
       "-c:v", "libx264",
       "-preset", "medium",
       "-crf", "20",
@@ -171,9 +171,6 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
     // ============================================================
     const filterParts: string[] = [];
 
-  // Sprint fix : scale + pad la video source pour matcher le format cible
-  filterParts.push(`[0:v]scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black[v_base]`);
-
     // 1. Audio mix (si voice-off)
     if (hasVoiceover) {
       filterParts.push(`[0:a]volume=${audioMix!.main_volume}[a_main]`);
@@ -184,7 +181,7 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
     }
 
     // 2. Chain b-rolls overlays sur vidéo BRUTE (subs pas encore appliquées)
-    let lastVideoLabel = "v_base";
+    let lastVideoLabel = "0:v";
     for (let i = 0; i < brolls.length; i++) {
       const broll = brolls[i];
       const inputIdx = brollStartIdx + i;

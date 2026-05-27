@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCurrentTenant } from "../../../lib/useCurrentTenant";
@@ -15,6 +15,8 @@ import {
   Image as ImageIcon, X, CheckCircle2, Pencil,
 } from "lucide-react";
 import SlideRenderer from "../../../components/studio/SlideRenderer";
+import FormatTabs from "../../../components/studio/FormatTabs";
+import { countProjectManualOverrides, setInputOverride, getInputFinalValue, getResolvedInputs as getResolvedInputsFromHelper } from "../../../lib/formatOverrides";
 import MediaPicker, { SelectedImage } from "../../../components/studio/MediaPicker";
 import { exportCarouselAsZip, downloadBlob, ExportProgress } from "../../../lib/exportCarousel";
 import NotificationsBell from "@/components/NotificationsBell";
@@ -49,6 +51,63 @@ export default function StudioEditorPage() {
     projectId,
     tenantId
   );
+
+  // Sprint 3+4 : Multi-format state derivation
+  const stateJsonRaw = projectState.project?.state_json;
+  const primaryFormat = stateJsonRaw?.templateKey || "carrousel_instagram";
+  const activeFormats = stateJsonRaw?.activeFormats || [primaryFormat];
+  const activeEditingFormat = stateJsonRaw?.meta?.activeEditingFormat || primaryFormat;
+  const allTemplates = (tenantState.status === "ready" ? (tenantState.config?.exportTemplates || {}) : {}) as Record<string, any>;
+
+  const overridesCount = useMemo(() => {
+    const counts: Record<string, number> = {};
+    if (!stateJsonRaw?.slides) return counts;
+    for (const fmt of activeFormats) {
+      counts[fmt] = countProjectManualOverrides(stateJsonRaw.slides, fmt);
+    }
+    return counts;
+  }, [activeFormats, stateJsonRaw?.slides]);
+
+  const handleSelectFormat = (key: string) => {
+    updateStateJson((sj) => ({
+      ...sj,
+      meta: { ...sj.meta, activeEditingFormat: key },
+    }));
+  };
+
+  const handleAddFormat = (key: string) => {
+    updateStateJson((sj) => ({
+      ...sj,
+      activeFormats: [...(sj.activeFormats || [sj.templateKey]), key],
+      meta: { ...sj.meta, activeEditingFormat: key },
+    }));
+    toast.success("Format ajoute", { description: "Tu peux maintenant l editer." });
+  };
+
+  const handleRemoveFormat = (key: string) => {
+    if (key === stateJsonRaw?.templateKey) return;
+    updateStateJson((sj) => {
+      const newSlides = sj.slides.map((s: any) => {
+        if (!s.formatOverrides?.[key]) return s;
+        const newOverrides = { ...s.formatOverrides };
+        delete newOverrides[key];
+        return { ...s, formatOverrides: newOverrides };
+      });
+      return {
+        ...sj,
+        slides: newSlides,
+        activeFormats: (sj.activeFormats || []).filter((f: string) => f !== key),
+        meta: {
+          ...sj.meta,
+          activeEditingFormat:
+            sj.meta?.activeEditingFormat === key
+              ? sj.templateKey
+              : sj.meta?.activeEditingFormat,
+        },
+      };
+    });
+    toast.success("Format supprime");
+  };
 
   const [openSlideId, setOpenSlideId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -158,6 +217,19 @@ export default function StudioEditorPage() {
     }
   };
 
+  // Sprint 3+4 : helper pour resoudre les inputs avec overrides du format actif
+  const getResolvedInputs = (slide: any, formatKey: string): Record<string, any> => {
+    if (!slide) return {};
+    const result: Record<string, any> = { ...slide.inputs };
+    const overrides = slide.formatOverrides?.[formatKey]?.inputs;
+    if (overrides) {
+      for (const [key, entry] of Object.entries(overrides)) {
+        result[key] = (entry as any).value;
+      }
+    }
+    return result;
+  };
+
   const updateSlideVariantAndSub = (slideId: string, newVariant: string, newSubVariant: string) => {
     updateStateJson((prev) => ({
       ...prev,
@@ -168,6 +240,27 @@ export default function StudioEditorPage() {
   };
 
   const updateSlideInput = (slideId: string, inputKey: string, value: any) => {
+    // Sprint 3+4 : detect format actif et stocker en override si non-primary
+    updateStateJson((prev) => {
+      const editingFormat = prev.meta?.activeEditingFormat || prev.templateKey;
+      const isPrimary = editingFormat === prev.templateKey;
+      return {
+        ...prev,
+        slides: prev.slides.map((s: any) => {
+          if (s.id !== slideId) return s;
+          // CAS 1 : edit dans le format primary -> base content
+          if (isPrimary) {
+            return { ...s, inputs: { ...s.inputs, [inputKey]: value } };
+          }
+          // CAS 2 : edit dans un format secondaire -> override manuel granulaire
+          return setInputOverride(s, editingFormat, inputKey, value, "manual");
+        }),
+      };
+    });
+  };
+
+  // Ancien comportement preserve pour les autres handlers (deprecated)
+  const updateSlideInputLegacy = (slideId: string, inputKey: string, value: any) => {
     updateStateJson((prev) => ({
       ...prev,
       slides: prev.slides.map((s) =>
@@ -295,6 +388,21 @@ export default function StudioEditorPage() {
         onLogout={handleLogout}
       />
 
+        {/* Sprint 3+4 : Tabs formats multi-format */}
+        {projectState.status === "ready" && (
+          <FormatTabs
+            allTemplates={allTemplates}
+            activeFormats={activeFormats}
+            activeEditingFormat={activeEditingFormat}
+            primaryFormat={primaryFormat}
+            overridesCount={overridesCount}
+            primaryColor={brandColor}
+            onSelectFormat={handleSelectFormat}
+            onAddFormat={handleAddFormat}
+            onRemoveFormat={handleRemoveFormat}
+          />
+        )}
+
       <div className="flex-1 flex overflow-hidden">
         <aside className="w-[340px] border-r border-neutral-200 bg-white overflow-y-auto flex flex-col shrink-0">
           <div className="px-5 py-4 border-b border-neutral-200 flex items-center justify-between sticky top-0 bg-white z-10">
@@ -339,6 +447,7 @@ export default function StudioEditorPage() {
                 config={config}
                 userRole={userRole}
                 tenantId={userTenantId}
+              activeEditingFormat={activeEditingFormat}
               />
             ))}
           </div>
@@ -360,6 +469,8 @@ export default function StudioEditorPage() {
                   brandColor={brandColor}
                   config={config}
                   onClick={() => setOpenSlideId(slide.id)}
+                  activeEditingFormat={activeEditingFormat}
+                  allTemplates={allTemplates}
                 />
               ))
             )}
@@ -378,7 +489,7 @@ export default function StudioEditorPage() {
       >
         {slides.map((slide: any, idx: number) => {
           const subVariant = (slide as any).subVariant || undefined;
-          const templateKey = "carrousel_instagram"; // Slides = carrousel uniquement (vidéo a sa propre page)
+          const templateKey = activeEditingFormat; // Sprint 3+4 : dynamique
           return (
             <div
               key={`export-${slide.id}`}
@@ -390,9 +501,11 @@ export default function StudioEditorPage() {
                 config={config}
                 variant={slide.variant}
                 subVariant={subVariant}
-                inputValues={slide.inputs}
+                inputValues={getResolvedInputs(slide, activeEditingFormat)}
                 templateKey={templateKey}
                 scale={1}
+                slide={slide as any}
+                activeFormat={activeEditingFormat}
               />
             </div>
           );
@@ -497,11 +610,30 @@ function EditableProjectTitle({
 function SlideAccordion({
   slide, index, isOpen, onToggle, onDelete, onChangeVariant, onChangeInput,
   onCompleteSlide, config, userRole, tenantId,
+  activeEditingFormat,
 }: any) {
   const variant = slide.variant;
   const subVariant = (slide as any).subVariant || getDefaultSubVariant(config, variant);
   const subVariantConfig = getSubVariantConfig(config, variant, subVariant);
   const inputs = subVariantConfig?.inputs || [];
+
+  // Sprint 3+4 : resoudre les inputs (base + overrides du format actif)
+  const resolvedInputs = getResolvedInputsFromHelper(
+    slide as any,
+    activeEditingFormat || "carrousel_instagram"
+  );
+
+  // DEBUG TEMPORAIRE Sprint 3+4 - a supprimer apres validation
+  console.log("[DEBUG SlideAccordion]", {
+    slideId: slide?.id,
+    activeEditingFormat,
+    hasOverrides: !!slide?.formatOverrides,
+    formatOverridesKeys: slide?.formatOverrides ? Object.keys(slide.formatOverrides) : [],
+    currentFormatOverrides: slide?.formatOverrides?.[activeEditingFormat || "carrousel_instagram"],
+    resolvedInputsKeys: Object.keys(resolvedInputs),
+    titleTextBase: slide?.inputs?.titleText,
+    titleTextResolved: resolvedInputs?.titleText,
+  });
   const filled = countFilledInputs(slide, inputs);
   const isComplete = filled === inputs.length && inputs.length > 0;
 
@@ -611,7 +743,7 @@ function SlideAccordion({
             <DynamicInput
               key={`${variant}-${subVariant}-${input.key}`}
               input={input}
-              value={slide.inputs[input.key]}
+              value={resolvedInputs[input.key]}
               onChange={(v: any) => onChangeInput(input.key, v)}
               isLast={idx === inputs.length - 1}
               onCompleteLast={onCompleteSlide}
@@ -896,15 +1028,26 @@ function AddSlideButton({ config, onAdd, brandColor }: any) {
 
 function SlidePreview({
   slide, index, isOpen, brandColor, config, onClick,
+  activeEditingFormat, allTemplates,
 }: any) {
-  const templateKey = "carrousel_instagram"; // Slides = carrousel uniquement (vidéo a sa propre page)
+  const templateKey = activeEditingFormat || "carrousel_instagram"; // Sprint 3+4 : dynamique
+  // Sprint 3+4 : dimensions dynamiques selon le format actif
+  // Sprint 3+4 : le schema utilise dimensions.width/height (pas canvas.widthPx)
+  const _tmpl = allTemplates?.[templateKey];
+  const dim = _tmpl?.dimensions
+    ? { widthPx: _tmpl.dimensions.width, heightPx: _tmpl.dimensions.height }
+    : _tmpl?.canvas
+      ? { widthPx: _tmpl.canvas.widthPx, heightPx: _tmpl.canvas.heightPx }
+      : { widthPx: 1080, heightPx: 1350 };
+
 
   const subVariant = (slide as any).subVariant || getDefaultSubVariant(config, slide.variant);
   const subVariantConfig = getSubVariantConfig(config, slide.variant, subVariant);
   const review = (slide as any).review;
 
   const SCALE = 0.27;
-  const FIXED_WIDTH = 1080 * SCALE;
+  const FIXED_WIDTH = dim.widthPx * SCALE;
+  const FIXED_HEIGHT = dim.heightPx * SCALE;
 
   const outline = review?.status === "ok"
     ? "3px solid #16a34a"
@@ -920,6 +1063,7 @@ function SlidePreview({
           }`}
           style={{
             width: FIXED_WIDTH,
+              height: FIXED_HEIGHT + 24, // +24 pour le bandeau header de la slide
             outline,
             outlineOffset: "2px",
           }}
@@ -927,7 +1071,7 @@ function SlidePreview({
       <div
         className="px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-white truncate flex items-center justify-between"
         style={{ backgroundColor: brandColor, width: FIXED_WIDTH }}
-      >
+        >
         <span className="truncate">
           Slide {index + 1} · {variantLabel(config, slide.variant)}
           {subVariantConfig?.label && (
@@ -941,9 +1085,11 @@ function SlidePreview({
         config={config}
         variant={slide.variant}
         subVariant={subVariant}
-        inputValues={slide.inputs}
+        inputValues={getResolvedInputsFromHelper(slide as any, templateKey)}
         templateKey={templateKey}
         scale={SCALE}
+          slide={slide as any}
+            activeFormat={templateKey}
       />
       {/* ⭐ Slide approuvée (status ok) */}
       {review?.status === "ok" && (

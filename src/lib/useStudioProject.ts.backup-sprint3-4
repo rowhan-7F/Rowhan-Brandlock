@@ -17,53 +17,13 @@ export type SlideState = {
   id: string;
   variant: string;
   inputs: Record<string, SlideInputValue>;
-  /** Sprint 3+4 : overrides par format (track granulaire) */
-  formatOverrides?: {
-    [formatKey: string]: SlideFormatOverride;
-  };
-};
-
-// ============================================================
-//  SPRINT 3+4 : OVERRIDE GRANULAIRE (luxury architecture)
-// ============================================================
-
-/** Source de la valeur (audit + future-ready collab) */
-export type OverrideSource = "manual" | "preset" | "import";
-
-/** Une valeur surchargee individuellement (avec historique) */
-export type OverrideEntry<T = any> = {
-  value: T;
-  source: OverrideSource;
-  lockedAt: string;            // ISO date
-  previousValue?: T;            // pour undo natif
-};
-
-/** Override d un component (granulaire par propriete) */
-export type ComponentOverride = {
-  [propName: string]: OverrideEntry;
-};
-
-/** Override d une slide pour un format donne */
-export type SlideFormatOverride = {
-  /** Inputs override (titleText custom pour LinkedIn par ex.) */
-  inputs?: {
-    [inputKey: string]: OverrideEntry<SlideInputValue>;
-  };
-  /** Components override (position/style custom) */
-  components?: {
-    [componentKey: string]: ComponentOverride;
-  };
 };
 
 export type ProjectState = {
   templateKey: string;
   slides: SlideState[];
-  /** Sprint 3+4 : formats actifs (le primary + ceux ajoutes manuellement) */
-  activeFormats?: string[];
   meta?: {
     lastEditedSlideId?: string;
-    /** Format actuellement edite dans le studio */
-    activeEditingFormat?: string;
   };
 };
 
@@ -177,17 +137,6 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
       };
       if (!Array.isArray(stateJson.slides)) {
         stateJson.slides = [];
-      }
-
-      // Sprint 3+4 : migration lazy V1 -> V2 (formatOverrides architecture)
-      if (!stateJson.activeFormats || stateJson.activeFormats.length === 0) {
-        stateJson.activeFormats = [stateJson.templateKey];
-      }
-      if (!stateJson.meta) {
-        stateJson.meta = {};
-      }
-      if (!stateJson.meta.activeEditingFormat) {
-        stateJson.meta.activeEditingFormat = stateJson.templateKey;
       }
 
       latestStateJsonRef.current = stateJson;
