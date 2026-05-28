@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Plus, X, Star, SquareDashed } from "lucide-react";
+import { Plus, X, Star } from "lucide-react";
 
 // ============================================================
 //  TYPES
@@ -18,8 +18,6 @@ export type FormatTabsProps = {
   onSelectFormat: (formatKey: string) => void;
   onAddFormat: (formatKey: string) => void;
   onRemoveFormat?: (formatKey: string) => void;
-  safeZonesEnabled?: boolean;
-  onToggleSafeZones?: () => void;
 };
 
 // ============================================================
@@ -50,8 +48,6 @@ export default function FormatTabs({
   onSelectFormat,
   onAddFormat,
   onRemoveFormat,
-  safeZonesEnabled = false,
-  onToggleSafeZones,
 }: FormatTabsProps) {
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -104,7 +100,7 @@ export default function FormatTabs({
     });
   
   return (
-    <div className="relative flex items-center gap-2 pl-6 pr-32 py-3 border-b border-neutral-200 bg-white overflow-x-auto shrink-0">
+    <div className="flex items-center gap-2 px-6 py-3 border-b border-neutral-200 bg-white overflow-x-auto shrink-0">
       {activeFormats.map((formatKey) => {
         const template = allTemplates[formatKey];
         const label = getFormatLabel(formatKey, template);
@@ -216,25 +212,6 @@ export default function FormatTabs({
           )}
         </>
       )}
-
-        {/* Toggle Safe Zones - tout a droite */}
-        {onToggleSafeZones && (
-          <button
-            type="button"
-            onClick={onToggleSafeZones}
-            className={[
-              "absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all border-2 shrink-0 bg-white z-20 shadow-sm",
-              safeZonesEnabled
-                ? "border-[color:var(--bl-primary)] bg-[color:var(--bl-primary)]/5 text-[color:var(--bl-primary)]"
-                : "border-neutral-300 bg-white text-neutral-500 hover:border-neutral-400 hover:text-neutral-700",
-            ].join(" ")}
-            style={{ ["--bl-primary" as any]: primaryColor }}
-            title={safeZonesEnabled ? "Masquer les marges de securite" : "Afficher les marges de securite"}
-          >
-            <SquareDashed size={12} />
-            <span>Safe Zone</span>
-          </button>
-        )}
     </div>
   );
 }

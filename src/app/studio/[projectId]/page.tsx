@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import SlideRenderer from "../../../components/studio/SlideRenderer";
 import FormatTabs from "../../../components/studio/FormatTabs";
+import SafeZoneOverlay from "../../../components/studio/SafeZoneOverlay";
 import { countProjectManualOverrides, setInputOverride, getInputFinalValue, getResolvedInputs as getResolvedInputsFromHelper } from "../../../lib/formatOverrides";
 import MediaPicker, { SelectedImage } from "../../../components/studio/MediaPicker";
 import { exportCarouselAsZip, downloadBlob, ExportProgress } from "../../../lib/exportCarousel";
@@ -110,6 +111,25 @@ export default function StudioEditorPage() {
   };
 
   const [openSlideId, setOpenSlideId] = useState<string | null>(null);
+
+  // Sprint 4 : Toggle Safe Zones avec persistance localStorage
+  const [safeZonesEnabled, setSafeZonesEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem("studio:safeZones");
+    if (saved === "true") setSafeZonesEnabled(true);
+  }, []);
+
+  const toggleSafeZones = () => {
+    setSafeZonesEnabled((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem("studio:safeZones", next ? "true" : "false");
+      } catch {}
+      return next;
+    });
+  };
   const [submitting, setSubmitting] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
   const [localTitle, setLocalTitle] = useState<string | null>(null);
@@ -400,6 +420,8 @@ export default function StudioEditorPage() {
             onSelectFormat={handleSelectFormat}
             onAddFormat={handleAddFormat}
             onRemoveFormat={handleRemoveFormat}
+            safeZonesEnabled={safeZonesEnabled}
+            onToggleSafeZones={toggleSafeZones}
           />
         )}
 
@@ -471,6 +493,7 @@ export default function StudioEditorPage() {
                   onClick={() => setOpenSlideId(slide.id)}
                   activeEditingFormat={activeEditingFormat}
                   allTemplates={allTemplates}
+                  safeZonesEnabled={safeZonesEnabled}
                 />
               ))
             )}
@@ -1028,7 +1051,7 @@ function AddSlideButton({ config, onAdd, brandColor }: any) {
 
 function SlidePreview({
   slide, index, isOpen, brandColor, config, onClick,
-  activeEditingFormat, allTemplates,
+  activeEditingFormat, allTemplates, safeZonesEnabled,
 }: any) {
   const templateKey = activeEditingFormat || "carrousel_instagram"; // Sprint 3+4 : dynamique
   // Sprint 3+4 : dimensions dynamiques selon le format actif
@@ -1081,6 +1104,7 @@ function SlidePreview({
         {review?.status === "ok" && <CheckCircle2 size={11} />}
         {review?.status === "needs_changes" && <AlertCircle size={11} />}
       </div>
+      <div style={{ position: "relative", width: FIXED_WIDTH, height: FIXED_HEIGHT }}>
       <SlideRenderer
         config={config}
         variant={slide.variant}
@@ -1091,6 +1115,21 @@ function SlidePreview({
           slide={slide as any}
             activeFormat={templateKey}
       />
+        {safeZonesEnabled && (() => {
+          const variantData = _tmpl?.slideVariants?.[slide.variant];
+          const subVariantKey = (slide as any).subVariant || Object.keys(variantData?.subVariants || {})[0];
+          const subVariantData = variantData?.subVariants?.[subVariantKey];
+          const safeZones = subVariantData?.layoutRules?.safeZonesPx || { top: 60, left: 60, right: 60, bottom: 60 };
+          return (
+            <SafeZoneOverlay
+              safeZonesPx={safeZones}
+              canvasWidth={dim.widthPx}
+              canvasHeight={dim.heightPx}
+              scale={SCALE}
+            />
+          );
+        })()}
+      </div>
       {/* ⭐ Slide approuvée (status ok) */}
       {review?.status === "ok" && (
         <div className="px-3 py-2 bg-green-50 border-t border-green-200 flex items-center gap-1.5">
