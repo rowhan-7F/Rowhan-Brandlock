@@ -548,7 +548,7 @@ export default function AdminMobileFeed({
                 onClick={() => handleValidate(activeProject)}
                 className="flex-[1.5] py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all"
                 style={{
-                  backgroundColor: "#10B981",
+                  backgroundColor: isViewed ? "#10B981" : COLORS.bordeaux,
                   boxShadow: isViewed
                     ? "0 4px 12px rgba(16, 185, 129, 0.3)"
                     : "0 4px 12px rgba(177, 30, 47, 0.25)",
