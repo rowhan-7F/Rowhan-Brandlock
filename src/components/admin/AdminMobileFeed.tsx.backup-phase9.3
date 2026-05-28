@@ -11,7 +11,6 @@ import {
   Filter,
   Play,
   CheckCircle2,
-  AlertCircle,
   Send,
   X,
   Clock,
@@ -26,15 +25,12 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import SlideRenderer from "@/components/studio/SlideRenderer";
 import NotificationsBell from "@/components/NotificationsBell";
-import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import type { BrandConfig } from "@/types/brandConfig";
 
 // ═══════════════════════════════════════════════════════════
 //  TYPES
 // ═══════════════════════════════════════════════════════════
 type ProjectType = "carousel" | "video";
-
-type SlideReview = { status?: "ok" | "needs_changes"; comment?: string };
 
 type AdminMobileProject = {
   id: string;
@@ -95,18 +91,17 @@ export default function AdminMobileFeed({
 }: AdminMobileFeedProps) {
   const router = useRouter();
 
+  // ─── State ──────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<"briefs" | "pending" | "approved">("pending");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [showNewBriefModal, setShowNewBriefModal] = useState(false);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
-
-  // Sprint 9.3 : Reviews par slide
-  const [slideReviews, setSlideReviews] = useState<Record<string, SlideReview>>({});
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState("");
+  // Track viewed slides/videos pour debloquer "Valider & Suivant"
   const [viewedStatus, setViewedStatus] = useState<Record<string, boolean>>({});
 
+  // ─── Filtres tab ────────────────────────────────────────────
   const filteredProjects = useMemo(() => {
     if (activeTab === "pending") {
       return projects.filter((p) => p.status === "pending_approval");
@@ -125,7 +120,6 @@ export default function AdminMobileFeed({
     () => tasks.filter((t) => t.status === "open" || t.status === "in_progress"),
     [tasks]
   );
-
   const approvedCount = useMemo(
     () =>
       projects.filter(
@@ -134,13 +128,16 @@ export default function AdminMobileFeed({
     [projects]
   );
 
+  // ─── Set le 1er projet comme actif au mount ─────────────────
   useEffect(() => {
+    // Set premier projet actif si rien OU si l'ancien n'est plus dans le tab
     const existsInTab = activeProjectId && filteredProjects.some((p) => p.id === activeProjectId);
     if (!existsInTab && filteredProjects.length > 0) {
       setActiveProjectId(filteredProjects[0].id);
     }
   }, [filteredProjects, activeProjectId]);
 
+  // ─── Detection scroll auto pour changer activeProjectId ─────
   const feedRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -164,6 +161,7 @@ export default function AdminMobileFeed({
     return () => observer.disconnect();
   }, [filteredProjects.length]);
 
+  // ─── Handler : valider projet ───────────────────────────────
   const handleValidate = useCallback(
     async (project: AdminMobileProject) => {
       try {
@@ -181,7 +179,10 @@ export default function AdminMobileFeed({
 
         toast.success("Projet validé ✓");
 
-        const currentIdx = filteredProjects.findIndex((p) => p.id === project.id);
+        // Auto-scroll au projet suivant
+        const currentIdx = filteredProjects.findIndex(
+          (p) => p.id === project.id
+        );
         const next = filteredProjects[currentIdx + 1];
         if (next) {
           const nextEl = cardRefs.current[next.id];
@@ -200,6 +201,7 @@ export default function AdminMobileFeed({
     [filteredProjects, onRefresh]
   );
 
+  // ─── Handler : annuler approbation (remet en pending) ─────
   const handleUnapprove = useCallback(
     async (project: AdminMobileProject) => {
       try {
@@ -225,100 +227,37 @@ export default function AdminMobileFeed({
     [onRefresh]
   );
 
+  // ─── Handler : envoyer commentaire ──────────────────────────
   const handleSendComment = useCallback(async () => {
     if (!activeProjectId || !commentText.trim()) return;
+
+    // TODO : sauvegarder le commentaire dans la DB
+    // Pour V1 on toast juste, on integrera la table comments plus tard
     toast.success("Commentaire envoyé");
     setCommentText("");
     setCommentSheetOpen(false);
   }, [activeProjectId, commentText]);
 
   const activeProject = filteredProjects.find((p) => p.id === activeProjectId);
-
-  // Sprint 9.3 : Charger reviews quand active project change
-  useEffect(() => {
-    if (!activeProject?.state_json?.slides) {
-      setSlideReviews({});
-      return;
-    }
-    const initial: Record<string, SlideReview> = {};
-    activeProject.state_json.slides.forEach((s: any) => {
-      if (s.review) initial[s.id] = s.review;
-    });
-    setSlideReviews(initial);
-  }, [activeProjectId]);
-
-  const handleSlideStatusChange = useCallback((slideId: string, status: "ok" | "needs_changes") => {
-    setSlideReviews((prev) => ({
-      ...prev,
-      [slideId]: { ...prev[slideId], status, comment: status === "ok" ? "" : prev[slideId]?.comment },
-    }));
-  }, []);
-
-  const handleSlideCommentChange = useCallback((slideId: string, comment: string) => {
-    setSlideReviews((prev) => ({
-      ...prev,
-      [slideId]: { ...prev[slideId], status: "needs_changes", comment },
-    }));
-  }, []);
-
-  const saveSlideReviewsToDB = useCallback(async () => {
-    if (!activeProject) return;
-    try {
-      const updatedSlides = activeProject.state_json.slides.map((s: any) => ({
-        ...s,
-        review: slideReviews[s.id] || s.review,
-      }));
-      const newStateJson = { ...activeProject.state_json, slides: updatedSlides };
-      const table = activeProject._type === "video" ? "studio_video_projects" : "studio_projects";
-      await supabase.from(table).update({ state_json: newStateJson }).eq("id", activeProject.id);
-    } catch (err) {
-      console.error("[saveSlideReviewsToDB]", err);
-    }
-  }, [activeProject, slideReviews]);
-
-  const handleReviewAction = useCallback(async (action: "approve" | "reject" | "request_changes") => {
-    if (!activeProject) return;
-    setActionLoading(action);
-    try {
-      await saveSlideReviewsToDB();
-      const { data: { session } } = await supabase.auth.getSession();
-      const endpoint = activeProject._type === "video"
-        ? `/api/studio/video/projects/${activeProject.id}/review`
-        : `/api/studio/projects/${activeProject.id}/review`;
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-        body: JSON.stringify({ action, message: "" }),
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Erreur");
-      }
-      const msg = action === "approve" ? "Projet approuvé ✓"
-        : action === "reject" ? "Projet refusé"
-        : "Corrections demandées ✓";
-      toast.success(msg);
-      onRefresh();
-    } catch (err: any) {
-      toast.error("Action impossible", { description: err.message });
-    } finally {
-      setActionLoading(null);
-    }
-  }, [activeProject, saveSlideReviewsToDB, onRefresh]);
-
-  const totalSlides = activeProject?.state_json?.slides?.length || 0;
-  const okCount = Object.values(slideReviews).filter(r => r.status === "ok").length;
-  const needsChangesCount = Object.values(slideReviews).filter(r => r.status === "needs_changes").length;
-  const allReviewed = totalSlides > 0 && okCount + needsChangesCount === totalSlides;
-  const canApproveAll = allReviewed && needsChangesCount === 0;
-  const canRequestChanges = needsChangesCount > 0;
   const isViewed = activeProjectId ? !!viewedStatus[activeProjectId] : false;
 
+  // ═══════════════════════════════════════════════════════════
+  //  RENDER
+  // ═══════════════════════════════════════════════════════════
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F1EA" }}>
+    <div
+      className="min-h-screen flex flex-col"
+      style={{ backgroundColor: "#F5F1EA" }}
+    >
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* HEADER STICKY                                            */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* HEADER STICKY - logo + admin info + actions          */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* HEADER STICKY - logo + admin info 2 lignes + actions  */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <header
         className="sticky top-0 z-30 px-4 py-3 border-b"
         style={{
@@ -328,39 +267,63 @@ export default function AdminMobileFeed({
         }}
       >
         <div className="flex items-center justify-between gap-3">
+          {/* GAUCHE : logo + info admin sur 2 lignes */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <img src="/media/logo.png" alt="ROWHAN" className="h-7 w-auto shrink-0" />
+            <img
+              src="/media/logo.png"
+              alt="ROWHAN"
+              className="h-7 w-auto shrink-0"
+            />
             <div className="min-w-0">
+              {/* Ligne 1 : ADMINISTRATION (bordeaux) + Tableau de bord (ink) */}
               <div className="flex items-center gap-2 min-w-0">
-                <span className="text-[9px] font-black uppercase tracking-widest shrink-0" style={{ color: COLORS.bordeaux }}>
+                <span
+                  className="text-[9px] font-black uppercase tracking-widest shrink-0"
+                  style={{ color: COLORS.bordeaux }}
+                >
                   ADMINISTRATION
                 </span>
-                <span className="text-[9px] shrink-0" style={{ color: COLORS.warmGray }}>•</span>
-                <span className="text-xs font-black tracking-tight truncate" style={{ color: COLORS.ink }}>
+                <span
+                  className="text-[9px] shrink-0"
+                  style={{ color: COLORS.warmGray }}
+                >
+                  •
+                </span>
+                <span
+                  className="text-xs font-black tracking-tight truncate"
+                  style={{ color: COLORS.ink }}
+                >
                   Tableau de bord
                 </span>
               </div>
-              <p className="text-[10px] truncate -mt-0.5" style={{ color: COLORS.warmGray }}>
+              {/* Ligne 2 : tenant name */}
+              <p
+                className="text-[10px] truncate -mt-0.5"
+                style={{ color: COLORS.warmGray }}
+              >
                 {tenantName}
               </p>
             </div>
           </div>
+
+          {/* DROITE : notifications + burger */}
           <div className="flex items-center gap-1 shrink-0">
-              {activeProject && activeTab !== "briefs" && (
-                <ProjectMessagesIcon
-                  projectId={activeProject.id}
-                  projectType={activeProject._type}
-                  brandColor={brandPrimary}
-                />
-              )}
             <NotificationsBell brandColor={brandPrimary} />
-            <button type="button" onClick={() => setDrawerOpen(true)} className="p-2 -m-2 rounded-full" aria-label="Menu">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="p-2 -m-2 rounded-full"
+              aria-label="Menu"
+            >
               <Menu size={20} style={{ color: COLORS.ink }} />
             </button>
           </div>
         </div>
       </header>
 
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* TABS STICKY                                              */}
+      {/* ═══════════════════════════════════════════════════════ */}
       <div
         className="sticky z-20 flex border-b"
         style={{
@@ -370,107 +333,175 @@ export default function AdminMobileFeed({
           borderColor: "rgba(0,0,0,0.06)",
         }}
       >
-        <button
-          type="button"
-          onClick={() => setActiveTab("briefs")}
-          className="w-1/4 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
-          style={{
-            color: activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
-            borderBottom: activeTab === "briefs" ? `2px solid ${COLORS.bordeaux}` : "2px solid transparent",
-          }}
-        >
-          <ClipboardList size={18} className="md:hidden" />
-          <span className="hidden md:inline">Briefs</span>
-          {openTasks.length > 0 && (
-            <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray, color: "white" }}>
-              {openTasks.length}
-            </span>
-          )}
-        </button>
+          {/* TAB BRIEFS (plus petit) */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("briefs")}
+            className="w-1/4 px-2 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1"
+            style={{
+              color: activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
+              borderBottom: activeTab === "briefs" ? `2px solid ${COLORS.bordeaux}` : "2px solid transparent",
+            }}
+          >
+              <ClipboardList size={18} className="md:hidden" />
+              <span className="hidden md:inline">Briefs</span>
+            {openTasks.length > 0 && (
+              <span
+                className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px]"
+                style={{
+                  backgroundColor:
+                    activeTab === "briefs" ? COLORS.bordeaux : COLORS.warmGray,
+                  color: "white",
+                }}
+              >
+                {openTasks.length}
+              </span>
+            )}
+          </button>
 
         <button
           type="button"
           onClick={() => setActiveTab("pending")}
           className="w-1/2 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative flex items-center justify-center gap-1"
-          style={{ color: activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray }}
+          style={{
+            color:
+              activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray,
+          }}
         >
           À valider
           {pendingCount > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray, color: "white" }}>
+            <span
+              className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"
+              style={{
+                backgroundColor:
+                  activeTab === "pending" ? COLORS.bordeaux : COLORS.warmGray,
+                color: "white",
+              }}
+            >
               {pendingCount}
             </span>
           )}
-          {activeTab === "pending" && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: COLORS.bordeaux }} />}
+          {activeTab === "pending" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5"
+              style={{ backgroundColor: COLORS.bordeaux }}
+            />
+          )}
         </button>
-
         <button
           type="button"
           onClick={() => setActiveTab("approved")}
           className="w-1/4 py-3 text-xs font-bold uppercase tracking-wider transition-colors relative flex items-center justify-center gap-1"
-          style={{ color: activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray }}
+          style={{
+            color:
+              activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray,
+          }}
         >
-          <CheckCircle2 size={18} className="md:hidden" />
-          <span className="hidden md:inline">Approuvés</span>
+            <CheckCircle2 size={18} className="md:hidden" />
+            <span className="hidden md:inline">Approuvés</span>
           {approvedCount > 0 && (
-            <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray, color: "white" }}>
+            <span
+              className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"
+              style={{
+                backgroundColor:
+                  activeTab === "approved" ? COLORS.bordeaux : COLORS.warmGray,
+                color: "white",
+              }}
+            >
               {approvedCount}
             </span>
           )}
-          {activeTab === "approved" && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: COLORS.bordeaux }} />}
+          {activeTab === "approved" && (
+            <div
+              className="absolute bottom-0 left-0 right-0 h-0.5"
+              style={{ backgroundColor: COLORS.bordeaux }}
+            />
+          )}
         </button>
       </div>
 
-      <main ref={feedRef} className="flex-1 overflow-y-auto pb-24" style={{ scrollSnapType: "y mandatory" }}>
-        {activeTab === "briefs" ? (
-          openTasks.length === 0 ? (
-            <div className="flex items-center justify-center h-64 px-6 text-center">
-              <div>
-                <Clock size={48} className="mx-auto mb-3" style={{ color: COLORS.warmGray, opacity: 0.4 }} />
-                <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>Aucun brief en cours</p>
-                <p className="text-xs mt-1" style={{ color: COLORS.warmGray }}>Les briefs sont créés depuis le desktop</p>
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* FEED VERTICAL                                            */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <main
+        ref={feedRef}
+        className="flex-1 overflow-y-auto pb-24"
+        style={{ scrollSnapType: "y mandatory" }}
+      >
+          {activeTab === "briefs" ? (
+            /* ════ ONGLET BRIEFS ════ */
+            openTasks.length === 0 ? (
+              <div className="flex items-center justify-center h-64 px-6 text-center">
+                <div>
+                  <Clock
+                    size={48}
+                    className="mx-auto mb-3"
+                    style={{ color: COLORS.warmGray, opacity: 0.4 }}
+                  />
+                  <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>
+                    Aucun brief en cours
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: COLORS.warmGray }}>
+                    Les briefs sont créés depuis le desktop
+                  </p>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="px-3 py-3 space-y-3">
-              {openTasks.map((task) => <BriefCardMobile key={task.id} task={task} />)}
-            </div>
-          )
-        ) : (
-          filteredProjects.length === 0 ? (
-            <div className="flex items-center justify-center h-64 px-6 text-center">
-              <div>
-                <CheckCircle2 size={48} className="mx-auto mb-3" style={{ color: COLORS.warmGray, opacity: 0.4 }} />
-                <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>
-                  {activeTab === "pending" ? "Aucun projet à valider" : "Aucun projet approuvé"}
-                </p>
-                <p className="text-xs mt-1" style={{ color: COLORS.warmGray }}>
-                  {activeTab === "pending" ? "Tous les projets ont été traités" : "Les projets approuvés apparaîtront ici"}
-                </p>
+            ) : (
+              <div className="px-3 py-3 space-y-3">
+                {openTasks.map((task) => (
+                  <BriefCardMobile key={task.id} task={task} />
+                ))}
               </div>
-            </div>
+            )
           ) : (
-            <div className="px-3 py-3 space-y-3">
-              {filteredProjects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  config={config}
-                  isActive={project.id === activeProjectId}
-                  onTap={() => setActiveProjectId(project.id)}
-                  onAllViewed={() => setViewedStatus((s) => ({ ...s, [project.id]: true }))}
-                  cardRef={(el) => { cardRefs.current[project.id] = el; }}
-                  slideReviews={project.id === activeProjectId ? slideReviews : {}}
-                  onSlideStatusChange={handleSlideStatusChange}
-                  onSlideCommentChange={handleSlideCommentChange}
-                  onSlideCommentBlur={saveSlideReviewsToDB}
-                  canReview={activeTab === "pending"}
-                />
-              ))}
-            </div>
-          )
-        )}
-      </main>
+            /* ════ ONGLETS PROJECTS (pending / approved) ════ */
+            filteredProjects.length === 0 ? (
+              <div className="flex items-center justify-center h-64 px-6 text-center">
+                <div>
+                  <CheckCircle2
+                    size={48}
+                    className="mx-auto mb-3"
+                    style={{ color: COLORS.warmGray, opacity: 0.4 }}
+                  />
+                  <p className="text-sm font-semibold" style={{ color: COLORS.ink }}>
+                    {activeTab === "pending"
+                      ? "Aucun projet à valider"
+                      : "Aucun projet approuvé"}
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: COLORS.warmGray }}>
+                    {activeTab === "pending"
+                      ? "Tous les projets ont été traités"
+                      : "Les projets approuvés apparaîtront ici"}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="px-3 py-3 space-y-3">
+                {filteredProjects.map((project, idx) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    config={config}
+                    isActive={project.id === activeProjectId}
+                    onTap={() => setActiveProjectId(project.id)}
+                    onAllViewed={() =>
+                      setViewedStatus((s) => ({ ...s, [project.id]: true }))
+                    }
+                    cardRef={(el) => {
+                      cardRefs.current[project.id] = el;
+                    }}
+                  />
+                ))}
+              </div>
+            )
+          )}
+        </main>
 
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* BOUTONS STICKY BOTTOM                                    */}
+      {/* ═══════════════════════════════════════════════════════ */}
+        {/* DEBUG */}
+        {(() => { console.log("[DEBUG]", { activeTab, activeProjectId, filteredProjectsLen: filteredProjects.length, hasActiveProject: !!activeProject }); return null; })()}
       {activeProject && activeTab !== "briefs" && (
         <div
           className="fixed bottom-0 left-0 right-0 z-30 px-3 py-3 border-t flex gap-2"
@@ -482,75 +513,101 @@ export default function AdminMobileFeed({
           }}
         >
           {activeTab === "approved" ? (
+            /* Tab Approuves : bouton Remettre en attente full width */
             <button
               type="button"
               onClick={() => handleUnapprove(activeProject)}
               className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all"
-              style={{ backgroundColor: "white", border: "1.5px solid #F59E0B", color: "#B45309" }}
+              style={{
+                backgroundColor: "white",
+                border: "1.5px solid #F59E0B",
+                color: "#B45309",
+              }}
             >
               <RotateCcw size={14} strokeWidth={2.5} />
               Remettre en attente
             </button>
           ) : (
             <>
-              {/* Sprint 9.3 : Bouton DEMANDER CORRECTIONS */}
+              {/* Tab A valider : Commenter + Valider */}
               <button
                 type="button"
-                onClick={() => handleReviewAction("request_changes")}
-                disabled={!!actionLoading || !canRequestChanges}
-                className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: canRequestChanges ? "#F59E0B" : "#D1D5DB" }}
-              >
-                {actionLoading === "request_changes" ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} strokeWidth={2.5} />}
-                Demander
-              </button>
-
-              {/* Sprint 9.3 : Bouton APPROUVER */}
-              <button
-                type="button"
-                onClick={() => handleReviewAction("approve")}
-                disabled={!!actionLoading || !canApproveAll}
-                className="flex-[1.5] py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={() => setCommentSheetOpen(true)}
+                className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2"
                 style={{
-                  backgroundColor: canApproveAll ? "#10B981" : "#D1D5DB",
-                  boxShadow: canApproveAll ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
+                  backgroundColor: "white",
+                  border: "1px solid rgba(0,0,0,0.1)",
+                  color: COLORS.ink,
                 }}
               >
-                {actionLoading === "approve" ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={3} />}
-                Approuver
+                <MessageSquare size={14} />
+                Commenter
+              </button>
+              <button
+                type="button"
+                onClick={() => handleValidate(activeProject)}
+                className="flex-[1.5] py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all"
+                style={{
+                  backgroundColor: "#10B981",
+                  boxShadow: isViewed
+                    ? "0 4px 12px rgba(16, 185, 129, 0.3)"
+                    : "0 4px 12px rgba(177, 30, 47, 0.25)",
+                }}
+              >
+                <Check size={14} strokeWidth={3} />
+                {isViewed ? "Valider & Suivant" : "Valider"}
               </button>
             </>
           )}
         </div>
       )}
 
-      {activeTab === "briefs" && (
-        <button
-          type="button"
-          onClick={() => setShowNewBriefModal(true)}
-          className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-95"
-          style={{ backgroundColor: COLORS.bordeaux, boxShadow: "0 8px 24px rgba(177,30,47,0.5), 0 2px 8px rgba(0,0,0,0.15)" }}
-          aria-label="Creer un brief"
-        >
-          <Plus size={24} color="white" strokeWidth={3} />
-        </button>
-      )}
+      {/* ═══════════════════════════════════════════════════════ */}
+        {/* FAB Creer brief (uniquement sur tab briefs) */}
+        {activeTab === "briefs" && (
+          <button
+            type="button"
+            onClick={() => setShowNewBriefModal(true)}
+            className="fixed bottom-6 right-6 z-30 w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition-transform active:scale-95"
+            style={{
+              backgroundColor: COLORS.bordeaux,
+              boxShadow: "0 8px 24px rgba(177,30,47,0.5), 0 2px 8px rgba(0,0,0,0.15)",
+            }}
+            aria-label="Creer un brief"
+          >
+            <Plus size={24} color="white" strokeWidth={3} />
+          </button>
+        )}
 
-      {showNewBriefModal && (
-        <NewBriefMobileModal
-          onClose={() => setShowNewBriefModal(false)}
-          onCreated={() => { setShowNewBriefModal(false); onRefresh(); }}
-        />
-      )}
+        {/* Modal creation brief mobile */}
+        {showNewBriefModal && (
+          <NewBriefMobileModal
+            onClose={() => setShowNewBriefModal(false)}
+            onCreated={() => {
+              setShowNewBriefModal(false);
+              onRefresh();
+            }}
+          />
+        )}
 
+
+
+      {/* BURGER DRAWER                                            */}
+      {/* ═══════════════════════════════════════════════════════ */}
       {drawerOpen && (
         <BurgerDrawer
           tenantName={tenantName}
           onClose={() => setDrawerOpen(false)}
-          onNavigate={(path) => { setDrawerOpen(false); router.push(path); }}
+          onNavigate={(path) => {
+            setDrawerOpen(false);
+            router.push(path);
+          }}
         />
       )}
 
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/* COMMENT BOTTOM SHEET                                     */}
+      {/* ═══════════════════════════════════════════════════════ */}
       {commentSheetOpen && activeProject && (
         <CommentSheet
           project={activeProject}
@@ -565,66 +622,8 @@ export default function AdminMobileFeed({
 }
 
 // ═══════════════════════════════════════════════════════════
-//  Sprint 9.3 : SlideReviewOverlay (par slide)
-// ═══════════════════════════════════════════════════════════
-function SlideReviewOverlay({
-  review,
-  onStatusChange,
-  onCommentChange,
-  onCommentBlur,
-}: {
-  review: SlideReview | undefined;
-  onStatusChange: (status: "ok" | "needs_changes") => void;
-  onCommentChange: (comment: string) => void;
-  onCommentBlur: () => void;
-}) {
-  const status = review?.status;
-  return (
-    <div
-      className="absolute bottom-0 left-0 right-0 z-10 p-2"
-      style={{ background: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)" }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onStatusChange("ok"); }}
-          className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition shadow-lg ${
-            status === "ok" ? "bg-green-500 text-white" : "bg-white text-neutral-700"
-          }`}
-        >
-          <CheckCircle2 size={11} />
-          OK
-        </button>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onStatusChange("needs_changes"); }}
-          className={`flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition shadow-lg ${
-            status === "needs_changes" ? "bg-amber-500 text-white" : "bg-white text-neutral-700"
-          }`}
-        >
-          <AlertCircle size={11} />
-          A corriger
-        </button>
-      </div>
-      {status === "needs_changes" && (
-        <textarea
-          value={review?.comment || ""}
-          onChange={(e) => { e.stopPropagation(); onCommentChange(e.target.value); }}
-          onClick={(e) => e.stopPropagation()}
-          onBlur={onCommentBlur}
-          placeholder="Que faut-il corriger ?"
-          rows={2}
-          maxLength={500}
-          className="w-full mt-2 px-2 py-1.5 border border-amber-200 bg-white rounded-lg text-[11px] focus:border-amber-400 focus:outline-none resize-none"
-        />
-      )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════
 //  SOUS-COMPOSANT : ProjectCard
+//  Gère carousel + video + tracking des slides vues
 // ═══════════════════════════════════════════════════════════
 function ProjectCard({
   project,
@@ -633,11 +632,6 @@ function ProjectCard({
   onTap,
   onAllViewed,
   cardRef,
-  slideReviews,
-  onSlideStatusChange,
-  onSlideCommentChange,
-  onSlideCommentBlur,
-  canReview,
 }: {
   project: AdminMobileProject;
   config: BrandConfig | null;
@@ -645,16 +639,12 @@ function ProjectCard({
   onTap: () => void;
   onAllViewed: () => void;
   cardRef: (el: HTMLDivElement | null) => void;
-  slideReviews: Record<string, SlideReview>;
-  onSlideStatusChange: (slideId: string, status: "ok" | "needs_changes") => void;
-  onSlideCommentChange: (slideId: string, comment: string) => void;
-  onSlideCommentBlur: () => void;
-  canReview: boolean;
 }) {
   const slides = project.state_json?.slides || [];
   const isCarousel = project._type === "carousel";
   const isVideo = project._type === "video";
 
+  // ─── Signing video URL (bucket prive) + state play ─────────
   const videoRef = useRef<HTMLVideoElement>(null);
   const [signedVideoUrl, setSignedVideoUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -694,6 +684,7 @@ function ProjectCard({
     return () => { cancelled = true; };
   }, [isVideo, project.video_url]);
 
+  // Embla carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: false,
     align: "center",
@@ -702,16 +693,21 @@ function ProjectCard({
   const [selectedSlide, setSelectedSlide] = useState(0);
   const [maxReachedSlide, setMaxReachedSlide] = useState(0);
 
+  // ─── Scale dynamique pour SlideRenderer (1080x1350 -> width carte) ──
   const slideContainerRef = useRef<HTMLDivElement>(null);
   const [slideScale, setSlideScale] = useState(0.35);
 
   useEffect(() => {
     const el = slideContainerRef.current;
     if (!el) return;
+
     const updateScale = () => {
       const width = el.clientWidth;
-      if (width > 0) setSlideScale(width / 1080);
+      if (width > 0) {
+        setSlideScale(width / 1080);
+      }
     };
+
     updateScale();
     const ro = new ResizeObserver(updateScale);
     ro.observe(el);
@@ -727,9 +723,12 @@ function ProjectCard({
     };
     emblaApi.on("select", onSelect);
     onSelect();
-    return () => { emblaApi.off("select", onSelect); };
+    return () => {
+      emblaApi.off("select", onSelect);
+    };
   }, [emblaApi]);
 
+  // Detecter quand TOUTES les slides ont ete vues
   useEffect(() => {
     if (isCarousel && slides.length > 0 && maxReachedSlide >= slides.length - 1) {
       onAllViewed();
@@ -745,32 +744,63 @@ function ProjectCard({
       style={{
         scrollSnapAlign: "start",
         scrollSnapStop: "always",
-        border: isActive ? "2px solid " + COLORS.bordeaux : "1px solid rgba(0,0,0,0.06)",
-        boxShadow: isActive ? "0 8px 24px rgba(177, 30, 47, 0.15)" : "0 1px 3px rgba(0,0,0,0.05)",
+        border: isActive
+          ? "2px solid " + COLORS.bordeaux
+          : "1px solid rgba(0,0,0,0.06)",
+        boxShadow: isActive
+          ? "0 8px 24px rgba(177, 30, 47, 0.15)"
+          : "0 1px 3px rgba(0,0,0,0.05)",
       }}
     >
+      {/* Header carte */}
       <div className="px-4 py-3 flex items-center justify-between border-b border-neutral-100">
         <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: project._type === "video" ? "#7C3AED20" : "#3B82F620" }}>
-            {isCarousel ? <Layers size={13} style={{ color: "#3B82F6" }} /> : <Film size={13} style={{ color: "#7C3AED" }} />}
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center shrink-0"
+            style={{
+              backgroundColor:
+                project._type === "video" ? "#7C3AED20" : "#3B82F620",
+            }}
+          >
+            {isCarousel ? (
+              <Layers
+                size={13}
+                style={{ color: "#3B82F6" }}
+              />
+            ) : (
+              <Film size={13} style={{ color: "#7C3AED" }} />
+            )}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-bold truncate" style={{ color: COLORS.ink }}>
+            <p
+              className="text-xs font-bold truncate"
+              style={{ color: COLORS.ink }}
+            >
               {project.title || "Sans titre"}
             </p>
-            <p className="text-[10px] flex items-center gap-1" style={{ color: COLORS.warmGray }}>
+            <p
+              className="text-[10px] flex items-center gap-1"
+              style={{ color: COLORS.warmGray }}
+            >
               <Clock size={9} />
               {formatRelativeTime(project.created_at)}
             </p>
           </div>
         </div>
         {isActive && (
-          <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: COLORS.bordeaux, color: "white" }}>
+          <span
+            className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-full shrink-0"
+            style={{
+              backgroundColor: COLORS.bordeaux,
+              color: "white",
+            }}
+          >
             Actif
           </span>
         )}
       </div>
 
+      {/* Contenu (carousel ou video) */}
       {isCarousel && isActive && (
         <div className="relative">
           <div className="overflow-hidden" ref={emblaRef}>
@@ -801,28 +831,21 @@ function ProjectCard({
                       />
                     </div>
                   )}
-
-                  {/* Sprint 9.3 : Overlay actions par slide */}
-                  {canReview && (
-                    <SlideReviewOverlay
-                      review={slideReviews?.[slide.id]}
-                      onStatusChange={(status) => onSlideStatusChange(slide.id, status)}
-                      onCommentChange={(comment) => onSlideCommentChange(slide.id, comment)}
-                      onCommentBlur={onSlideCommentBlur}
-                    />
-                  )}
-                </div>
+                  </div>
               ))}
             </div>
           </div>
-
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
+          {/* Dots indicateur */}
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-sm">
             {slides.map((_: any, idx: number) => (
               <div
                 key={idx}
-                className="h-1.5 rounded-full transition-all"
+                className="w-1.5 h-1.5 rounded-full transition-all"
                 style={{
-                  backgroundColor: idx === selectedSlide ? "white" : "rgba(255,255,255,0.4)",
+                  backgroundColor:
+                    idx === selectedSlide
+                      ? "white"
+                      : "rgba(255,255,255,0.4)",
                   width: idx === selectedSlide ? "20px" : "6px",
                 }}
               />
@@ -831,8 +854,12 @@ function ProjectCard({
         </div>
       )}
 
+      {/* Aperçu fermé : 1ere slide seule */}
       {isCarousel && !isActive && slides.length > 0 && (
-        <div ref={slideContainerRef} className="aspect-[4/5] bg-neutral-50 relative overflow-hidden">
+        <div
+          ref={slideContainerRef}
+          className="aspect-[4/5] bg-neutral-50 relative overflow-hidden"
+        >
           {config && (
             <div
               className="absolute top-0 left-0"
@@ -856,6 +883,7 @@ function ProjectCard({
         </div>
       )}
 
+      {/* Video avec signed URL + Play overlay */}
       {isVideo && (
         <div className={`relative ${videoAspect === "landscape" ? "aspect-video" : videoAspect === "square" ? "aspect-square" : "aspect-[9/16]"} bg-black`}>
           {signedVideoUrl ? (
@@ -905,9 +933,15 @@ function ProjectCard({
           )}
         </div>
       )}
-
+      {/* Indicateur slides en bas (carousel) */}
       {isCarousel && isActive && (
-        <div className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider flex items-center justify-between" style={{ color: COLORS.warmGray, backgroundColor: "#FAFAF8" }}>
+        <div
+          className="px-4 py-2 text-[10px] font-semibold uppercase tracking-wider flex items-center justify-between"
+          style={{
+            color: COLORS.warmGray,
+            backgroundColor: "#FAFAF8",
+          }}
+        >
           <span>
             Slide {selectedSlide + 1} / {slides.length}
           </span>
@@ -937,21 +971,50 @@ function BurgerDrawer({
 }) {
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-0 right-0 bottom-0 z-50 w-72 max-w-[85vw] flex flex-col" style={{ backgroundColor: COLORS.cream }}>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Drawer */}
+      <div
+        className="fixed top-0 right-0 bottom-0 z-50 w-72 max-w-[85vw] flex flex-col"
+        style={{ backgroundColor: COLORS.cream }}
+      >
         <div className="px-5 py-4 flex items-center justify-between border-b border-neutral-200">
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: COLORS.ink }}>
+          <span
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: COLORS.ink }}
+          >
             {tenantName}
           </span>
-          <button type="button" onClick={onClose} className="p-2 -m-2" aria-label="Fermer">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 -m-2"
+            aria-label="Fermer"
+          >
             <X size={20} style={{ color: COLORS.ink }} />
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-3">
-          <DrawerItem label="Dashboard" onClick={() => onNavigate("/admin/tenant")} active />
-          <DrawerItem label="Mon équipe" onClick={() => onNavigate("/admin/tenant/team")} />
-          <DrawerItem label="Brand Assets" onClick={() => onNavigate("/admin/tenant/brand")} />
-          <DrawerItem label="Bibliothèque" onClick={() => onNavigate("/admin/tenant/library")} />
+          <DrawerItem
+            label="Dashboard"
+            onClick={() => onNavigate("/admin/tenant")}
+            active
+          />
+          <DrawerItem
+            label="Mon équipe"
+            onClick={() => onNavigate("/admin/tenant/team")}
+          />
+          <DrawerItem
+            label="Brand Assets"
+            onClick={() => onNavigate("/admin/tenant/brand")}
+          />
+          <DrawerItem
+            label="Bibliothèque"
+            onClick={() => onNavigate("/admin/tenant/library")}
+          />
         </nav>
         <div className="px-5 py-4 border-t border-neutral-200">
           <button
@@ -961,7 +1024,10 @@ function BurgerDrawer({
               window.location.href = "/";
             }}
             className="w-full py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider"
-            style={{ backgroundColor: COLORS.ink, color: COLORS.cream }}
+            style={{
+              backgroundColor: COLORS.ink,
+              color: COLORS.cream,
+            }}
           >
             Déconnexion
           </button>
@@ -971,7 +1037,15 @@ function BurgerDrawer({
   );
 }
 
-function DrawerItem({ label, onClick, active }: { label: string; onClick: () => void; active?: boolean }) {
+function DrawerItem({
+  label,
+  onClick,
+  active,
+}: {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+}) {
   return (
     <button
       type="button"
@@ -983,13 +1057,18 @@ function DrawerItem({ label, onClick, active }: { label: string; onClick: () => 
       }}
     >
       <span>{label}</span>
-      {active && <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: COLORS.bordeaux }} />}
+      {active && (
+        <div
+          className="w-1.5 h-1.5 rounded-full"
+          style={{ backgroundColor: COLORS.bordeaux }}
+        />
+      )}
     </button>
   );
 }
 
 // ═══════════════════════════════════════════════════════════
-//  SOUS-COMPOSANT : CommentSheet
+//  SOUS-COMPOSANT : CommentSheet (bottom sheet)
 // ═══════════════════════════════════════════════════════════
 function CommentSheet({
   project,
@@ -1012,27 +1091,49 @@ function CommentSheet({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      {/* Sheet */}
       <div
         className="fixed bottom-0 left-0 right-0 z-50 rounded-t-3xl shadow-2xl flex flex-col"
-        style={{ backgroundColor: "white", maxHeight: "60vh", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{
+          backgroundColor: "white",
+          maxHeight: "60vh",
+          paddingBottom: "env(safe-area-inset-bottom)",
+        }}
       >
+        {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 rounded-full bg-neutral-300" />
         </div>
+        {/* Header */}
         <div className="px-5 py-3 flex items-center justify-between border-b border-neutral-100">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: COLORS.ink }}>
+            <p
+              className="text-xs font-bold uppercase tracking-wider"
+              style={{ color: COLORS.ink }}
+            >
               Commentaire
             </p>
             <p className="text-[10px]" style={{ color: COLORS.warmGray }}>
-              {project._type === "video" ? "Vidéo globale" : "Sur ce projet"}
+              {project._type === "video"
+                ? "Vidéo globale"
+                : "Sur ce projet"}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="p-2 -m-2" aria-label="Fermer">
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 -m-2"
+            aria-label="Fermer"
+          >
             <X size={18} style={{ color: COLORS.warmGray }} />
           </button>
         </div>
+        {/* Textarea */}
         <div className="flex-1 p-4">
           <textarea
             ref={inputRef}
@@ -1040,16 +1141,23 @@ function CommentSheet({
             onChange={(e) => onChange(e.target.value)}
             placeholder="Votre retour..."
             className="w-full h-32 p-3 rounded-xl resize-none text-sm focus:outline-none"
-            style={{ backgroundColor: "#FAFAF8", color: COLORS.ink, border: "1px solid rgba(0,0,0,0.08)" }}
+            style={{
+              backgroundColor: "#FAFAF8",
+              color: COLORS.ink,
+              border: "1px solid rgba(0,0,0,0.08)",
+            }}
           />
         </div>
+        {/* Action */}
         <div className="px-4 pb-4 pt-1">
           <button
             type="button"
             onClick={onSend}
             disabled={!commentText.trim()}
             className="w-full py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all disabled:opacity-40"
-            style={{ backgroundColor: COLORS.bordeaux }}
+            style={{
+              backgroundColor: COLORS.bordeaux,
+            }}
           >
             <Send size={14} />
             Envoyer
@@ -1078,6 +1186,7 @@ function formatRelativeTime(iso: string): string {
 // ═══════════════════════════════════════════════════════════
 //  BRIEF CARD MOBILE
 // ═══════════════════════════════════════════════════════════
+
 function BriefCardMobile({ task }: { task: Task }) {
   const priorityColors: Record<string, { bg: string; text: string; label: string }> = {
     low: { bg: "#F5F5F4", text: "#71717A", label: "BASSE" },
@@ -1096,24 +1205,35 @@ function BriefCardMobile({ task }: { task: Task }) {
   const stat = statusLabels[task.status] || statusLabels.open;
 
   const deadline = task.deadline
-    ? new Date(task.deadline).toLocaleDateString("fr-CH", { day: "numeric", month: "short", year: "numeric" })
+    ? new Date(task.deadline).toLocaleDateString("fr-CH", {
+        day: "numeric", month: "short", year: "numeric",
+      })
     : null;
 
   return (
     <div className="bg-white rounded-2xl p-4 border border-neutral-200">
+      {/* Header : Priority + Status */}
       <div className="flex items-center justify-between mb-3">
-        <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded" style={{ backgroundColor: prio.bg, color: prio.text }}>
+        <span
+          className="px-2 py-0.5 text-[9px] font-black uppercase tracking-widest rounded"
+          style={{ backgroundColor: prio.bg, color: prio.text }}
+        >
           {prio.label}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: stat.color }}>
+        <span
+          className="text-[10px] font-bold uppercase tracking-wider"
+          style={{ color: stat.color }}
+        >
           {stat.label}
         </span>
       </div>
 
+      {/* Titre */}
       <h3 className="text-sm font-bold mb-2" style={{ color: "#181614" }}>
         {task.title}
       </h3>
 
+      {/* Brief description */}
       {task.brief && (
         <p
           className="text-xs leading-relaxed mb-3"
@@ -1129,6 +1249,7 @@ function BriefCardMobile({ task }: { task: Task }) {
         </p>
       )}
 
+      {/* Footer : Deadline */}
       {deadline && (
         <div className="flex items-center gap-1.5 pt-2 border-t border-neutral-100">
           <Clock size={11} style={{ color: "#807972" }} />
@@ -1144,6 +1265,7 @@ function BriefCardMobile({ task }: { task: Task }) {
 // ═══════════════════════════════════════════════════════════
 //  NEW BRIEF MOBILE MODAL
 // ═══════════════════════════════════════════════════════════
+
 function NewBriefMobileModal({
   onClose,
   onCreated,
@@ -1200,17 +1322,28 @@ function NewBriefMobileModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[90vh]" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      <div
+        className="w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[90vh]"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        {/* Header */}
         <div className="px-5 py-4 border-b border-neutral-100 flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase tracking-widest" style={{ color: COLORS.ink }}>
             Nouveau brief
           </h2>
-          <button type="button" onClick={onClose} disabled={submitting} className="p-2 -m-2 rounded-full disabled:opacity-50">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="p-2 -m-2 rounded-full disabled:opacity-50"
+          >
             <X size={20} style={{ color: COLORS.warmGray }} />
           </button>
         </div>
 
+        {/* Body */}
         <div className="px-5 py-4 space-y-4 overflow-y-auto flex-1">
+          {/* Titre */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
               Titre *
@@ -1225,6 +1358,7 @@ function NewBriefMobileModal({
             />
           </div>
 
+          {/* Brief */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
               Description
@@ -1239,6 +1373,7 @@ function NewBriefMobileModal({
             />
           </div>
 
+          {/* Priorité */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
               Priorité
@@ -1262,6 +1397,7 @@ function NewBriefMobileModal({
             </div>
           </div>
 
+          {/* Deadline */}
           <div>
             <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
               Deadline (optionnel)
@@ -1275,6 +1411,7 @@ function NewBriefMobileModal({
           </div>
         </div>
 
+        {/* Footer */}
         <div className="px-5 py-4 border-t border-neutral-100 flex gap-2">
           <button
             type="button"
@@ -1290,7 +1427,10 @@ function NewBriefMobileModal({
             onClick={handleSubmit}
             disabled={submitting || !title.trim()}
             className="flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-lg transition disabled:opacity-50"
-            style={{ backgroundColor: COLORS.bordeaux, color: "white" }}
+            style={{
+              backgroundColor: COLORS.bordeaux,
+              color: "white",
+            }}
           >
             {submitting ? "Creation..." : "Creer"}
           </button>

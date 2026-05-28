@@ -26,7 +26,6 @@ import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import SlideRenderer from "@/components/studio/SlideRenderer";
 import NotificationsBell from "@/components/NotificationsBell";
-import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import type { BrandConfig } from "@/types/brandConfig";
 
 // ═══════════════════════════════════════════════════════════
@@ -346,13 +345,6 @@ export default function AdminMobileFeed({
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-              {activeProject && activeTab !== "briefs" && (
-                <ProjectMessagesIcon
-                  projectId={activeProject.id}
-                  projectType={activeProject._type}
-                  brandColor={brandPrimary}
-                />
-              )}
             <NotificationsBell brandColor={brandPrimary} />
             <button type="button" onClick={() => setDrawerOpen(true)} className="p-2 -m-2 rounded-full" aria-label="Menu">
               <Menu size={20} style={{ color: COLORS.ink }} />
