@@ -202,7 +202,7 @@ export default function StudioHeader({
             onClick={exportAction.onClick}
             disabled={exportAction.disabled}
             title={exportAction.title || "Exporter"}
-            className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+            className="text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
             style={{ backgroundColor: EXPORT_COLOR }}
           >
             {exportAction.loading ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
@@ -217,7 +217,7 @@ export default function StudioHeader({
               onClick={submitAction.onClick}
               disabled={submitAction.submitting || submitAction.disabled || cfg.disabled}
               title={cfg.title}
-              className="text-white text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
+              className="text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90"
               style={{ backgroundColor: cfg.bgColor }}
             >
               {submitAction.submitting ? <Loader2 size={12} className="animate-spin" /> : cfg.icon === "check" ? <CheckCircle2 size={12} /> : <Send size={12} />}

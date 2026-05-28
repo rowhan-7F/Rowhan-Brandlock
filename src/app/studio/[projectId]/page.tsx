@@ -1207,9 +1207,19 @@ function ErrorScreen({ title, message }: { title: string; message: string }) {
 
 function getAvailableVariants(config: any): Array<{ key: string; label?: string; description?: string }> {
   const variants = config?.exportTemplates?.carrousel_instagram?.slideVariants || {};
-  return Object.entries(variants).map(([key, v]: [string, any]) => ({
-    key, label: v.label || key, description: v.description,
-  }));
+  // Phase 9.3.16 : Ordre logique narratif (intro -> contenu -> citation -> stats -> fin)
+  const VARIANT_ORDER = ["intro", "content", "quote", "stat", "outro"];
+  return Object.entries(variants)
+    .map(([key, v]: [string, any]) => ({
+      key, label: v.label || key, description: v.description,
+    }))
+    .sort((a, b) => {
+      const ai = VARIANT_ORDER.indexOf(a.key);
+      const bi = VARIANT_ORDER.indexOf(b.key);
+      const aOrder = ai === -1 ? 999 : ai;
+      const bOrder = bi === -1 ? 999 : bi;
+      return aOrder - bOrder;
+    });
 }
 
 function getSubVariants(config: any, variantKey: string): Array<{ key: string; label: string; description: string }> {
