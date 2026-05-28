@@ -56,7 +56,9 @@ export default function StudioEditorPage() {
   // Sprint 3+4 : Multi-format state derivation
   const stateJsonRaw = projectState.project?.state_json;
   const primaryFormat = stateJsonRaw?.templateKey || "carrousel_instagram";
-  const activeFormats = stateJsonRaw?.activeFormats || [primaryFormat];
+  // Phase 9.3.10 : Filtre les undefined/null (bug create_project depuis brief)
+  const activeFormatsRaw = stateJsonRaw?.activeFormats || [primaryFormat];
+  const activeFormats = (Array.isArray(activeFormatsRaw) ? activeFormatsRaw : [primaryFormat]).filter((f: any) => typeof f === "string" && f.length > 0);
   const activeEditingFormat = stateJsonRaw?.meta?.activeEditingFormat || primaryFormat;
   const allTemplates = (tenantState.status === "ready" ? (tenantState.config?.exportTemplates || {}) : {}) as Record<string, any>;
 

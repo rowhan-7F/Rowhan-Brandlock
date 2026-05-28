@@ -135,8 +135,13 @@ export async function PATCH(
         created_by: user.user_id,
         task_id: task.id,
         state_json: {
-          template: templateKey,
+          // Phase 9.3.10 : Initialisation propre (compatibilite multi-format)
+          templateKey: templateKey,
+          activeFormats: [templateKey],
           slides: [],
+          meta: {
+            activeEditingFormat: templateKey,
+          },
         },
       };
       console.log("[PATCH task] INSERTING PROJECT:", insertPayload);

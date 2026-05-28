@@ -346,6 +346,13 @@ export default function AdminMobileFeed({
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
+              {activeProject && activeTab !== "briefs" && (
+                <ProjectMessagesIcon
+                  projectId={activeProject.id}
+                  projectType={activeProject._type}
+                  brandColor={brandPrimary}
+                />
+              )}
             <NotificationsBell brandColor={brandPrimary} />
             <button type="button" onClick={() => setDrawerOpen(true)} className="p-2 -m-2 rounded-full" aria-label="Menu">
               <Menu size={20} style={{ color: COLORS.ink }} />
@@ -757,13 +764,11 @@ function ProjectCard({
             </p>
           </div>
         </div>
-        {/* Sprint 9.3.5 : Icone Messages + Badge Actif dans wrapper flex */}
-        <div className="flex items-center gap-2 shrink-0">
-          <ProjectMessagesIcon
-            projectId={project.id}
-            projectType={project._type}
-          />
-        </div>
+        {isActive && (
+          <span className="text-[9px] font-bold uppercase tracking-widest px-2 py-1 rounded-full shrink-0" style={{ backgroundColor: COLORS.bordeaux, color: "white" }}>
+            Actif
+          </span>
+        )}
       </div>
 
       {isCarousel && isActive && (

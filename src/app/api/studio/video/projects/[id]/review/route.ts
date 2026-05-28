@@ -25,7 +25,7 @@ export async function POST(
   // Recupere le projet
   const { data: project, error: fetchErr } = await supabase
     .from("studio_video_projects")
-    .select("id, title, tenant_id, status, created_by")
+    .select("id, title, tenant_id, status, created_by, task_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -61,6 +61,14 @@ export async function POST(
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+
+      // Phase 9.3.8 : Marque la task associee comme completed (s'il y en a une)
+      if (project.task_id) {
+        await supabase
+          .from("studio_tasks")
+          .update({ status: "completed" })
+          .eq("id", project.task_id);
+      }
 
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {

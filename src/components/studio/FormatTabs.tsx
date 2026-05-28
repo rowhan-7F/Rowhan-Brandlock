@@ -26,7 +26,9 @@ export type FormatTabsProps = {
 //  HELPER : Label friendly
 // ============================================================
 
-function getFormatLabel(formatKey: string, template: any): string {
+function getFormatLabel(formatKey: string | undefined | null, template: any): string {
+  // Phase 9.3.10 : Guard contre undefined/null (bug create_project depuis brief)
+  if (!formatKey || typeof formatKey !== "string") return "Format inconnu";
   if (template?.label) return template.label;
   return formatKey
     .replace(/^carrousel_/, "")

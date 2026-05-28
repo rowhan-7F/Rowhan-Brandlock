@@ -409,11 +409,13 @@ function TabButton({ active, onClick, label, count }: any) {
 //  BRIEFS TAB
 // ============================================================
 function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
-  const [tasksWithStatus, setTasksWithStatus] = useState<(Task & { _projectStatus?: string })[]>([]);
+  const [tasksWithStatus, setTasksWithStatus] = useState<(Task & { _projectStatus?: string })[]>(tasks);
 
   // ⭐ Enrichir chaque task avec le status du projet lie
   useEffect(() => {
     let cancelled = false;
+    // Phase 9.3.6 : Reset avec tasks brutes pendant le fetch (evite ecran vide)
+    setTasksWithStatus(tasks);
     (async () => {
       const enriched = await Promise.all(
         tasks.map(async (t: Task) => {
@@ -431,14 +433,16 @@ function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
     return () => { cancelled = true; };
   }, [tasks]);
 
-  // Filter : task active ET projet pas approuve/archive/publie
-  const openTasks = tasksWithStatus.filter((t) => {
-    const taskActive = t.status === "open" || t.status === "in_progress";
-    const projectFinished = t._projectStatus === "approved" ||
-                            t._projectStatus === "published" ||
-                            t._projectStatus === "archived";
-    return taskActive && !projectFinished;
-  });
+  // Phase 9.3.7 : Filtre simple unifie avec mobile (task status uniquement)
+  // Le project status n'est plus utilise comme filtre - l'admin peut
+  // supprimer le brief manuellement quand le projet est valide
+  const openTasks = tasksWithStatus.filter((t) =>
+    t.status === "open" || t.status === "in_progress"
+  );
+
+  // Phase 9.3.9 : Briefs archives (completed) pour historique/stats
+  const completedTasks = tasksWithStatus.filter((t) => t.status === "completed");
+  const [archivesOpen, setArchivesOpen] = useState(false);
 
   return (
     <div>
@@ -470,6 +474,47 @@ function BriefsTab({ tasks, onCreateTask, onRefresh, user }: any) {
           ))}
         </div>
       )}
+
+        {/* Phase 9.3.9 : Briefs archives (historique/stats) */}
+        {completedTasks.length > 0 && (
+          <div className="mt-8 border-t border-neutral-200 pt-6">
+            <button
+              type="button"
+              onClick={() => setArchivesOpen(!archivesOpen)}
+              className="flex items-center gap-2 text-xs font-bold text-neutral-500 hover:text-neutral-900 transition mb-3"
+            >
+              {archivesOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+              Briefs archives ({completedTasks.length})
+            </button>
+            {archivesOpen && (
+              <div className="space-y-2">
+                {completedTasks.map((task: Task) => (
+                  <div
+                    key={task.id}
+                    className="flex items-center gap-3 px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg opacity-75"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-neutral-700 truncate">{task.title}</div>
+                      <div className="text-[10px] text-neutral-400">
+                        {new Date(task.created_at).toLocaleDateString("fr-CH")}
+                        {task.linked_project_id && " - Projet valide"}
+                      </div>
+                    </div>
+                    {task.linked_project_id && (
+                      <Link
+                        href={`/admin/tenant/projects/${task.linked_project_id}`}
+                        className="p-1.5 text-blue-500 hover:bg-blue-50 rounded transition shrink-0"
+                        title="Voir le projet"
+                      >
+                        <Eye size={13} />
+                      </Link>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
     </div>
   );
 }
