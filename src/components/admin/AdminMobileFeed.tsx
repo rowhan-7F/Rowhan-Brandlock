@@ -777,7 +777,7 @@ function ProjectCard({
       ref={cardRef}
       data-project-id={project.id}
       onClick={onTap}
-      className="rounded-2xl overflow-hidden bg-white transition-all"
+      className="rounded-2xl overflow-hidden bg-white transition-all min-h-[calc(100vh-200px)] flex flex-col justify-center"
       style={{
         scrollSnapAlign: "start",
         scrollSnapStop: "always",
