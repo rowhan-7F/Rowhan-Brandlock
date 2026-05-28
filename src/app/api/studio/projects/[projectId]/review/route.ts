@@ -144,6 +144,14 @@ export async function POST(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Phase 9.3.13 : Cycle business - task remet en in_progress (re-validation)
+    if (project.task_id) {
+      await supabase
+        .from("studio_tasks")
+        .update({ status: "in_progress" })
+        .eq("id", project.task_id);
+    }
+
     // Notification au graphiste
     if (project.created_by && project.created_by !== user.user_id) {
       await createNotification(supabase, {
@@ -168,6 +176,14 @@ export async function POST(
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    // Phase 9.3.13 : Cycle business - task remet en in_progress (corrections)
+    if (project.task_id) {
+      await supabase
+        .from("studio_tasks")
+        .update({ status: "in_progress" })
+        .eq("id", project.task_id);
     }
 
     // Notification au graphiste

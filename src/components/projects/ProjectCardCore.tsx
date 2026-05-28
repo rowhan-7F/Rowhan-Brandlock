@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { Play, Clock, ImageIcon, Layers, Film } from "lucide-react";
 import SlideRenderer from "@/components/studio/SlideRenderer";
 import { formatDuration } from "@/lib/video/thumbnail";
@@ -58,6 +59,22 @@ export default function ProjectCardCore({ project, type, config, rightSlot, clas
   // Donnees specifiques carrousel
   const slides = project.state_json?.slides || [];
   const firstSlide = slides[0];
+
+  // Phase 9.3.14 : Scale dynamique pour remplir le container (responsive)
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewScale, setPreviewScale] = useState(0.2);
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setPreviewScale(w / 1080);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const slidesCount = slides.length;
 
   // Donnees specifiques video
@@ -75,11 +92,11 @@ export default function ProjectCardCore({ project, type, config, rightSlot, clas
       {/* ============================================================
           VIGNETTE : Format 4:5 (1080x1350 si carrousel, sinon carre)
           ============================================================ */}
-      <div className="relative aspect-[4/5] bg-neutral-900 overflow-hidden">
+      <div ref={previewRef} className="relative aspect-[4/5] bg-neutral-900 overflow-hidden">
         
         {/* CARROUSEL : Preview live de la 1ere slide */}
         {!isVideo && firstSlide && config ? (
-          <div className="absolute inset-0 origin-top-left" style={{ transform: "scale(0.2)", width: "1080px", height: "1350px" }}>
+          <div className="absolute inset-0 origin-top-left" style={{ transform: `scale(${previewScale})`, width: "1080px", height: "1350px" }}>
             <SlideRenderer
               config={config}
               variant={firstSlide.variant}
