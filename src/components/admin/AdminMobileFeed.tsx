@@ -21,6 +21,8 @@ import {
   Loader2,
   Plus,
   ClipboardList,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -125,6 +127,13 @@ export default function AdminMobileFeed({
     () => tasks.filter((t) => t.status === "open" || t.status === "in_progress"),
     [tasks]
   );
+
+  // Phase 9.3.11 : Briefs archives (completed) - mobile
+  const completedTasks = useMemo(
+    () => tasks.filter((t) => t.status === "completed"),
+    [tasks]
+  );
+  const [archivesOpenMobile, setArchivesOpenMobile] = useState(false);
 
   const approvedCount = useMemo(
     () =>
@@ -426,6 +435,40 @@ export default function AdminMobileFeed({
           ) : (
             <div className="px-3 py-3 space-y-3">
               {openTasks.map((task) => <BriefCardMobile key={task.id} task={task} />)}
+              {/* Phase 9.3.11 : Section archives mobile */}
+              {completedTasks.length > 0 && (
+                <div className="mt-6 border-t pt-4" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
+                  <button
+                    type="button"
+                    onClick={() => setArchivesOpenMobile(!archivesOpenMobile)}
+                    className="w-full flex items-center justify-between px-3 py-3 text-xs font-bold uppercase tracking-wider rounded-lg"
+                    style={{ color: COLORS.warmGray, backgroundColor: archivesOpenMobile ? "rgba(0,0,0,0.04)" : "transparent" }}
+                  >
+                    <span className="flex items-center gap-2">
+                      {archivesOpenMobile ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      Briefs archives ({completedTasks.length})
+                    </span>
+                  </button>
+                  {archivesOpenMobile && (
+                    <div className="mt-3 space-y-2">
+                      {completedTasks.map((task) => (
+                        <div
+                          key={task.id}
+                          className="px-3 py-2.5 rounded-lg opacity-75"
+                          style={{ backgroundColor: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+                        >
+                          <div className="text-xs font-bold truncate" style={{ color: COLORS.ink }}>
+                            {task.title}
+                          </div>
+                          <div className="text-[10px] mt-0.5" style={{ color: COLORS.warmGray }}>
+                            {new Date(task.created_at).toLocaleDateString("fr-CH")}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )
         ) : (
@@ -464,7 +507,7 @@ export default function AdminMobileFeed({
         )}
       </main>
 
-      {activeProject && activeTab !== "briefs" && (
+      {activeProject && activeTab !== "briefs" && (activeTab === "approved" || canApproveAll || canRequestChanges) && (
         <div
           className="fixed bottom-0 left-0 right-0 z-30 px-3 py-3 border-t flex gap-2"
           style={{
@@ -492,10 +535,10 @@ export default function AdminMobileFeed({
                 onClick={() => handleReviewAction("request_changes")}
                 disabled={!!actionLoading || !canRequestChanges}
                 className="flex-1 py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: canRequestChanges ? "#F59E0B" : "#D1D5DB" }}
+                  style={{ display: canRequestChanges ? "flex" : "none", backgroundColor: "#F59E0B" }}
               >
                 {actionLoading === "request_changes" ? <Loader2 size={14} className="animate-spin" /> : <RotateCcw size={14} strokeWidth={2.5} />}
-                Demander
+                  Renvoyer en prod
               </button>
 
               {/* Sprint 9.3 : Bouton APPROUVER */}
@@ -504,7 +547,7 @@ export default function AdminMobileFeed({
                 onClick={() => handleReviewAction("approve")}
                 disabled={!!actionLoading || !canApproveAll}
                 className="flex-[1.5] py-3 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{
+                  style={{ display: canApproveAll ? "flex" : "none",
                   backgroundColor: canApproveAll ? "#10B981" : "#D1D5DB",
                   boxShadow: canApproveAll ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
                 }}
