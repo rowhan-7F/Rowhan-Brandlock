@@ -3,9 +3,10 @@
 import { useEffect } from "react";
 
 // ============================================================
-//  useScrollSnap — Snap JS garanti (Phase 9.3.20)
-//  iOS Safari ignore "scroll-snap-stop: always", donc on force
-//  le recentrage de la card la plus proche apres chaque scroll.
+//  useScrollSnap — Snap JS garanti (Phase 9.3.20b)
+//  Ecoute le scroll au niveau window (capture) pour capter
+//  le scroll quel que soit l'element qui scrolle reellement
+//  (iOS Safari : le <main> ne recoit pas toujours l'event).
 // ============================================================
 export function useScrollSnap(
   containerRef: { current: HTMLDivElement | null },
@@ -13,13 +14,13 @@ export function useScrollSnap(
   deps: unknown[] = []
 ) {
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-
     let settleTimer: ReturnType<typeof setTimeout>;
     let snapping = false;
 
     const snapToNearest = () => {
+      const container = containerRef.current;
+      if (!container) return;
+
       const cards = Object.values(cardsRef.current || {}).filter(
         Boolean
       ) as HTMLDivElement[];
@@ -37,7 +38,9 @@ export function useScrollSnap(
         }
       }
 
-      if (closest && minDist > 6) {
+      // Snap seulement si une card est proche (evite de snapper
+      // quand on scrolle un modal ou une autre zone)
+      if (closest && minDist > 6 && minDist < window.innerHeight * 1.5) {
         snapping = true;
         closest.scrollIntoView({ behavior: "smooth", block: "start" });
         setTimeout(() => {
@@ -52,9 +55,15 @@ export function useScrollSnap(
       settleTimer = setTimeout(snapToNearest, 120);
     };
 
-    container.addEventListener("scroll", onScroll, { passive: true });
+    // capture: true => capte le scroll de n'importe quel descendant
+    window.addEventListener("scroll", onScroll, {
+      capture: true,
+      passive: true,
+    });
     return () => {
-      container.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll, {
+        capture: true,
+      } as EventListenerOptions);
       clearTimeout(settleTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
