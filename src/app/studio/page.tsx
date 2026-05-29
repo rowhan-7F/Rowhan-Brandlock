@@ -286,7 +286,7 @@ export default function StudioHomePage() {
 
       <main className="max-w-6xl mx-auto px-8 py-8">
         {user.role === "graphist" && (
-          <div className="mb-6">
+          <div className="">
             <TasksCapsule brandColor={brandColor} />
           </div>
         )}
