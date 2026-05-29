@@ -582,91 +582,6 @@ export default function StudioEditorPage() {
 }
 
 // ============================================================
-//  EDITABLE PROJECT TITLE
-// ============================================================
-
-function EditableProjectTitle({
-  title, projectId, onUpdated,
-}: {
-  title: string;
-  projectId: string;
-  onUpdated: (newTitle: string) => void;
-}) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState(title);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (!isEditing) setDraft(title);
-  }, [title, isEditing]);
-
-  const save = async () => {
-    const trimmed = draft.trim();
-    if (!trimmed || trimmed === title) {
-      setIsEditing(false);
-      setDraft(title);
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/studio/projects/${projectId}/save`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmed }),
-      });
-      if (!res.ok) throw new Error("Erreur sauvegarde titre");
-      onUpdated(trimmed);
-      setDraft(trimmed);
-      setIsEditing(false);
-    } catch (err: any) {
-      toast.error("Renommage impossible", { description: err.message });
-      setDraft(title);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const cancel = () => {
-    setDraft(title);
-    setIsEditing(false);
-  };
-
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-1.5">
-        <input
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") save();
-            else if (e.key === "Escape") cancel();
-          }}
-          onBlur={save}
-          autoFocus
-          disabled={saving}
-          className="text-sm font-bold text-neutral-900 bg-transparent border-b border-neutral-300 focus:border-neutral-700 outline-none w-full max-w-[400px] pb-0.5"
-          maxLength={100}
-        />
-        {saving && <Loader2 size={11} className="animate-spin text-neutral-400 shrink-0" />}
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => setIsEditing(true)}
-      className="text-sm font-bold text-neutral-900 truncate text-left hover:text-[#B11E2F] transition flex items-center gap-1.5 group max-w-full"
-      title="Cliquer pour renommer"
-    >
-      <span className="truncate">{title}</span>
-      <Pencil size={11} className="text-neutral-300 group-hover:text-[#B11E2F] transition shrink-0" />
-    </button>
-  );
-}
-
-// ============================================================
 //  SLIDE ACCORDION
 // ============================================================
 
@@ -1186,33 +1101,6 @@ function SlidePreview({
 //  SAVE INDICATOR + ERROR SCREEN
 // ============================================================
 
-function SaveIndicator({ status }: { status: "idle" | "saving" | "saved" | "error" }) {
-  if (status === "saving") {
-    return (
-      <span className="flex items-center gap-1 text-neutral-400">
-        <Loader2 size={9} className="animate-spin" />
-        Sauvegarde...
-      </span>
-    );
-  }
-  if (status === "saved") {
-    return (
-      <span className="flex items-center gap-1 text-green-600">
-        <Check size={9} />
-        Sauvegardé
-      </span>
-    );
-  }
-  if (status === "error") {
-    return (
-      <span className="flex items-center gap-1 text-red-500">
-        <X size={9} />
-        Erreur
-      </span>
-    );
-  }
-  return null;
-}
 
 function ErrorScreen({ title, message }: { title: string; message: string }) {
   return (
