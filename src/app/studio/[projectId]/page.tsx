@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useCurrentTenant } from "../../../lib/useCurrentTenant";
@@ -113,6 +113,9 @@ export default function StudioEditorPage() {
   };
 
   const [openSlideId, setOpenSlideId] = useState<string | null>(null);
+  // Phase 9.3.25 : drag & drop des slides
+  const dragIndexRef = useRef<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
 
   // Sprint 4 : Toggle Safe Zones avec persistance localStorage
   const [safeZonesEnabled, setSafeZonesEnabled] = useState<boolean>(false);
@@ -237,6 +240,18 @@ export default function StudioEditorPage() {
       const remaining = slides.filter((s) => s.id !== slideId);
       setOpenSlideId(remaining.length > 0 ? remaining[0].id : null);
     }
+  };
+
+  // Phase 9.3.25 : reordonner les slides (drag & drop)
+  const moveSlide = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0) return;
+    updateStateJson((prev) => {
+      const arr = [...prev.slides];
+      if (from >= arr.length || to >= arr.length) return prev;
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return { ...prev, slides: arr };
+    });
   };
 
   // Sprint 3+4 : helper pour resoudre les inputs avec overrides du format actif
@@ -456,8 +471,30 @@ export default function StudioEditorPage() {
           {/* SLIDES */}
           <div className="flex-1 px-3 py-3 space-y-2">
           {slides.map((slide: any, idx: number) => (
-              <SlideAccordion
+              <div
                 key={slide.id}
+                draggable={openSlideId !== slide.id}
+                onDragStart={(e) => {
+                  dragIndexRef.current = idx;
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                onDragEnd={() => {
+                  dragIndexRef.current = null;
+                  setDragOverIndex(null);
+                }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  if (dragIndexRef.current !== null && dragIndexRef.current !== idx) setDragOverIndex(idx);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  const from = dragIndexRef.current;
+                  if (from !== null && from !== idx) moveSlide(from, idx);
+                  setDragOverIndex(null);
+                }}
+                className={`rounded-xl transition-all ${openSlideId !== slide.id ? "cursor-grab active:cursor-grabbing" : ""} ${dragOverIndex === idx && dragIndexRef.current !== null && dragIndexRef.current !== idx ? "ring-2 ring-[#B11E2F] ring-offset-2" : ""}`}
+              >
+                <SlideAccordion
                 slide={slide}
                 index={idx}
                 isOpen={openSlideId === slide.id}
@@ -473,6 +510,7 @@ export default function StudioEditorPage() {
                 tenantId={userTenantId}
               activeEditingFormat={activeEditingFormat}
               />
+              </div>
             ))}
           </div>
         </aside>
