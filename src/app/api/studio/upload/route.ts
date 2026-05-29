@@ -90,7 +90,18 @@ export async function POST(req: NextRequest) {
       .getPublicUrl(storagePath);
     const publicUrl = urlData.publicUrl;
 
-    const autoApproved = isSuperAdmin || profile.role === "tenant_admin";
+    // Phase 9.3.24 : auto-approve si le tenant a active "toujours approuver"
+    let autoApproveImages = false;
+    if (requestedTenantId) {
+      const { data: tcfg } = await admin
+        .from("tenant_configs")
+        .select("config_json")
+        .eq("tenant_id", requestedTenantId)
+        .maybeSingle();
+      autoApproveImages = (tcfg?.config_json as any)?.autoApproveImages === true;
+    }
+    const autoApproved =
+      isSuperAdmin || profile.role === "tenant_admin" || autoApproveImages;
 
     const insertPayload: any = {
       id: uniqueId,
