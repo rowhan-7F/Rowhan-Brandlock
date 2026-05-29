@@ -285,14 +285,14 @@ export default function StudioHomePage() {
 
       <main className="max-w-6xl mx-auto px-8 py-8">
         {user.role === "graphist" && (
-          <div className="mb-8">
+          <div className="mb-6">
             <TasksCapsule brandColor={brandColor} />
           </div>
         )}
 
-        <div className="mb-10">
+        <div className="mb-6">
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             <button
               onClick={() => setShowNewCarouselModal(true)}
               disabled={creating}

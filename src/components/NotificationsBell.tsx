@@ -68,7 +68,7 @@ export default function NotificationsBell({ brandColor = "#F26522" }: { brandCol
       });
 
       if (!res.ok) {
-        console.error("[BELL] Fetch failed:", res.status);
+        if (res.status !== 401) console.warn("[BELL] Fetch failed:", res.status);
         return;
       }
 

@@ -485,7 +485,7 @@ export default function AdminMobileFeed({
               </div>
             </div>
           ) : (
-            <div className="px-3 py-3 space-y-3">
+            <div className="px-3">
               {filteredProjects.map((project) => (
                 <ProjectCard
                   key={project.id}

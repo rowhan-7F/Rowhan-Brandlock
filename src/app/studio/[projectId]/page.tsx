@@ -648,17 +648,6 @@ function SlideAccordion({
     activeEditingFormat || "carrousel_instagram"
   );
 
-  // DEBUG TEMPORAIRE Sprint 3+4 - a supprimer apres validation
-  console.log("[DEBUG SlideAccordion]", {
-    slideId: slide?.id,
-    activeEditingFormat,
-    hasOverrides: !!slide?.formatOverrides,
-    formatOverridesKeys: slide?.formatOverrides ? Object.keys(slide.formatOverrides) : [],
-    currentFormatOverrides: slide?.formatOverrides?.[activeEditingFormat || "carrousel_instagram"],
-    resolvedInputsKeys: Object.keys(resolvedInputs),
-    titleTextBase: slide?.inputs?.titleText,
-    titleTextResolved: resolvedInputs?.titleText,
-  });
   const filled = countFilledInputs(slide, inputs);
   const isComplete = filled === inputs.length && inputs.length > 0;
 

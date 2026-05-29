@@ -120,8 +120,14 @@ export async function PATCH(
         console.error("[PATCH task] tenant_configs error:", configErr);
       }
 
-      const templateKey = tenantConfig?.config_json?.exportTemplates
-        ? Object.keys(tenantConfig.config_json.exportTemplates)[0]
+      // Phase 9.3.15 : Default smart templateKey (preferer carrousel)
+      // Object.keys()[0] peut retourner video_tiktok = bug si alphabetique
+      const exportTemplates = tenantConfig?.config_json?.exportTemplates;
+      const templateKey =
+        (exportTemplates && exportTemplates.carrousel_instagram)
+          ? "carrousel_instagram"
+        : exportTemplates
+          ? (Object.keys(exportTemplates).find((k) => k.startsWith("carrousel_")) || Object.keys(exportTemplates)[0])
         : "carrousel_instagram";
 
       console.log("[PATCH task] templateKey:", templateKey);
