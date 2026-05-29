@@ -55,6 +55,7 @@ type EditableTitleConfig = {
 type Props = {
   // Navigation
   backHref?: string;
+  showBack?: boolean; // Phase 9.4.6 : masquer la fleche sur les pages "maison"
 
   // Eyebrow (toujours visible)
   eyebrowMain?: string;        // ex: "STUDIO"
@@ -90,6 +91,7 @@ type Props = {
 
 export default function StudioHeader({
   backHref = "/studio",
+  showBack = true,
   eyebrowMain = "STUDIO",
   eyebrowSubtitle,
   title,
@@ -110,6 +112,9 @@ export default function StudioHeader({
   showLogout = false,
   onLogout,
 }: Props) {
+  // Phase 9.4.7 : logo pointe vers le dashboard du contexte (pas la landing)
+  const logoHref = showAdminMenu ? "/admin/tenant" : "/studio";
+
   // Determine submit button config based on status
   const getSubmitConfig = (status: ProjectStatus) => {
     const isApproved = status === "approved";
@@ -126,12 +131,14 @@ export default function StudioHeader({
       {/* GAUCHE : Back + Logo + Eyebrow + Title + Badge */}
       <div className="flex items-center gap-3 min-w-0 flex-1 mr-4">
         {/* Back arrow */}
-        <Link href={backHref} className="text-neutral-400 hover:text-neutral-700 transition shrink-0" title="Retour">
-          <ArrowLeft size={18} />
-        </Link>
+        {showBack && backHref !== "/" && (
+          <Link href={backHref} className="text-neutral-400 hover:text-neutral-700 transition shrink-0" title="Retour">
+            <ArrowLeft size={18} />
+          </Link>
+        )}
 
         {/* Logo PNG */}
-        <Link href="/" className="flex items-center shrink-0 group" title="Accueil">
+        <Link href={logoHref} className="flex items-center shrink-0 group" title="Accueil">
           <img src="/media/logo.png" alt="BrandLock" className="h-7 w-auto group-hover:opacity-80 transition" />
         </Link>
 
