@@ -57,10 +57,7 @@ export default function SlidePreview({
         style={{ backgroundColor: brandColor, width: FIXED_WIDTH }}
         >
         <span className="truncate">
-          Slide {index + 1} · {variantLabel(config, slide.variant)}
-          {subVariantConfig?.label && (
-            <span className="font-normal opacity-80"> · {subVariantConfig.label}</span>
-          )}
+          {variantLabel(config, slide.variant)}
         </span>
         {review?.status === "ok" && <CheckCircle2 size={11} />}
         {review?.status === "needs_changes" && <AlertCircle size={11} />}
