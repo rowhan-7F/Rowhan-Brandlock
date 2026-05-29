@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useCurrentTenant } from "../../lib/useCurrentTenant";
 import { supabase } from "../../lib/supabase";
 import TasksCapsule from "@/components/studio/TasksCapsule";
+import SkeletonCard from "@/components/studio/SkeletonCard";
 import {
   Plus, Loader2, FileText, Clock, CheckCircle2,
   AlertCircle, Pencil, Trash2, Paperclip, ImageIcon, Download, X, Film, Filter,
@@ -329,8 +330,10 @@ export default function StudioHomePage() {
         />
 
         {(loadingProjects || loadingVideos) ? (
-          <div className="text-center py-16">
-            <Loader2 className="w-5 h-5 animate-spin text-neutral-400 mx-auto" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            {Array.from({ length: 10 }).map((_, idx) => (
+              <SkeletonCard key={idx} />
+            ))}
           </div>
         ) : sorted.length === 0 ? (
           (filterType !== "all" || filterStatus !== "all" || searchQuery.trim()) ? (
