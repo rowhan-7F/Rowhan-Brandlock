@@ -10,7 +10,7 @@ import {
   SlideState,
 } from "../../../lib/useStudioProject";
 import {
-  ArrowLeft, Loader2, AlertCircle, ChevronDown, ChevronRight,
+  ArrowLeft, Loader2, AlertCircle, ChevronDown, ChevronRight, GripVertical,
   Plus, Trash2, Check, Send, Download, LogOut, Clock,
   Image as ImageIcon, X, CheckCircle2, Pencil,
 } from "lucide-react";
@@ -715,6 +715,7 @@ function SlideAccordion({
         }}
         className="w-full px-3 py-2.5 flex items-center gap-2 text-left cursor-pointer select-none"
       >
+        {!isOpen && <GripVertical size={13} className="text-neutral-300 shrink-0" />}
         {isOpen ? <ChevronDown size={14} className="text-neutral-400 shrink-0" /> : <ChevronRight size={14} className="text-neutral-400 shrink-0" />}
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold text-neutral-900 truncate flex items-center gap-1.5">
