@@ -327,7 +327,7 @@ export default function AdminMobileFeed({
   const isViewed = activeProjectId ? !!viewedStatus[activeProjectId] : false;
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "#F5F1EA" }}>
+    <div className="h-dvh flex flex-col" style={{ backgroundColor: "#F5F1EA" }}>
       <header
         className="sticky top-0 z-30 px-4 py-3 border-b"
         style={{
@@ -422,7 +422,7 @@ export default function AdminMobileFeed({
         </button>
       </div>
 
-      <main ref={feedRef} className="flex-1 overflow-y-auto pb-24" style={{ scrollSnapType: "y mandatory" }}>
+      <main ref={feedRef} className="flex-1 min-h-0 overflow-y-auto pb-24" style={{ scrollSnapType: "y mandatory" }}>
         {activeTab === "briefs" ? (
           openTasks.length === 0 ? (
             <div className="flex items-center justify-center h-64 px-6 text-center">
