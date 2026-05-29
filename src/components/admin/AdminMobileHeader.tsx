@@ -168,7 +168,7 @@ function BurgerDrawer({
             active={activePath.startsWith("/admin/tenant/brand-assets")}
           />
           <DrawerItem
-            label="Bibliothèque"
+            label="Médias"
             onClick={() => onNavigate("/admin/tenant/library")}
             active={activePath.startsWith("/admin/tenant/library")}
           />

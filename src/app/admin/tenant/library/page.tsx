@@ -108,7 +108,7 @@ function AdminLibraryPageInner() {
   ) => {
     if (action === "reject") {
       const ok = await confirmDialog("Refuser cette image ?", {
-        description: "Elle sera retirée définitivement de la bibliothèque.",
+        description: "Elle sera retirée définitivement des médias.",
         confirmLabel: "Refuser",
         destructive: true,
       });
@@ -207,14 +207,14 @@ function AdminLibraryPageInner() {
 
   return (
     <div className="min-h-screen bg-neutral-50">
-      <AdminMobileHeader title="Bibliothèque" tenantName="Brand" />
+      <AdminMobileHeader title="Médias" tenantName="Brand" />
       {/* ⭐ NOUVEAU AppHeader unifié */}
         <div className="hidden md:block">
       <StudioHeader
         backHref="/admin/tenant"
         eyebrowMain="ADMINISTRATION"
         eyebrowSubtitle={tenantName}
-        title="Bibliothèque d'images"
+        title="Médias"
         showAdminMenu={true}
         adminMenuActive="library"
         tenantId={tenantId}
@@ -480,7 +480,7 @@ function EmptyState({ filter }: { filter: FilterStatus }) {
       <h3 className="text-base font-bold text-neutral-900 mb-1">
         {filter === "pending" && "Aucune image à valider"}
         {filter === "approved" && "Aucune image approuvée"}
-        {filter === "all" && "Bibliothèque vide"}
+        {filter === "all" && "Médias vides"}
       </h3>
       <p className="text-sm text-neutral-500">
         {filter === "pending" && "Tout est à jour ! Le studio n'a pas d'image en attente."}

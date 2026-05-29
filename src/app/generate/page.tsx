@@ -460,7 +460,7 @@ export default function ClientGeneratePage() {
     if (imageModalSlideIndex === null) return;
     const resolvedUrl = image._resolvedUrl || resolveLibraryImageUrl(image);
     if (!resolvedUrl) {
-      alert("Impossible d'utiliser cette image : URL introuvable. Contacte ton admin pour vérifier la bibliothèque.");
+      alert("Impossible d'utiliser cette image : URL introuvable. Contacte ton admin pour vérifier les médias.");
       return;
     }
     const updatedSlides = [...slides];
@@ -1204,7 +1204,7 @@ export default function ClientGeneratePage() {
                                 <button onClick={() => fileInputRefs.current[i]?.click()} title="Importer une image depuis mon ordinateur" className="p-2 bg-white rounded-xl hover:bg-orange-500 hover:text-white transition-all">
                                   <FilePlus size={14} />
                                 </button>
-                                <button onClick={() => openImageModal(i)} disabled={regeneratingImageIndex === i} title="Modifier l'image (bibliothèque, banque d'images, IA)" className="p-2 bg-white rounded-xl hover:bg-orange-500 hover:text-white transition-all disabled:opacity-40">
+                                <button onClick={() => openImageModal(i)} disabled={regeneratingImageIndex === i} title="Modifier l'image (médias, banque d'images, IA)" className="p-2 bg-white rounded-xl hover:bg-orange-500 hover:text-white transition-all disabled:opacity-40">
                                   <RefreshCw size={14} className={regeneratingImageIndex === i ? 'animate-spin' : ''} />
                                 </button>
                                 {slide.bg_image && (
@@ -1469,7 +1469,7 @@ export default function ClientGeneratePage() {
         <div className="flex-1 p-12 bg-neutral-50 overflow-y-auto">
           <div className="max-w-7xl mx-auto space-y-6">
             <div>
-              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-neutral-900">Bibliothèque visuelle</h2>
+              <h2 className="text-3xl font-black italic uppercase tracking-tighter text-neutral-900">Médias</h2>
               <p className="text-xs text-neutral-500 font-medium mt-1">Tes photos disponibles pour les carrousels et publicités. Uploade un nouveau batch quand tu veux.</p>
             </div>
             <BrandLibrarySection
@@ -1500,7 +1500,7 @@ export default function ClientGeneratePage() {
             <div className={`p-5 rounded-2xl border-2 ${isDarkMode ? 'border-blue-900/40 bg-blue-950/20' : 'border-blue-200 bg-blue-50/40'} space-y-3`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <FolderOpen size={16} className="text-blue-600" />
-                <h4 className="text-[10px] font-black uppercase tracking-widest">Bibliothèque officielle du client</h4>
+                <h4 className="text-[10px] font-black uppercase tracking-widest">Médias officiels du client</h4>
                 <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-blue-100 text-blue-700 rounded-md">Recommandé · 0 €</span>
                 {libraryImages.length > 0 && (
                   <span className="text-[9px] font-medium ml-auto opacity-60">{libraryImages.length} photo{libraryImages.length > 1 ? 's' : ''}</span>
@@ -1508,11 +1508,11 @@ export default function ClientGeneratePage() {
               </div>
 
               {loadingLibrary ? (
-                <div className="py-8 text-center text-xs opacity-60">Chargement de la bibliothèque…</div>
+                <div className="py-8 text-center text-xs opacity-60">Chargement des médias…</div>
               ) : libraryImages.length === 0 ? (
                 <div className={`py-8 text-center text-xs rounded-xl ${isDarkMode ? 'bg-neutral-900/50' : 'bg-white/60'}`}>
                   <ImageIcon size={24} className="mx-auto mb-2 opacity-30" />
-                  <p className="opacity-70">Aucune photo officielle dans la bibliothèque pour l&apos;instant.</p>
+                  <p className="opacity-70">Aucune photo officielle dans les médias pour l&apos;instant.</p>
                   <p className="opacity-50 mt-1 text-[10px]">Demande à ton admin d&apos;en ajouter via la charte de marque.</p>
                 </div>
               ) : (

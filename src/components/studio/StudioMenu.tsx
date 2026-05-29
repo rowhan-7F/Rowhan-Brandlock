@@ -56,7 +56,7 @@ export default function StudioMenu({ active, tenantId }: Props) {
       <MenuButton
         href="/studio/library"
         icon={<Library size={13} />}
-        label="Bibliotheque"
+        label="Médias"
         active={active === "library"}
         badge={pendingImages > 0 ? pendingImages : undefined}
       />

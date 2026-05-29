@@ -992,7 +992,7 @@ function BurgerDrawer({
           <DrawerItem label="Dashboard" onClick={() => onNavigate("/admin/tenant")} active />
           <DrawerItem label="Mon équipe" onClick={() => onNavigate("/admin/tenant/team")} />
           <DrawerItem label="Brand Assets" onClick={() => onNavigate("/admin/tenant/brand")} />
-          <DrawerItem label="Bibliothèque" onClick={() => onNavigate("/admin/tenant/library")} />
+          <DrawerItem label="Médias" onClick={() => onNavigate("/admin/tenant/library")} />
         </nav>
         <div className="px-5 py-4 border-t border-neutral-200">
           <button

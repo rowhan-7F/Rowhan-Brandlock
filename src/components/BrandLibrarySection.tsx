@@ -230,7 +230,7 @@ export default function BrandLibrarySection({ clientEmail, brandName, editingId,
 
   const exportLibrary = async () => {
     if (photos.length === 0) {
-      alert('Bibliothèque vide, rien à exporter.');
+      alert('Médias vides, rien à exporter.');
       return;
     }
     if (photos.length > 200) {
@@ -341,8 +341,8 @@ Note : les images sont compressées pour l'usage web. Les originaux haute résol
     return (
       <div className={`text-center py-8 px-4 ${t.warningBg} border ${t.warningBorder} rounded-2xl space-y-2`}>
         <FileImage size={32} className={`mx-auto ${t.warningTextStrong}`} />
-        <p className={`text-sm font-bold ${t.warningText}`}>Bibliothèque indisponible pendant la création</p>
-        <p className={`text-[10px] ${t.warningTextStrong}`}>Enregistre d&apos;abord le client (bouton en bas), tu pourras ensuite uploader sa bibliothèque visuelle.</p>
+        <p className={`text-sm font-bold ${t.warningText}`}>Médias indisponibles pendant la création</p>
+        <p className={`text-[10px] ${t.warningTextStrong}`}>Enregistre d&apos;abord le client (bouton en bas), tu pourras ensuite uploader ses médias.</p>
       </div>
     );
   }
@@ -441,7 +441,7 @@ Note : les images sont compressées pour l'usage web. Les originaux haute résol
           <div className={`py-12 text-center space-y-4 border-2 border-dashed ${t.dashedBorder} rounded-2xl`}>
             <FileImage size={48} className={`mx-auto ${t.iconMuted}`} />
             <div>
-              <p className={`text-sm font-bold ${t.textSecondary}`}>Aucune photo dans la bibliothèque</p>
+              <p className={`text-sm font-bold ${t.textSecondary}`}>Aucune photo dans les médias</p>
               <p className={`text-[10px] ${t.textMuted} mt-1`}>Uploade un premier batch pour démarrer</p>
             </div>
             <button

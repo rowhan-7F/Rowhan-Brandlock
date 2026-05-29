@@ -186,7 +186,7 @@ export default function SuperAdminAnalyticsPage() {
             />
             <KpiCard
               icon={<ImageIcon size={14} />}
-              label="Bibliothèque"
+              label="Médias"
               value={kpis.totalImages.toString()}
               subValue={`${kpis.totalImagesMB} MB · ${kpis.imagesUsed} utilisées`}
               color="green"
@@ -423,7 +423,7 @@ export default function SuperAdminAnalyticsPage() {
         {/*  SECTION 6 — BIBLIOTHÈQUE (Top images + Couleurs)             */}
         {/* ============================================================ */}
         <section>
-          <SectionTitle icon={<ImageIcon size={14} />} label="Bibliothèque d'images" />
+          <SectionTitle icon={<ImageIcon size={14} />} label="Médias" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
             {/* Top images */}
             <Card title="Top images les plus utilisées">

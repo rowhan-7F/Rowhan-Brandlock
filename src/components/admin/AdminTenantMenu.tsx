@@ -93,7 +93,7 @@ export default function AdminTenantMenu({ active, tenantId }: Props) {
       <MenuButton
         href="/admin/tenant/library"
         icon={<Library size={13} />}
-        label="Bibliotheque"
+        label="Médias"
         active={active === "library"}
         badge={libraryPending > 0 ? libraryPending : undefined}
         badgeColor="orange"

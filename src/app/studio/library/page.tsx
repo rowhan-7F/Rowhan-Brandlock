@@ -154,7 +154,7 @@ export default function StudioLibraryPage() {
         backHref="/"
         eyebrowMain="STUDIO"
         eyebrowSubtitle={tenantName}
-        title="Bibliothèque"
+        title="Médias"
         showStudioMenu={true}
         studioMenuActive="library"
         tenantId={tenantId}
@@ -208,7 +208,7 @@ export default function StudioLibraryPage() {
         {images.length === 0 ? (
           <div className="bg-white rounded-xl border border-neutral-200 p-12 text-center">
             <ImageIcon size={32} className="mx-auto text-neutral-300 mb-3" />
-            <p className="text-sm text-neutral-500">Aucune image dans cette bibliotheque.</p>
+            <p className="text-sm text-neutral-500">Aucune image dans les médias.</p>
             <p className="text-xs text-neutral-400 mt-1">Cliquez sur "Uploader" pour commencer.</p>
           </div>
         ) : (
@@ -471,7 +471,7 @@ function UploadModal({
         <div className="px-6 py-4 border-b border-neutral-200 flex items-center justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Nouveau</div>
-            <h3 className="text-base font-bold text-neutral-900">Upload bibliotheque</h3>
+            <h3 className="text-base font-bold text-neutral-900">Upload médias</h3>
           </div>
           <button type="button" onClick={onClose} className="p-1.5 text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 rounded-lg transition">
             <X size={18} />

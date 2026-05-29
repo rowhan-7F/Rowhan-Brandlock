@@ -122,7 +122,7 @@ export function EmptyLibrary() {
   return (
     <EmptyState
       icon={<ImageIcon size={22} />}
-      title="Ta bibliothèque est vide"
+      title="Tes médias sont vides"
       description="Importe les visuels de ta marque pour les utiliser dans tes créations. Photos, logos, illustrations..."
       action={{ label: "Importer des images", href: "#" }}
     />

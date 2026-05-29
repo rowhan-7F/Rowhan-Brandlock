@@ -336,7 +336,7 @@ function ImageFieldWithPicker({
             Choisir une image
           </div>
           <div className="text-[9px] text-neutral-400 mt-0.5">
-            Bibliothèque ou import depuis votre PC
+            Médias ou import depuis votre PC
           </div>
         </button>
       )}

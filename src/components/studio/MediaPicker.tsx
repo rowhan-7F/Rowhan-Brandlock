@@ -149,7 +149,7 @@ export default function MediaPicker({
             active={tab === "library"}
             onClick={() => setTab("library")}
             icon={<Library size={14} />}
-            label={`Bibliothèque (${images.length})`}
+            label={`Médias (${images.length})`}
           />
           <TabButton
             active={tab === "upload"}
@@ -257,7 +257,7 @@ function LibraryTab({
           <p className="text-sm text-neutral-500 mb-1">
             {search
               ? "Aucun résultat pour cette recherche"
-              : "Bibliothèque vide pour ce tenant"}
+              : "Médias vides pour ce tenant"}
           </p>
           <p className="text-[11px] text-neutral-400">
             Utilise l&apos;onglet &quot;Importer&quot; pour ajouter ta première image
@@ -299,7 +299,7 @@ function LibraryTab({
                 <div className="flex items-center gap-2 mb-3">
                   <div className="text-[10px] font-black uppercase tracking-widest text-neutral-500 bg-neutral-100 px-2.5 py-1 rounded-md flex items-center gap-1.5">
                     <Library size={11} />
-                    Bibliothèque
+                    Médias
                   </div>
                   <span className="text-[11px] text-neutral-400">
                     {otherImages.length} autre{otherImages.length > 1 ? "s" : ""} image{otherImages.length > 1 ? "s" : ""}
@@ -567,7 +567,7 @@ function UploadTab({
               </>
             ) : (
               <>
-                <Check size={14} /> Importer dans la bibliothèque
+                <Check size={14} /> Importer dans les médias
               </>
             )}
           </button>
