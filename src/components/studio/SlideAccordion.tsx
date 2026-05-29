@@ -171,7 +171,7 @@ function DynamicInput({
   input, value, onChange, isLast, onCompleteLast, autoFocus, userRole, tenantId,
 }: any) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && isLast) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && isLast) {
       e.preventDefault();
       onCompleteLast();
     }
@@ -235,15 +235,23 @@ function DynamicInput({
 
   return (
     <Field label={label} required={input.required}>
-      <input
-        type="text"
-        value={value?.value || ""}
-        onChange={(e) => onChange({ kind: "text", value: e.target.value })}
-        onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        autoFocus={autoFocus}
-        maxLength={input.maxLength}
-        className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs outline-none focus:border-neutral-400 bg-white"
+      <textarea
+        
+value={value?.value || ""}
+        
+onChange={(e) => onChange({ kind: "text", value: e.target.value })}
+        
+onKeyDown={handleKeyDown}
+        
+placeholder={placeholder}
+        
+autoFocus={autoFocus}
+        
+maxLength={input.maxLength}
+        
+rows={Math.min(6, Math.max(1, (value?.value || "").split("\n").length))}
+        
+className="w-full px-3 py-2 rounded-lg border border-neutral-200 text-xs outline-none focus:border-neutral-400 bg-white resize-none"
       />
       {input.maxLength && (
         <div className="text-[9px] text-neutral-400 text-right mt-0.5">

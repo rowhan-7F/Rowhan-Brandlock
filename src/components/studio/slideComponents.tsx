@@ -291,6 +291,7 @@ function TitleBlockComponent({ config, componentConfig, value, scale }: Componen
         textTransform: componentConfig?.textTransform || "none",
         letterSpacing: componentConfig?.letterSpacing || "-0.02em",
         ...lineClampStyle,
+        whiteSpace: "pre-line",
       }}
     >
       <AutoHighlightText
@@ -321,6 +322,7 @@ function BodyBlockComponent({ config, componentConfig, value, scale }: Component
       style={{
         color: textColor, fontFamily, fontSize, lineHeight,
         fontWeight: 500, maxWidth,
+        whiteSpace: "pre-line",
       }}
     >
       {value}
@@ -507,6 +509,7 @@ function SimpleTextComponent({ config, componentConfig, value, scale }: Componen
         fontStyle,
         lineHeight: 1.3,
         textAlign: textAlign as React.CSSProperties["textAlign"],
+        whiteSpace: "pre-line",
       }}
     >
       {value}
@@ -546,6 +549,7 @@ function DetailsBoxComponent({ config, componentConfig, value, scale }: Componen
         padding: `${paddingY}px ${paddingX}px`,
         backgroundColor: `rgba(0, 0, 0, ${bgOpacity})`,
         textAlign: textAlign as React.CSSProperties["textAlign"],
+        whiteSpace: "pre-line",
       }}
     >
       {value}
@@ -573,6 +577,7 @@ function SubtitleBlockComponent({ config, componentConfig, value, scale }: Compo
         opacity: componentConfig?.opacity ?? 0.85,
         fontStyle,
         lineHeight: 1.2,
+        whiteSpace: "pre-line",
       }}
     >
       {value}
@@ -597,6 +602,7 @@ function InfoLineComponent({ config, componentConfig, value, scale }: ComponentP
         color: textColor, fontFamily, fontSize,
         fontWeight: componentConfig?.fontWeight || 700,
         lineHeight: 1.4,
+        whiteSpace: "pre-line",
       }}
     >
       {value}
