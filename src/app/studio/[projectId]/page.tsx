@@ -7,7 +7,6 @@ import { useCurrentTenant } from "../../../lib/useCurrentTenant";
 import { supabase } from "../../../lib/supabase";
 import {
   useStudioProject,
-  SlideState,
 } from "../../../lib/useStudioProject";
 import {
   ArrowLeft, Loader2, AlertCircle, ChevronDown, ChevronRight, GripVertical,
@@ -26,14 +25,12 @@ import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import FeedbackWidget from "@/components/FeedbackWidget";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
+import { getAvailableVariants, getSubVariants, getDefaultSubVariant, getSubVariantConfig, variantLabel, createDefaultSlide, createEmptySlide, createSlideWithVariant, countFilledInputs } from "@/lib/studioHelpers";
 
 // ⚠ SUPPRIMÉ : import LogoutButton (remplacé par icône custom directement dans le header)
 
 type UserRole = "tenant_admin" | "graphist" | "super_admin" | "viewer";
 
-function generateId(): string {
-  return `slide_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
-}
 
 // ============================================================
 //  PAGE PRINCIPALE
@@ -1115,105 +1112,4 @@ function ErrorScreen({ title, message }: { title: string; message: string }) {
       </div>
     </div>
   );
-}
-
-// ============================================================
-//  HELPERS
-// ============================================================
-
-function getAvailableVariants(config: any): Array<{ key: string; label?: string; description?: string }> {
-  const variants = config?.exportTemplates?.carrousel_instagram?.slideVariants || {};
-  // Phase 9.3.16 : Ordre logique narratif (intro -> contenu -> citation -> stats -> fin)
-  const VARIANT_ORDER = ["intro", "content", "quote", "stat", "outro"];
-  return Object.entries(variants)
-    .map(([key, v]: [string, any]) => ({
-      key, label: v.label || key, description: v.description,
-    }))
-    .sort((a, b) => {
-      const ai = VARIANT_ORDER.indexOf(a.key);
-      const bi = VARIANT_ORDER.indexOf(b.key);
-      const aOrder = ai === -1 ? 999 : ai;
-      const bOrder = bi === -1 ? 999 : bi;
-      return aOrder - bOrder;
-    });
-}
-
-function getSubVariants(config: any, variantKey: string): Array<{ key: string; label: string; description: string }> {
-  const variant = config?.exportTemplates?.carrousel_instagram?.slideVariants?.[variantKey];
-  if (!variant?.subVariants) return [];
-  return Object.entries(variant.subVariants).map(([key, sv]: [string, any]) => ({
-    key, label: sv.label || key, description: sv.description || "",
-  }));
-}
-
-function getDefaultSubVariant(config: any, variantKey: string): string {
-  const subs = getSubVariants(config, variantKey);
-  return subs[0]?.key || "default";
-}
-
-function getSubVariantConfig(config: any, variantKey: string, subVariantKey: string): any {
-  return config?.exportTemplates?.carrousel_instagram?.slideVariants?.[variantKey]?.subVariants?.[subVariantKey];
-}
-
-function variantLabel(config: any, variantKey: string): string {
-  const variant = config?.exportTemplates?.carrousel_instagram?.slideVariants?.[variantKey];
-  return variant?.label || variantKey.charAt(0).toUpperCase() + variantKey.slice(1);
-}
-
-function createDefaultSlide(config: any): SlideState {
-  const variants = getAvailableVariants(config);
-  const introVariant = variants.find((v) => v.key === "intro") || variants[0];
-  const variantKey = introVariant?.key || "intro";
-  const subVariantKey = getDefaultSubVariant(config, variantKey);
-  return createEmptySlide(variantKey, subVariantKey, config);
-}
-
-function createEmptySlide(variantKey: string, subVariantKey: string, config: any): SlideState {
-  const subConfig = getSubVariantConfig(config, variantKey, subVariantKey);
-  const inputs: Record<string, any> = {};
-
-  (subConfig?.inputs || []).forEach((input: any) => {
-    const t = input.type || "text";
-    if (t === "select") inputs[input.key] = { kind: "select", value: "" };
-    else if (t === "image") inputs[input.key] = { kind: "image", value: null };
-    else if (t === "richText") inputs[input.key] = { kind: "richText", value: "" };
-    else inputs[input.key] = { kind: "text", value: "" };
-  });
-
-  return {
-    id: generateId(), variant: variantKey, subVariant: subVariantKey, inputs,
-  } as any;
-}
-
-function createSlideWithVariant(slideId: string, variantKey: string, subVariantKey: string, config: any, oldSlide?: any): SlideState {
-  const fresh = createEmptySlide(variantKey, subVariantKey, config);
-  // Phase 12 peaufinage #5 : preserver les inputs communs entre ancienne et nouvelle variante
-  if (oldSlide && oldSlide.inputs) {
-    const newSubConfig = getSubVariantConfig(config, variantKey, subVariantKey);
-    const newInputKeys: string[] = (newSubConfig?.inputs || []).map((i: any) => i.key);
-    const preservedInputs: Record<string, any> = { ...fresh.inputs };
-    newInputKeys.forEach((key: string) => {
-      const oldValue = oldSlide.inputs[key];
-      if (oldValue === undefined || oldValue === null) return;
-      if (typeof oldValue === "object" && oldValue !== null) {
-        const hasContent = oldValue.value !== undefined && oldValue.value !== null && oldValue.value !== "";
-        if (hasContent) preservedInputs[key] = oldValue;
-      } else if (oldValue !== "") {
-        preservedInputs[key] = oldValue;
-      }
-    });
-    return { ...fresh, id: slideId, inputs: preservedInputs };
-  }
-  return { ...fresh, id: slideId };
-}
-
-function countFilledInputs(slide: SlideState, inputs: any[]): number {
-  let count = 0;
-  inputs.forEach((input) => {
-    const v = slide.inputs[input.key];
-    if (!v) return;
-    if (v.kind === "image" && v.value) count++;
-    else if (v.kind !== "image" && v.value && String(v.value).trim()) count++;
-  });
-  return count;
 }
