@@ -30,6 +30,7 @@ import SlideRenderer from "@/components/studio/SlideRenderer";
 import NotificationsBell from "@/components/NotificationsBell";
 import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
 import type { BrandConfig } from "@/types/brandConfig";
+import { useScrollSnap } from "@/hooks/useScrollSnap";
 
 // ═══════════════════════════════════════════════════════════
 //  TYPES
@@ -152,6 +153,8 @@ export default function AdminMobileFeed({
 
   const feedRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  // Phase 9.3.20 : Snap JS garanti (iOS Safari ignore scroll-snap-stop)
+  useScrollSnap(feedRef, cardRefs);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
