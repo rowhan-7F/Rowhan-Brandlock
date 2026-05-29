@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import StudioHeader from "@/components/StudioHeader";
 import AdminTenantMenu from "@/components/admin/AdminTenantMenu";
 import BrandAssetsTenantSection from "@/components/admin/BrandAssetsTenantSection";
+import AutoApproveToggle from "@/components/admin/AutoApproveToggle";
 import AdminMobileHeader from "@/components/admin/AdminMobileHeader";
 
 function TenantBrandAssetsPageInner() {
@@ -119,6 +120,7 @@ function TenantBrandAssetsPageInner() {
             Gerez les <strong>backgrounds</strong> de vos templates intro et outro. Les overlays (logo + titre) sont <strong>verrouilles par votre BrandLock manager</strong> pour garantir la charte luxury.
           </p>
         </div>
+        <AutoApproveToggle />
         <BrandAssetsTenantSection tenantId={tenantId} />
       </main>
     </div>

@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Loader2, AlertCircle, Search, ImageIcon,
+  Loader2, AlertCircle, Search, ImageIcon, Check,
   CheckCircle2, XCircle, Trash2, ShieldCheck, ShieldAlert,
   Library, Filter,
 } from "lucide-react";
@@ -158,6 +158,40 @@ function AdminLibraryPageInner() {
   };
 
   // ============================================================
+  //  Tout approuver (bulk) — Phase 9.3.23
+  // ============================================================
+  const handleApproveAll = async () => {
+    const pendingImgs = images.filter((img) => !img.is_approved);
+    if (pendingImgs.length === 0) return;
+    const ok = await confirmDialog(
+      `Approuver les ${pendingImgs.length} images en attente ?`,
+      { confirmLabel: "Tout approuver" }
+    );
+    if (!ok) return;
+
+    setActionLoading("__all__");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      for (const img of pendingImgs) {
+        await fetch(`/api/admin/library/${img.id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({ action: "approve" }),
+        });
+      }
+      toast.success(`${pendingImgs.length} images approuvees`);
+      await fetchImages();
+    } catch (err: any) {
+      toast.error("Erreur", { description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ============================================================
   //  Rendering
   // ============================================================
 
@@ -218,6 +252,24 @@ function AdminLibraryPageInner() {
               count={counts.total}
             />
           </div>
+
+          {/* Phase 9.3.23 : Tout approuver (visible si filtre pending) */}
+          {filter === "pending" && counts.pending > 0 && (
+            <button
+              type="button"
+              onClick={handleApproveAll}
+              disabled={actionLoading === "__all__"}
+              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition disabled:opacity-50"
+              style={{ backgroundColor: "#16a34a" }}
+            >
+              {actionLoading === "__all__" ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <Check size={14} />
+              )}
+              Tout approuver ({counts.pending})
+            </button>
+          )}
 
           {/* Recherche */}
           <div className="relative flex-1 min-w-0">

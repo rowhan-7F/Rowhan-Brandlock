@@ -62,6 +62,17 @@ export async function POST(req: Request) {
     }
     const { profile } = auth;
 
+    // Phase 9.3.22 : auto-approve si le tenant a active "toujours approuver"
+    let autoApproveImages = false;
+    if (profile.tenant_id) {
+      const { data: tcfg } = await supabaseAdmin
+        .from("tenant_configs")
+        .select("config_json")
+        .eq("tenant_id", profile.tenant_id)
+        .maybeSingle();
+      autoApproveImages = (tcfg?.config_json as any)?.autoApproveImages === true;
+    }
+
     if (!profile.tenant_id && profile.role !== "super_admin") {
       return NextResponse.json({ error: "Tenant requis" }, { status: 400 });
     }
@@ -134,7 +145,9 @@ export async function POST(req: Request) {
           .insert([{
             tenant_id: profile.tenant_id,
             uploaded_by: profile.user_id,
-            is_approved: false, // ALWAYS false on upload (workflow validation)
+            is_approved: autoApproveImages, // Phase 9.3.22 : true si tenant auto-approve
+            approved_at: autoApproveImages ? new Date().toISOString() : null,
+            approved_by: autoApproveImages ? profile.user_id : null,
             client_email: clientEmail,
             brand_name: brandName,
             storage_path: fullPath,
