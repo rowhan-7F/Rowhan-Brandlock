@@ -538,6 +538,9 @@ export default function StudioEditorPage() {
                 />
               ))
             )}
+            {slides.length > 0 && (
+              <div aria-hidden className="shrink-0 w-[50vw]" />
+            )}
           </div>
         </main>
       </div>
