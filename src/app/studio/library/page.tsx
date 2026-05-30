@@ -113,7 +113,7 @@ export default function StudioLibraryPage() {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, tenantId, fetchPage]);
+  }, [hasMore, tenantId, fetchPage, images.length]);
 
   useEffect(() => {
     (async () => {

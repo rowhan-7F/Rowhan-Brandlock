@@ -134,7 +134,7 @@ function AdminLibraryPageInner() {
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, [hasMore, fetchPage]);
+  }, [hasMore, fetchPage, images.length]);
 
   // ============================================================
   //  Actions
