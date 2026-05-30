@@ -991,7 +991,7 @@ function BurgerDrawer({
         <nav className="flex-1 overflow-y-auto py-3">
           <DrawerItem label="Dashboard" onClick={() => onNavigate("/admin/tenant")} active />
           <DrawerItem label="Mon équipe" onClick={() => onNavigate("/admin/tenant/team")} />
-          <DrawerItem label="Brand Assets" onClick={() => onNavigate("/admin/tenant/brand")} />
+          <DrawerItem label="Brand Assets" onClick={() => onNavigate("/admin/tenant/brand-assets")} />
           <DrawerItem label="Médias" onClick={() => onNavigate("/admin/tenant/library")} />
         </nav>
         <div className="px-5 py-4 border-t border-neutral-200">
