@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  Loader2, AlertCircle, Search, ImageIcon, Check,
+  Loader2, AlertCircle, Search, ImageIcon, Check, CheckSquare,
   CheckCircle2, XCircle, Trash2, ShieldCheck, ShieldAlert,
   Library, Filter,
 } from "lucide-react";
@@ -57,6 +57,8 @@ function AdminLibraryPageInner() {
   const [selectedImage, setSelectedImage] = useState<LibraryImage | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState<string>("");
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // ============================================================
   //  Charger les images
@@ -152,6 +154,56 @@ function AdminLibraryPageInner() {
       setSelectedImage(null);
     } catch (err: any) {
       toast.error("Action impossible", { description: err.message });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // ============================================================
+  //  Phase 9.4.x : Selection multiple + suppression groupee (video-ready)
+  // ============================================================
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const selectAllVisible = () => setSelectedIds(new Set(images.map((i) => i.id)));
+  const clearSelection = () => setSelectedIds(new Set());
+  const exitSelectMode = () => { setSelectMode(false); clearSelection(); };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    const ok = await confirmDialog(`Supprimer ${ids.length} média(s) ?`, {
+      description: "Cette action est irréversible.",
+      confirmLabel: "Supprimer",
+      destructive: true,
+    });
+    if (!ok) return;
+    setActionLoading("__batch__");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const results = await Promise.all(
+        ids.map((id) =>
+          fetch(`/api/admin/library/${id}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+          }).then((r) => r.ok)
+        )
+      );
+      const okCount = results.filter(Boolean).length;
+      const failCount = ids.length - okCount;
+      if (failCount === 0) toast.success(`${okCount} média(s) supprimé(s)`);
+      else toast.error(`${failCount} échec(s)`, { description: `${okCount}/${ids.length} supprimé(s)` });
+      await fetchImages();
+      exitSelectMode();
+    } catch (err: any) {
+      toast.error("Suppression impossible", { description: err.message });
     } finally {
       setActionLoading(null);
     }
@@ -287,6 +339,43 @@ function AdminLibraryPageInner() {
           </div>
         </div>
 
+        {/* Phase 9.4.x : Barre selection multiple (video-ready) */}
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+            disabled={images.length === 0}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border transition disabled:opacity-40"
+            style={selectMode ? { backgroundColor: "#B11E2F", color: "white", borderColor: "#B11E2F" } : { backgroundColor: "white", color: "#525252", borderColor: "#e5e5e5" }}
+          >
+            <CheckSquare size={14} />
+            {selectMode ? "Annuler la sélection" : "Sélectionner"}
+          </button>
+          {selectMode && (
+            <>
+              <span className="text-xs font-bold text-neutral-600">
+                {selectedIds.size} sélectionné{selectedIds.size > 1 ? "s" : ""}
+              </span>
+              <button
+                type="button"
+                onClick={selectedIds.size === images.length ? clearSelection : selectAllVisible}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border border-neutral-200 bg-white text-neutral-600 hover:border-neutral-400 transition"
+              >
+                {selectedIds.size === images.length ? "Tout désélectionner" : "Tout sélectionner"}
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchDelete}
+                disabled={selectedIds.size === 0 || actionLoading === "__batch__"}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white transition disabled:opacity-40"
+                style={{ backgroundColor: "#dc2626" }}
+              >
+                {actionLoading === "__batch__" ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                Supprimer la sélection
+              </button>
+            </>
+          )}
+        </div>
         {/* CONTENU */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-2 text-sm text-red-700">
@@ -307,6 +396,9 @@ function AdminLibraryPageInner() {
               <ImageCard
                 key={img.id}
                 img={img}
+                selectMode={selectMode}
+                selected={selectedIds.has(img.id)}
+                onToggleSelect={() => toggleSelect(img.id)}
                 onClick={() => setSelectedImage(img)}
                 onApprove={() => handleAction(img.id, "approve")}
                 onReject={() => handleAction(img.id, "reject")}
@@ -385,6 +477,7 @@ function FilterButton({
 // ============================================================
 function ImageCard({
   img, onClick, onApprove, onReject, onDelete, actionLoading,
+  selectMode, selected, onToggleSelect,
 }: {
   img: LibraryImage;
   onClick: () => void;
@@ -392,9 +485,28 @@ function ImageCard({
   onReject: () => void;
   onDelete: () => void;
   actionLoading: boolean;
+  selectMode: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }) {
   return (
-    <div className="group relative aspect-square rounded-xl overflow-hidden bg-neutral-100 border border-neutral-200 hover:border-neutral-300 transition">
+    <div className={`group relative aspect-square rounded-xl overflow-hidden bg-neutral-100 border transition ${selected ? "border-[#B11E2F] ring-2 ring-[#B11E2F]" : "border-neutral-200 hover:border-neutral-300"}`}>
+      {selectMode && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+          className="absolute inset-0 z-20 flex items-start justify-end p-2"
+          style={{ backgroundColor: selected ? "rgba(177,30,47,0.22)" : "rgba(0,0,0,0.04)" }}
+          aria-label="Sélectionner"
+        >
+          <span
+            className="w-6 h-6 rounded-md flex items-center justify-center border-2"
+            style={selected ? { backgroundColor: "#B11E2F", borderColor: "#B11E2F" } : { backgroundColor: "rgba(255,255,255,0.92)", borderColor: "#ffffff" }}
+          >
+            {selected && <Check size={14} className="text-white" />}
+          </span>
+        </button>
+      )}
       <img
         src={img.thumbnail_url || img.public_url}
         alt={img.filename || ""}
