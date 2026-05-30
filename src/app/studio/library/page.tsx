@@ -48,33 +48,72 @@ export default function StudioLibraryPage() {
   const [search, setSearch] = useState("");
   const [detailImage, setDetailImage] = useState<BrandImage | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const imagesRef = useRef<BrandImage[]>([]);
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const fetchImages = useCallback(async (currentTenantId: string | null) => {
-    if (!currentTenantId) return;
+  const fetchPage = useCallback(
+    async (currentTenantId: string | null, reset: boolean) => {
+      if (!currentTenantId) return;
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      if (!reset) setLoadingMore(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { router.push("/"); return; }
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      router.push("/");
-      return;
-    }
+        const offset = reset ? 0 : imagesRef.current.length;
+        const params = new URLSearchParams({ status: filter, limit: "60", offset: String(offset) });
+        if (search.trim()) params.set("search", search.trim());
 
-    const params = new URLSearchParams({ status: filter, limit: "100" });
-    if (search.trim()) params.set("search", search.trim());
+        const res = await fetch(`/api/library?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          toast.error("Erreur chargement", { description: data.error });
+          return;
+        }
 
-    const res = await fetch(`/api/library?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    });
+        const data = await res.json();
+        const batch: BrandImage[] = data.images || [];
+        setImages((prev) => {
+          const next = reset ? batch : [...prev, ...batch];
+          imagesRef.current = next;
+          return next;
+        });
+        setCounts(data.counts || { pending: 0, approved: 0, total: 0 });
+        setHasMore(batch.length === 60);
+      } finally {
+        setLoadingMore(false);
+        loadingRef.current = false;
+      }
+    },
+    [filter, search, router]
+  );
 
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      toast.error("Erreur chargement", { description: data.error });
-      return;
-    }
+  const fetchImages = useCallback(
+    (currentTenantId: string | null) => fetchPage(currentTenantId, true),
+    [fetchPage]
+  );
 
-    const data = await res.json();
-    setImages(data.images || []);
-    setCounts(data.counts || { pending: 0, approved: 0, total: 0 });
-  }, [filter, search, router]);
+  // Scroll infini : charge le paquet suivant quand la sentinelle est visible
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          fetchPage(tenantId, false);
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, tenantId, fetchPage]);
 
   useEffect(() => {
     (async () => {
@@ -216,6 +255,16 @@ export default function StudioLibraryPage() {
             {images.map((img) => (
               <ImageCard key={img.id} image={img} onClick={() => setDetailImage(img)} />
             ))}
+          </div>
+        )}
+        {/* Sentinelle scroll infini */}
+        {images.length > 0 && (
+          <div ref={sentinelRef} className="py-6 flex items-center justify-center">
+            {loadingMore ? (
+              <span className="text-[11px] text-neutral-400">Chargement…</span>
+            ) : !hasMore ? (
+              <span className="text-[11px] text-neutral-400">Tous les médias sont affichés</span>
+            ) : null}
           </div>
         )}
       </main>

@@ -2,7 +2,7 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -59,47 +59,82 @@ function AdminLibraryPageInner() {
   const [tenantName, setTenantName] = useState<string>("");
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const imagesRef = useRef<LibraryImage[]>([]);
+  const loadingRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================================
   //  Charger les images
   // ============================================================
-  const fetchImages = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push("/");
-        return;
+  const fetchPage = useCallback(
+    async (reset: boolean) => {
+      if (loadingRef.current) return;
+      loadingRef.current = true;
+      if (reset) setLoading(true); else setLoadingMore(true);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { router.push("/"); return; }
+
+        const offset = reset ? 0 : imagesRef.current.length;
+        const params = new URLSearchParams({
+          status: filter,
+          limit: "60",
+          offset: String(offset),
+        });
+        if (search.trim()) params.set("search", search.trim());
+
+        const res = await fetch(`/api/admin/library?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || "Erreur chargement");
+        }
+
+        const data = await res.json();
+        const batch: LibraryImage[] = data.images || [];
+        setImages((prev) => {
+          const next = reset ? batch : [...prev, ...batch];
+          imagesRef.current = next;
+          return next;
+        });
+        setCounts(data.counts || { pending: 0, approved: 0, total: 0 });
+        setHasMore(batch.length === 60);
+        setError(null);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+        loadingRef.current = false;
       }
+    },
+    [filter, search, router]
+  );
 
-      const params = new URLSearchParams({
-        status: filter,
-        limit: "100",
-      });
-      if (search.trim()) params.set("search", search.trim());
-
-      const res = await fetch(`/api/admin/library?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${session.access_token}` },
-      });
-
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error || "Erreur chargement");
-      }
-
-      const data = await res.json();
-      setImages(data.images || []);
-      setCounts(data.counts || { pending: 0, approved: 0, total: 0 });
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  }, [filter, search, router]);
+  const fetchImages = useCallback(() => fetchPage(true), [fetchPage]);
 
   useEffect(() => {
     fetchImages();
   }, [fetchImages]);
+
+  // Scroll infini : charge le paquet suivant quand la sentinelle est visible
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingRef.current) {
+          fetchPage(false);
+        }
+      },
+      { rootMargin: "400px" }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, fetchPage]);
 
   // ============================================================
   //  Actions
@@ -409,6 +444,17 @@ function AdminLibraryPageInner() {
           </div>
         )}
       </div>
+
+        {/* Sentinelle scroll infini */}
+        {!loading && images.length > 0 && (
+          <div ref={sentinelRef} className="py-6 flex items-center justify-center">
+            {loadingMore ? (
+              <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
+            ) : !hasMore ? (
+              <span className="text-[11px] text-neutral-400">Tous les médias sont affichés</span>
+            ) : null}
+          </div>
+        )}
 
       {/* MODAL DÉTAIL */}
       {selectedImage && (
