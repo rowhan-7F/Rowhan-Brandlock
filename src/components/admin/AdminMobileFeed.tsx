@@ -655,6 +655,7 @@ function SlideReviewOverlay({
           placeholder="Que faut-il corriger ?"
           rows={2}
           maxLength={500}
+          style={{ fontSize: "16px" }}
           className="w-full mt-2 px-2 py-1.5 border border-amber-200 bg-white rounded-lg text-[11px] focus:border-amber-400 focus:outline-none resize-none"
         />
       )}
@@ -1081,7 +1082,7 @@ function CommentSheet({
             onChange={(e) => onChange(e.target.value)}
             placeholder="Votre retour..."
             className="w-full h-32 p-3 rounded-xl resize-none text-sm focus:outline-none"
-            style={{ backgroundColor: "#FAFAF8", color: COLORS.ink, border: "1px solid rgba(0,0,0,0.08)" }}
+            style={{ backgroundColor: "#FAFAF8", color: COLORS.ink, border: "1px solid rgba(0,0,0,0.08)", fontSize: "16px" }}
           />
         </div>
         <div className="px-4 pb-4 pt-1">
