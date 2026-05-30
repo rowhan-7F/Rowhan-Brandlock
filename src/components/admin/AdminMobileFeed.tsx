@@ -23,6 +23,7 @@ import {
   ClipboardList,
   ChevronUp,
   ChevronDown,
+  Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -1198,6 +1199,8 @@ function NewBriefMobileModal({
   const [priority, setPriority] = useState<"low" | "normal" | "high" | "urgent">("normal");
   const [deadline, setDeadline] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const priorityOptions: { value: "low" | "normal" | "high" | "urgent"; label: string; color: string }[] = [
     { value: "low", label: "Basse", color: "#71717A" },
@@ -1231,7 +1234,34 @@ function NewBriefMobileModal({
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || "Erreur creation");
       }
-      toast.success("Brief cree", { description: "Le studio est notifie." });
+      const { task } = await res.json();
+
+      let uploaded = 0;
+      let failed = 0;
+      if (task?.id && files.length > 0) {
+        for (const file of files) {
+          try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const up = await fetch(`/api/admin/briefs/${task.id}/attachments`, {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session?.access_token}` },
+              body: fd,
+            });
+            if (up.ok) { uploaded++; } else { failed++; }
+          } catch {
+            failed++;
+          }
+        }
+      }
+
+      if (failed > 0) {
+        toast.success("Brief cree", { description: `${uploaded} fichier(s) ajoute(s), ${failed} echec(s).` });
+      } else if (uploaded > 0) {
+        toast.success("Brief cree", { description: `Le studio est notifie. ${uploaded} piece(s) jointe(s).` });
+      } else {
+        toast.success("Brief cree", { description: "Le studio est notifie." });
+      }
       onCreated();
     } catch (err: any) {
       toast.error("Erreur", { description: err.message });
@@ -1262,6 +1292,7 @@ function NewBriefMobileModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Post LinkedIn Q1"
+              style={{ fontSize: "16px" }}
               className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
               maxLength={200}
             />
@@ -1276,6 +1307,7 @@ function NewBriefMobileModal({
               onChange={(e) => setBrief(e.target.value)}
               placeholder="Description du brief, ton, objectifs..."
               rows={4}
+              style={{ fontSize: "16px" }}
               className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200 resize-none"
               maxLength={5000}
             />
@@ -1312,8 +1344,48 @@ function NewBriefMobileModal({
               type="date"
               value={deadline}
               onChange={(e) => setDeadline(e.target.value)}
+              style={{ fontSize: "16px" }}
               className="w-full px-3 py-2.5 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-200"
             />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1.5 block">
+              Pièces jointes (PDF / images)
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const picked = Array.from(e.target.files || []);
+                if (picked.length) setFiles((prev) => [...prev, ...picked]);
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={submitting}
+              className="w-full py-2.5 rounded-lg border border-dashed border-neutral-300 text-xs font-bold uppercase tracking-wider text-neutral-600 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              <Paperclip size={14} /> Ajouter PDF / image
+            </button>
+            {files.length > 0 && (
+              <ul className="mt-2 space-y-1.5">
+                {files.map((f, i) => (
+                  <li key={i} className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg bg-neutral-50 border border-neutral-200">
+                    <span className="text-[11px] text-neutral-700 truncate flex-1">{f.name}</span>
+                    <span className="text-[10px] text-neutral-400 shrink-0">{(f.size / 1024 / 1024).toFixed(1)} MB</span>
+                    <button type="button" onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))} disabled={submitting} className="p-1 -m-1 text-neutral-400 shrink-0" aria-label="Retirer">
+                      <X size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
 
