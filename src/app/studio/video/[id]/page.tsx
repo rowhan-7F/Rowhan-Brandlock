@@ -9,7 +9,7 @@ import { confirmDialog } from "@/lib/confirmDialog";
 import StudioHeader from "@/components/StudioHeader";
 import VideoDropzone from "@/components/studio/video/VideoDropzone";
 import VideoSubsPreview from "@/components/studio/video/VideoSubsPreview";
-import BrollsTimeline from "@/components/studio/video/BrollsTimeline";
+import MediaTimeline from "@/components/studio/video/MediaTimeline";
 import RenderBar from "@/components/studio/video/RenderBar";
 import BrandAssetsSelector from "@/components/studio/video/BrandAssetsSelector";
 import SourceInfoPanel from "@/components/studio/video/SourceInfoPanel";
@@ -415,7 +415,7 @@ export default function StudioVideoPage() {
               />
             </div>
             <div className="mt-6 max-w-[920px] mx-auto">
-              <BrollsTimeline project={project} videoRef={videoPreviewRef} onProjectUpdated={loadAll} />
+              <MediaTimeline project={project} videoRef={videoPreviewRef} segments={liveSegments} onSegmentsChange={handleSegmentsChange} readOnly={isReadOnly} onProjectUpdated={loadAll} />
             </div>
           </main>
 

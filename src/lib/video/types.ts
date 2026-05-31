@@ -191,6 +191,7 @@ export type VideoStateJson = {
 
   // === Phase 6A : Voice-Off ===
   voiceover_audio?: VoiceoverAudio;
+  music_audio?: MusicAudio;
   audio_mix?: AudioMix;
 
   // === Phase 6B : B-rolls overlay ===
@@ -231,6 +232,7 @@ export type VoiceoverAudio = {
 };
 
 export type AudioMix = {
+  music_volume?: number;
   main_volume: number;       // 0.0 - 1.0 (volume audio original)
   voiceover_volume: number;  // 0.0 - 1.0 (volume voix-off)
 };
@@ -469,4 +471,17 @@ export const TEMPLATE_KEY_BY_FORMAT: Record<VideoFormat, string> = {
   "9_16": "video_story_9_16",
   "1_1": "video_square_1_1",
   "16_9": "video_landscape_16_9",
+};
+
+export const MAX_MUSIC_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_MUSIC_DURATION_SECONDS = 1200;
+export const DEFAULT_MUSIC_VOLUME = 0.15;
+
+export type MusicAudio = {
+  url: string;
+  filename: string;
+  duration_seconds: number;
+  size_bytes: number;
+  mime_type: string;
+  uploaded_at: string;
 };

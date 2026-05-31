@@ -89,6 +89,7 @@ export default function VoiceoverPanel({ project, onProjectUpdated }: Props) {
           state_json: {
             ...project.state_json,
             audio_mix: {
+              ...(project.state_json?.audio_mix || {}),
               main_volume: mainVol,
               voiceover_volume: voVol,
             },
