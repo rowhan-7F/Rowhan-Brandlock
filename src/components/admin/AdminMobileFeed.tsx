@@ -260,26 +260,13 @@ export default function AdminMobileFeed({
     setSlideReviews(initial);
   }, [activeProjectId]);
 
-  const handleSlideStatusChange = useCallback((slideId: string, status: "ok" | "needs_changes") => {
-    setSlideReviews((prev) => ({
-      ...prev,
-      [slideId]: { ...prev[slideId], status, comment: status === "ok" ? "" : prev[slideId]?.comment },
-    }));
-  }, []);
-
-  const handleSlideCommentChange = useCallback((slideId: string, comment: string) => {
-    setSlideReviews((prev) => ({
-      ...prev,
-      [slideId]: { ...prev[slideId], status: "needs_changes", comment },
-    }));
-  }, []);
-
-  const saveSlideReviewsToDB = useCallback(async () => {
+  const saveSlideReviewsToDB = useCallback(async (override?: Record<string, SlideReview>) => {
     if (!activeProject) return;
     try {
+      const reviews = override ?? slideReviews;
       const updatedSlides = activeProject.state_json.slides.map((s: any) => ({
         ...s,
-        review: slideReviews[s.id] || s.review,
+        review: reviews[s.id] || s.review,
       }));
       const newStateJson = { ...activeProject.state_json, slides: updatedSlides };
       const table = activeProject._type === "video" ? "studio_video_projects" : "studio_projects";
@@ -288,6 +275,24 @@ export default function AdminMobileFeed({
       console.error("[saveSlideReviewsToDB]", err);
     }
   }, [activeProject, slideReviews]);
+
+  const handleSlideStatusChange = useCallback((slideId: string, status: "ok" | "needs_changes") => {
+    setSlideReviews((prev) => {
+      const next = {
+        ...prev,
+        [slideId]: { ...prev[slideId], status, comment: status === "ok" ? "" : prev[slideId]?.comment },
+      };
+      saveSlideReviewsToDB(next);
+      return next;
+    });
+  }, [saveSlideReviewsToDB]);
+
+  const handleSlideCommentChange = useCallback((slideId: string, comment: string) => {
+    setSlideReviews((prev) => ({
+      ...prev,
+      [slideId]: { ...prev[slideId], status: "needs_changes", comment },
+    }));
+  }, []);
 
   const handleReviewAction = useCallback(async (action: "approve" | "reject" | "request_changes") => {
     if (!activeProject) return;
@@ -502,7 +507,7 @@ export default function AdminMobileFeed({
                   slideReviews={project.id === activeProjectId ? slideReviews : {}}
                   onSlideStatusChange={handleSlideStatusChange}
                   onSlideCommentChange={handleSlideCommentChange}
-                  onSlideCommentBlur={saveSlideReviewsToDB}
+                  onSlideCommentBlur={() => saveSlideReviewsToDB()}
                   canReview={activeTab === "pending"}
                 />
               ))}
