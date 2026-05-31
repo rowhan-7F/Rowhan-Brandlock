@@ -16,20 +16,17 @@ export type ExportProgress = {
 
 export type ExportOptions = {
   projectTitle: string;
-  /** Container DOM qui contient les slides à exporter (déjà rendues à scale=1) */
+  /** Container DOM qui contient des groupes [data-export-format] */
   container: HTMLElement;
-  /** Selector pour identifier chaque slide individuelle dans le container */
-  slideSelector?: string;
-  /** Callback pour reporter la progression */
   onProgress?: (progress: ExportProgress) => void;
-  /** Taille cible (défaut: 1080×1350 portrait Instagram) */
+  /** @deprecated - ignorés (dims lues par groupe [data-export-format]) */
+  slideSelector?: string;
   width?: number;
   height?: number;
 };
 
 // ============================================================
-//  HELPER : Convertir une image URL en data-URL base64
-//  (contourne les problèmes CORS de Supabase Storage)
+//  HELPER : Convertir une image URL en data-URL base64 (contourne CORS)
 // ============================================================
 
 async function imageUrlToDataUrl(url: string): Promise<string> {
@@ -45,33 +42,23 @@ async function imageUrlToDataUrl(url: string): Promise<string> {
     });
   } catch (err) {
     console.warn(`[Export] Erreur fetch image ${url}:`, err);
-    return url; // fallback : on garde l'URL d'origine
+    return url;
   }
 }
 
-// ============================================================
-//  HELPER : Pré-fetch toutes les images du container en data-URL
-//  → Remplace src="https://..." par src="data:image/...;base64,..."
-// ============================================================
-
 async function prefetchImagesInContainer(container: HTMLElement): Promise<void> {
   const images = Array.from(container.querySelectorAll("img")) as HTMLImageElement[];
-  const seen = new Map<string, string>(); // cache URL → dataURL
-
+  const seen = new Map<string, string>();
   for (const img of images) {
     const originalSrc = img.src;
     if (!originalSrc || originalSrc.startsWith("data:")) continue;
-
     let dataUrl = seen.get(originalSrc);
     if (!dataUrl) {
       dataUrl = await imageUrlToDataUrl(originalSrc);
       seen.set(originalSrc, dataUrl);
     }
-
     img.src = dataUrl;
     img.crossOrigin = "anonymous";
-
-    // Attendre que la nouvelle image soit chargée
     if (!img.complete) {
       await new Promise<void>((resolve) => {
         img.onload = () => resolve();
@@ -81,10 +68,6 @@ async function prefetchImagesInContainer(container: HTMLElement): Promise<void> 
   }
 }
 
-// ============================================================
-//  HELPER : Attendre que toutes les polices soient chargées
-// ============================================================
-
 async function waitForFonts(): Promise<void> {
   if (typeof document !== "undefined" && "fonts" in document) {
     try {
@@ -93,91 +76,87 @@ async function waitForFonts(): Promise<void> {
       // ignore
     }
   }
-  // Délai supplémentaire pour Recharts qui calcule ses dimensions
   await new Promise((r) => setTimeout(r, 200));
 }
 
-// ============================================================
-//  HELPER : Slugify pour nom de fichier
-// ============================================================
-
-function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // accents
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .substring(0, 50) || "carrousel";
+function sanitizeName(text: string): string {
+  return (text || "")
+    .replace(/[\/\\:*?"<>|]/g, "-")
+    .replace(/\s+/g, " ")
+    .trim() || "format";
 }
 
 // ============================================================
-//  EXPORT PRINCIPAL
+//  EXPORT PRINCIPAL — multi-format (1 dossier par format)
 // ============================================================
 
 export async function exportCarouselAsZip(options: ExportOptions): Promise<Blob> {
-  const {
-    projectTitle,
-    container,
-    slideSelector = "[data-export-slide]",
-    onProgress,
-    width = 1080,
-    height = 1350,
-  } = options;
+  const { container, onProgress } = options;
 
-  // Étape 1 : Préparation
   onProgress?.({ step: "preparing", message: "Préparation de l'export..." });
 
-  // Récupérer toutes les slides
-  const slides = Array.from(container.querySelectorAll(slideSelector)) as HTMLElement[];
-  if (slides.length === 0) {
-    throw new Error("Aucune slide à exporter");
-  }
-
-  // Pré-fetch toutes les images en data-URL pour éviter CORS
   await prefetchImagesInContainer(container);
   await waitForFonts();
 
-  // Étape 2 : Capture chaque slide
+  const groups = Array.from(
+    container.querySelectorAll("[data-export-format]")
+  ) as HTMLElement[];
+
+  if (groups.length === 0) {
+    throw new Error("Aucun format à exporter");
+  }
+
   const zip = new JSZip();
-  const folder = zip.folder(slugify(projectTitle)) || zip;
 
-  for (let i = 0; i < slides.length; i++) {
-    onProgress?.({
-      step: "capturing",
-      current: i + 1,
-      total: slides.length,
-      message: `Capture slide ${i + 1}/${slides.length}...`,
-    });
+  let total = 0;
+  for (const g of groups) {
+    total += g.querySelectorAll("[data-export-slide]").length;
+  }
+  let done = 0;
 
-    const slide = slides[i];
+  for (const group of groups) {
+    const rawLabel =
+      group.dataset.formatLabel || group.dataset.exportFormat || "format";
+    const w = parseInt(group.dataset.formatW || "1080", 10);
+    const h = parseInt(group.dataset.formatH || "1350", 10);
+    const label = sanitizeName(rawLabel);
 
-    try {
-      const dataUrl = await toPng(slide, {
-        width,
-        height,
-        pixelRatio: 1,
-        cacheBust: true,
-        skipFonts: false,
-        backgroundColor: "#1A1A1A", // fallback noir au cas où
-        // S'assurer que les dimensions sont respectées
-        style: {
-          width: `${width}px`,
-          height: `${height}px`,
-        },
+    const folderName = `${label} (${w}x${h})`;
+    const folder = zip.folder(folderName) || zip;
+
+    const slides = Array.from(
+      group.querySelectorAll("[data-export-slide]")
+    ) as HTMLElement[];
+
+    for (let i = 0; i < slides.length; i++) {
+      done++;
+      onProgress?.({
+        step: "capturing",
+        current: done,
+        total,
+        message: `Capture ${label} ${i + 1}/${slides.length}...`,
       });
 
-      // Convertir data-URL → Blob → ajouter au ZIP
-      const base64 = dataUrl.split(",")[1];
-      const filename = `slide-${String(i + 1).padStart(2, "0")}.png`;
-      folder.file(filename, base64, { base64: true });
-    } catch (err: any) {
-      console.error(`[Export] Erreur capture slide ${i + 1}:`, err);
-      throw new Error(`Erreur capture slide ${i + 1} : ${err.message || err}`);
+      try {
+        const dataUrl = await toPng(slides[i], {
+          width: w,
+          height: h,
+          pixelRatio: 1,
+          cacheBust: true,
+          skipFonts: false,
+          backgroundColor: "#1A1A1A",
+          style: { width: `${w}px`, height: `${h}px` },
+        });
+        const base64 = dataUrl.split(",")[1];
+        const filename = `Slide ${String(i + 1).padStart(2, "0")} - ${label} (${w}x${h}).png`;
+        folder.file(filename, base64, { base64: true });
+      } catch (err: any) {
+        console.error(`[Export] Erreur capture ${label} slide ${i + 1}:`, err);
+        throw new Error(`Erreur capture ${label} slide ${i + 1} : ${err.message || err}`);
+      }
     }
   }
 
-  // Étape 3 : Génération du ZIP
   onProgress?.({ step: "zipping", message: "Création du ZIP..." });
   const zipBlob = await zip.generateAsync({ type: "blob" });
 

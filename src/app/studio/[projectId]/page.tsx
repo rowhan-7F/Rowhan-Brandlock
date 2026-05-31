@@ -545,35 +545,47 @@ export default function StudioEditorPage() {
         </main>
       </div>
 
-      {/* CONTAINER CACHÉ pour l'export */}
+      {/* CONTAINER CACHE pour l'export multi-format (1 groupe par format) */}
       <div
         id="export-render-container"
-        style={{
-          position: "fixed", top: 0, left: -99999, width: 1080,
-          opacity: 0, pointerEvents: "none", zIndex: -1,
-        }}
+        style={{ position: "fixed", top: 0, left: -99999, opacity: 0, pointerEvents: "none", zIndex: -1 }}
         aria-hidden="true"
       >
-        {slides.map((slide: any, idx: number) => {
-          const subVariant = (slide as any).subVariant || undefined;
-          const templateKey = activeEditingFormat; // Sprint 3+4 : dynamique
+        {activeFormats.map((fmt: string) => {
+          const t = (allTemplates as any)[fmt];
+          const fw = t?.dimensions?.width || t?.canvas?.widthPx || 1080;
+          const fh = t?.dimensions?.height || t?.canvas?.heightPx || 1350;
+          const flabel = t?.label || fmt;
           return (
             <div
-              key={`export-${slide.id}`}
-              data-export-slide
-              data-slide-index={idx}
-              style={{ width: 1080, height: 1350, backgroundColor: "#1A1A1A" }}
+              key={`fmtgrp-${fmt}`}
+              data-export-format={fmt}
+              data-format-label={flabel}
+              data-format-w={fw}
+              data-format-h={fh}
             >
-              <SlideRenderer
-                config={config}
-                variant={slide.variant}
-                subVariant={subVariant}
-                inputValues={getResolvedInputs(slide, activeEditingFormat)}
-                templateKey={templateKey}
-                scale={1}
-                slide={slide as any}
-                activeFormat={activeEditingFormat}
-              />
+              {slides.map((slide: any, idx: number) => {
+                const subVariant = (slide as any).subVariant || undefined;
+                return (
+                  <div
+                    key={`export-${fmt}-${slide.id}`}
+                    data-export-slide
+                    data-slide-index={idx}
+                    style={{ width: fw, height: fh, backgroundColor: "#1A1A1A" }}
+                  >
+                    <SlideRenderer
+                      config={config}
+                      variant={slide.variant}
+                      subVariant={subVariant}
+                      inputValues={getResolvedInputs(slide, fmt)}
+                      templateKey={fmt}
+                      scale={1}
+                      slide={slide as any}
+                      activeFormat={fmt}
+                    />
+                  </div>
+                );
+              })}
             </div>
           );
         })}
