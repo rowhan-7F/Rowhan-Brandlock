@@ -261,6 +261,7 @@ export default function ProjectMessagesIcon({
               placeholder="Écrire un message... (Entrée pour envoyer)"
               rows={2}
               maxLength={2000}
+              style={{ fontSize: "16px" }}
               className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:border-orange-500 focus:outline-none resize-none"
             />
             <button
