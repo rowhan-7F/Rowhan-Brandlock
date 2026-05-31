@@ -1,52 +1,33 @@
-// ============================================================
-//  Page éditeur vidéo /studio/video/[id]
-// ============================================================
-
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2, ArrowLeft, Film, Sparkles, Clock, CheckCircle2, AlertCircle, Download, Send, LogOut } from "lucide-react";
+import { Loader2, ArrowLeft, Film, Mic, Music, Layers, Scissors, Sparkles, Subtitles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
 import StudioHeader from "@/components/StudioHeader";
-import StudioMenu from "@/components/studio/StudioMenu";
-import NotificationsBell from "@/components/NotificationsBell";
-import ProjectMessagesIcon from "@/components/ProjectMessagesIcon";
-import EditableProjectTitle from "@/components/studio/EditableProjectTitle";
 import VideoDropzone from "@/components/studio/video/VideoDropzone";
-import TranscriptPanel from "@/components/studio/video/TranscriptPanel";
-import RenderPanel from "@/components/studio/video/RenderPanel";
-import VoiceoverPanel from "@/components/studio/video/VoiceoverPanel";
-import BrollsPanel from "@/components/studio/video/BrollsPanel";
-import AudioSubsPanel from "@/components/studio/video/AudioSubsPanel";
-import SourceInfoPanel from "@/components/studio/video/SourceInfoPanel";
-import MusicPanel from "@/components/studio/video/MusicPanel";
 import VideoSubsPreview from "@/components/studio/video/VideoSubsPreview";
 import BrollsTimeline from "@/components/studio/video/BrollsTimeline";
 import RenderBar from "@/components/studio/video/RenderBar";
-import StudioActionsSidebar, { ActionKey } from "@/components/studio/video/StudioActionsSidebar";
-import StudioDrawer from "@/components/studio/video/StudioDrawer";
+import BrandAssetsSelector from "@/components/studio/video/BrandAssetsSelector";
+import SourceInfoPanel from "@/components/studio/video/SourceInfoPanel";
+import AudioSubsPanel from "@/components/studio/video/AudioSubsPanel";
+import MusicPanel from "@/components/studio/video/MusicPanel";
+import BrollsPanel from "@/components/studio/video/BrollsPanel";
+import VideoSectionAccordion from "@/components/studio/video/VideoSectionAccordion";
+import SubtitleEditor from "@/components/studio/video/SubtitleEditor";
 import {
   VideoProject,
-  VIDEO_MODE_INFO,
   VIDEO_MODE_INFO_FULL,
   VIDEO_FORMAT_DIMENSIONS,
 } from "@/lib/video/types";
 import { formatDuration, formatFileSize } from "@/lib/video/thumbnail";
 
-type UserProfile = {
-  user_id: string;
-  tenant_id: string;
-  role: string;
-};
-
-type Tenant = {
-  tenant_id: string;
-  tenant_name: string;
-};
+type UserProfile = { user_id: string; tenant_id: string; role: string };
+type Tenant = { tenant_id: string; tenant_name: string };
+type Seg = { start: number; end: number; text: string };
 
 export default function StudioVideoPage() {
   const router = useRouter();
@@ -60,7 +41,15 @@ export default function StudioVideoPage() {
   const [error, setError] = useState<string | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const [signedSourceUrl, setSignedSourceUrl] = useState<string | null>(null);
-  // Phase 12.D : generer signed URL pour la video source (bucket prive)
+  const [openSection, setOpenSection] = useState<string | null>("03");
+  const [submittingVideo, setSubmittingVideo] = useState(false);
+
+  // Etape 2 : sous-titres editables live
+  const [liveSegments, setLiveSegments] = useState<Seg[]>([]);
+  const [subSaveStatus, setSubSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const subSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Signed URL pour la video source (bucket prive)
   useEffect(() => {
     if (!project?.source_video_url) {
       setSignedSourceUrl(null);
@@ -72,7 +61,6 @@ export default function StudioVideoPage() {
         const url = new URL(project.source_video_url!);
         const pathParts = url.pathname.split("/video-sources/");
         if (pathParts.length !== 2) {
-          // URL pas standard, on essaie d'utiliser directement
           setSignedSourceUrl(project.source_video_url || null);
           return;
         }
@@ -82,20 +70,25 @@ export default function StudioVideoPage() {
           .createSignedUrl(path, 3600);
         if (!cancelled) {
           if (error) {
-            console.warn("[signed URL] error:", error.message);
             setSignedSourceUrl(null);
           } else if (data?.signedUrl) {
             setSignedSourceUrl(data.signedUrl);
           }
         }
-      } catch (err: any) {
-        console.warn("[signed URL] parsing error:", err?.message);
+      } catch {
         if (!cancelled) setSignedSourceUrl(null);
       }
     })();
     return () => { cancelled = true; };
   }, [project?.source_video_url]);
-  const [activeDrawer, setActiveDrawer] = useState<ActionKey | null>(null);
+
+  // Sync liveSegments depuis le projet (au chargement / apres transcription)
+  useEffect(() => {
+    const segs = Array.isArray((project?.state_json as any)?.transcript?.segments)
+      ? ((project!.state_json as any).transcript.segments as Seg[])
+      : [];
+    setLiveSegments(segs);
+  }, [project?.state_json]);
 
   const loadAll = async () => {
     try {
@@ -104,24 +97,20 @@ export default function StudioVideoPage() {
         router.push("/login");
         return;
       }
-
       const { data: profileData, error: profileErr } = await supabase
         .from("user_profiles")
         .select("user_id, tenant_id, role")
         .eq("user_id", session.user.id)
         .maybeSingle();
-
       if (profileErr || !profileData) {
         setError("Profil introuvable");
         setLoading(false);
         return;
       }
-
       if (profileData.role === "tenant_admin") {
         router.replace("/admin/tenant");
         return;
       }
-
       setProfile(profileData as UserProfile);
 
       if (profileData.tenant_id) {
@@ -138,35 +127,28 @@ export default function StudioVideoPage() {
         .select("*")
         .eq("id", projectId)
         .maybeSingle();
-
       if (projErr || !projData) {
         setError("Projet introuvable");
         setLoading(false);
         return;
       }
-
       if (projData.archived_at) {
-        setError("Ce projet a été archivé.");
+        setError("Ce projet a ete archive.");
         setLoading(false);
         return;
       }
-
-      // ⭐ Génère une signed URL temporaire (1h) pour lire la vidéo du bucket privé
       if (projData.source_video_url && projData.source_format) {
         const sourcePath = `${projData.tenant_id}/${projData.id}/source.${projData.source_format}`;
         const { data: signedData } = await supabase.storage
           .from("video-sources")
-          .createSignedUrl(sourcePath, 3600); // 1h
-
+          .createSignedUrl(sourcePath, 3600);
         if (signedData?.signedUrl) {
           projData.source_video_url = signedData.signedUrl;
         }
       }
-
       setProject(projData as VideoProject);
       setLoading(false);
     } catch (err: any) {
-      console.error("[/studio/video/[id]] load error:", err);
       setError(err.message || "Erreur de chargement");
       setLoading(false);
     }
@@ -177,9 +159,6 @@ export default function StudioVideoPage() {
     loadAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
-
-  // Phase 12 peaufinage #6+7 : Handlers header video (submit / logout / export)
-  const [submittingVideo, setSubmittingVideo] = useState(false);
 
   const handleSubmitVideo = useCallback(async () => {
     if (!project) return;
@@ -205,7 +184,7 @@ export default function StudioVideoPage() {
       if (!res.ok) throw new Error(data.error || "Erreur soumission");
       const wasResubmit = project.status === "pending_approval";
       toast.success(wasResubmit ? "Version mise a jour" : "Projet soumis", {
-        description: wasResubmit ? "L\u0027admin recevra la nouvelle version" : "L\u0027admin va etre notifie",
+        description: wasResubmit ? "L admin recevra la nouvelle version" : "L admin va etre notifie",
       });
       loadAll();
     } catch (err: any) {
@@ -213,11 +192,12 @@ export default function StudioVideoPage() {
     } finally {
       setSubmittingVideo(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project]);
 
   const handleLogoutVideo = useCallback(async () => {
     const ok = await confirmDialog("Se deconnecter ?", {
-      description: "Tu vas etre redirige vers la page d\u0027accueil.",
+      description: "Tu vas etre redirige vers la page d accueil.",
       confirmLabel: "Deconnexion",
     });
     if (!ok) return;
@@ -228,7 +208,7 @@ export default function StudioVideoPage() {
   const handleExportVideo = useCallback(async () => {
     if (!project) return;
     if (project.status !== "completed") {
-      toast.error("Pas encore rendu", { description: "Lance un rendu avant d\u0027exporter." });
+      toast.error("Pas encore rendu", { description: "Lance un rendu avant d exporter." });
       return;
     }
     try {
@@ -256,6 +236,42 @@ export default function StudioVideoPage() {
     await loadAll();
   };
 
+  // Sauvegarde debounced des segments (sous-titres)
+  const saveSegments = useCallback(async (segs: Seg[]) => {
+    if (!project) return;
+    setSubSaveStatus("saving");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Session expiree");
+      const newStateJson = {
+        ...((project.state_json as any) || {}),
+        transcript: {
+          ...(((project.state_json as any) || {}).transcript || {}),
+          segments: segs,
+          edited: segs.map((s) => s.text).join(" "),
+          edited_at: new Date().toISOString(),
+        },
+      };
+      const res = await fetch(`/api/studio/video/projects/${project.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${session.access_token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ state_json: newStateJson }),
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      setSubSaveStatus("saved");
+      setTimeout(() => setSubSaveStatus((s) => (s === "saved" ? "idle" : s)), 1500);
+    } catch (err: any) {
+      setSubSaveStatus("error");
+      toast.error("Erreur sauvegarde sous-titres", { description: err.message });
+    }
+  }, [project]);
+
+  const handleSegmentsChange = (segs: Seg[]) => {
+    setLiveSegments(segs);
+    if (subSaveTimer.current) clearTimeout(subSaveTimer.current);
+    subSaveTimer.current = setTimeout(() => saveSegments(segs), 1200);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
@@ -267,9 +283,7 @@ export default function StudioVideoPage() {
   if (error || !project || !profile) {
     return (
       <div className="min-h-screen bg-neutral-50 flex flex-col items-center justify-center gap-4">
-        <div className="text-base font-bold text-neutral-900">
-          {error || "Erreur inconnue"}
-        </div>
+        <div className="text-base font-bold text-neutral-900">{error || "Erreur inconnue"}</div>
         <button
           type="button"
           onClick={() => router.push("/studio")}
@@ -285,9 +299,20 @@ export default function StudioVideoPage() {
   const modeInfo = VIDEO_MODE_INFO_FULL[project.mode];
   const dims = VIDEO_FORMAT_DIMENSIONS[project.format];
 
+  const sj: any = project.state_json || {};
+  const hasTranscript = liveSegments.length > 0;
+  const hasVoiceover = !!sj.voiceover_audio;
+  const brollsCount = Array.isArray(sj.brolls) ? sj.brolls.length : 0;
+  const hasMusic = !!sj.music_audio;
+  const hasIntroOutro = !!sj.intro_id || !!sj.outro_id;
+  const isDraft = project.status === "draft" || !project.source_video_url;
+  const isReadOnly = project.status === "approved" || project.status === "archived";
+
+  const toggle = (k: string) => setOpenSection((p) => (p === k ? null : k));
+  const previewMaxW = project.format === "9_16" ? "360px" : project.format === "1_1" ? "480px" : "720px";
+
   return (
-    <div className="min-h-screen bg-neutral-50">
-      {/* Phase 12 peaufinage : Header universel StudioHeader */}
+    <div className="h-screen flex flex-col bg-neutral-50 overflow-hidden">
       <StudioHeader
         backHref="/studio"
         eyebrowMain="STUDIO"
@@ -307,7 +332,7 @@ export default function StudioVideoPage() {
         exportAction={{
           onClick: handleExportVideo,
           disabled: project.status !== "completed",
-          title: project.status === "completed" ? "Télécharger le MP4" : "Lance un rendu d'abord",
+          title: project.status === "completed" ? "Telecharger le MP4" : "Lance un rendu d abord",
         }}
         submitAction={{
           onClick: handleSubmitVideo,
@@ -319,20 +344,13 @@ export default function StudioVideoPage() {
         onLogout={handleLogoutVideo}
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-
-        {project.status === "draft" && (
-          <div className="space-y-6">
-            <div className="text-center max-w-md mx-auto">
-              <div className="text-3xl mb-2">{(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}</div>
-              <h2 className="text-lg font-bold text-neutral-900">
-                Upload de la source
-              </h2>
-              <p className="text-sm text-neutral-500 mt-1">
-                {modeInfo.description}
-              </p>
+      {isDraft ? (
+        <div className="flex-1 overflow-auto flex items-center justify-center p-8">
+          <div className="w-full max-w-md space-y-6">
+            <div className="text-center">
+              <h2 className="text-lg font-bold text-neutral-900">Upload de la source</h2>
+              <p className="text-sm text-neutral-500 mt-1">{modeInfo?.description}</p>
             </div>
-
             <VideoDropzone
               projectId={project.id}
               tenantId={project.tenant_id}
@@ -340,144 +358,95 @@ export default function StudioVideoPage() {
               onUploadComplete={handleUploadComplete}
             />
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="flex-1 flex overflow-hidden">
+          <aside className="w-[340px] border-r border-neutral-200 bg-white overflow-y-auto flex flex-col shrink-0">
+            <div className="px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10">
+              <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Montage</div>
+              <div className="text-sm font-bold text-neutral-900 mt-0.5">Options video</div>
+            </div>
+            {isReadOnly && (
+              <div className="mx-3 mt-3 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[10px] font-bold text-amber-700 text-center">
+                Projet approuve - lecture seule
+              </div>
+            )}
+            <div className="flex-1 px-3 py-3 space-y-2">
+              <VideoSectionAccordion number="01" title="Intro / Outro" icon={<Scissors size={13} />} subtitle={hasIntroOutro ? "Configure" : "Optionnel"} done={hasIntroOutro} isOpen={openSection === "01"} onToggle={() => toggle("01")}>
+                <BrandAssetsSelector project={project} onSaved={loadAll} />
+              </VideoSectionAccordion>
 
-        {project.status !== "draft" && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl border-2 border-neutral-200 overflow-hidden">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
-
-                                <div className="bg-neutral-900 p-4 flex items-center justify-center" style={{ minHeight: "300px" }}>
-                  <div className="w-full" style={{ maxWidth: project.format === "9_16" ? "400px" : project.format === "1_1" ? "500px" : "100%" }}>
-                    <VideoSubsPreview
-                      videoUrl={signedSourceUrl}
-                      segments={(project.state_json?.transcript?.segments as any) || []}
-                      format={project.format}
-                      externalVideoRef={videoPreviewRef}
-                    />
-                  </div>
+              <VideoSectionAccordion number="02" title="Source" icon={<Film size={13} />} subtitle={`${dims.label} - ${project.source_duration_seconds ? formatDuration(project.source_duration_seconds) : "--"}`} done={!!project.source_video_url} isOpen={openSection === "02"} onToggle={() => toggle("02")}>
+                <div className="space-y-1.5 mb-3">
+                  <SourceDetailRow label="Mode" value={modeInfo?.label} />
+                  <SourceDetailRow label="Format" value={`${dims.width}x${dims.height} (${dims.label})`} />
+                  {project.source_duration_seconds ? <SourceDetailRow label="Duree" value={formatDuration(project.source_duration_seconds)} /> : null}
+                  {project.source_dimensions ? <SourceDetailRow label="Dimensions" value={`${project.source_dimensions.width}x${project.source_dimensions.height}${project.source_dimensions.width !== dims.width ? "  (ratio different)" : ""}`} /> : null}
+                  {project.source_size_bytes ? <SourceDetailRow label="Taille" value={formatFileSize(project.source_size_bytes)} /> : null}
                 </div>
+                <SourceInfoPanel project={project} onProjectUpdated={loadAll} />
+              </VideoSectionAccordion>
 
-                <div className="p-6 space-y-3">
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                      Mode
-                    </div>
-                    <div className="text-sm font-bold text-neutral-900 flex items-center gap-2">
-                      <span className="text-lg">{(() => { const I = modeInfo?.icon; return I ? <I size={16} /> : null; })()}</span>
-                      {modeInfo.label}
-                    </div>
-                  </div>
+              <VideoSectionAccordion number="03" title={hasTranscript ? "Sous-titres" : "Audio & sous-titres"} icon={hasTranscript ? <Subtitles size={13} /> : <Mic size={13} />} subtitle={hasTranscript ? `${liveSegments.length} segments` : hasVoiceover ? "Voix-off ajoutee" : "Non transcrit"} done={hasTranscript} isOpen={openSection === "03"} onToggle={() => toggle("03")}>
+                <AudioSubsPanel project={project} onProjectUpdated={loadAll} />
+              </VideoSectionAccordion>
 
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                      Format
-                    </div>
-                    <div className="text-sm font-bold text-neutral-900">
-                      {dims.width}×{dims.height} ({dims.label})
-                    </div>
-                  </div>
+              <VideoSectionAccordion number="04" title="Musique" icon={<Music size={13} />} subtitle={hasMusic ? "Ajoutee" : "Optionnel"} done={hasMusic} isOpen={openSection === "04"} onToggle={() => toggle("04")}>
+                <MusicPanel project={project} onProjectUpdated={loadAll} />
+              </VideoSectionAccordion>
 
-                  {project.source_duration_seconds && (
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                        Durée
-                      </div>
-                      <div className="text-sm font-bold text-neutral-900">
-                        {formatDuration(project.source_duration_seconds)}
-                      </div>
-                    </div>
-                  )}
+              <VideoSectionAccordion number="05" title="Elements" icon={<Layers size={13} />} subtitle={`${brollsCount} element${brollsCount > 1 ? "s" : ""}`} done={brollsCount > 0} isOpen={openSection === "05"} onToggle={() => toggle("05")}>
+                <BrollsPanel project={project} onProjectUpdated={loadAll} />
+              </VideoSectionAccordion>
 
-                  {project.source_dimensions && (
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                        Dimensions source
-                      </div>
-                      <div className="text-sm font-bold text-neutral-900">
-                        {project.source_dimensions.width}×{project.source_dimensions.height}
-                        {project.source_dimensions.width !== dims.width && (
-                          <span className="ml-2 text-[10px] text-amber-600 font-normal">
-                            ⚠ ratio différent du format cible
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
+              <VideoSectionAccordion number="06" title="Rendu final" icon={<Sparkles size={13} />} subtitle={project.status === "completed" ? "Video prete" : hasTranscript ? "Pret a rendre" : "Sous-titres requis"} done={project.status === "completed"} isOpen={openSection === "06"} onToggle={() => toggle("06")}>
+                <RenderBar project={project} onProjectUpdated={loadAll} />
+              </VideoSectionAccordion>
+            </div>
+          </aside>
 
-                  {project.source_size_bytes && (
-                    <div>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400 mb-1">
-                        Taille
-                      </div>
-                      <div className="text-sm font-bold text-neutral-900">
-                        {formatFileSize(project.source_size_bytes)}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          <main className="flex-1 overflow-auto p-6 bg-neutral-100">
+            <div className="mx-auto" style={{ maxWidth: previewMaxW }}>
+              <VideoSubsPreview
+                videoUrl={signedSourceUrl}
+                segments={liveSegments as any}
+                format={project.format}
+                externalVideoRef={videoPreviewRef}
+              />
+            </div>
+            <div className="mt-6 max-w-[920px] mx-auto">
+              <BrollsTimeline project={project} videoRef={videoPreviewRef} onProjectUpdated={loadAll} />
+            </div>
+          </main>
+
+          <aside className="w-[340px] border-l border-neutral-200 bg-white overflow-y-auto flex flex-col shrink-0">
+            <div className="px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10 flex items-center gap-2">
+              <Subtitles size={14} className="text-neutral-500" />
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Sous-titres</div>
+                <div className="text-sm font-bold text-neutral-900 mt-0.5">{liveSegments.length} segment{liveSegments.length > 1 ? "s" : ""}</div>
               </div>
             </div>
-            {/* ⭐ Phase 12 — Timeline visuelle des b-rolls */}
-            <BrollsTimeline
-              project={project}
-              videoRef={videoPreviewRef}
-              onProjectUpdated={loadAll}
-            />
+            <div className="flex-1 px-3 py-3">
+              <SubtitleEditor
+                segments={liveSegments}
+                onChange={handleSegmentsChange}
+                readOnly={isReadOnly}
+                saveStatus={subSaveStatus}
+              />
+            </div>
+          </aside>
+        </div>
+      )}
+    </div>
+  );
+}
 
-            {/* ⭐ Phase 12 — Boutons rendu/telechargement sous la timeline */}
-            <RenderBar
-              project={project}
-              onProjectUpdated={loadAll}
-            />
-
-            {/* ⭐ Phase 12 — Sidebar + Drawer luxury (panels en slide-in) */}
-            <StudioActionsSidebar
-              project={project}
-              active={activeDrawer}
-              onSelect={(key) => setActiveDrawer((prev) => (prev === key ? null : key))}
-            />
-
-            {/* ⭐ Phase 12.D - 4 drawers reorganises */}
-            <StudioDrawer
-              isOpen={activeDrawer === "source"}
-              onClose={() => setActiveDrawer(null)}
-              eyebrow="01 - SOURCE"
-              title="Video source"
-            >
-              <SourceInfoPanel project={project} onProjectUpdated={loadAll} />
-            </StudioDrawer>
-
-            <StudioDrawer
-              isOpen={activeDrawer === "audio"}
-              onClose={() => setActiveDrawer(null)}
-              eyebrow="02 - AUDIO & SUBS"
-              title="Voix-off et transcription"
-            >
-              <AudioSubsPanel project={project} onProjectUpdated={loadAll} />
-            </StudioDrawer>
-
-            <StudioDrawer
-              isOpen={activeDrawer === "brolls"}
-              onClose={() => setActiveDrawer(null)}
-              eyebrow="03 - B-ROLLS"
-              title="B-Rolls"
-            >
-              <BrollsPanel project={project} onProjectUpdated={loadAll} />
-            </StudioDrawer>
-
-            <StudioDrawer
-              isOpen={activeDrawer === "music"}
-              onClose={() => setActiveDrawer(null)}
-              eyebrow="04 - MUSIQUE"
-              title="Musique de fond"
-            >
-              <MusicPanel project={project} onProjectUpdated={loadAll} />
-            </StudioDrawer>
-
-          </div>
-        )}
-      </main>
+function SourceDetailRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 shrink-0">{label}</span>
+      <span className="text-xs font-bold text-neutral-900 text-right">{value || "--"}</span>
     </div>
   );
 }
