@@ -20,6 +20,7 @@ import { confirmDialog } from "@/lib/confirmDialog";
 // ⭐ Module vidéo
 import NewVideoProjectModal from "@/components/studio/video/NewVideoProjectModal";
 import NewCarouselProjectModal from "@/components/studio/NewCarouselProjectModal";
+import ProjectExporter from "@/components/studio/ProjectExporter";
 import StudioProjectCard from "@/components/projects/StudioProjectCard";
 import ProjectFilters, { FilterType, FilterStatus, SortBy } from "@/components/studio/ProjectFilters";
 import type { VideoProject } from "@/lib/video/types";
@@ -55,6 +56,7 @@ export default function StudioHomePage() {
   const router = useRouter();
   const tenantState = useCurrentTenant();
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [exportingProject, setExportingProject] = useState<any | null>(null);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [creating, setCreating] = useState(false);
   // ⭐ Module vidéo
@@ -347,6 +349,9 @@ export default function StudioHomePage() {
           )
         ) : (
           <>
+            {exportingProject && (
+              <ProjectExporter project={exportingProject} config={config} onDone={() => setExportingProject(null)} />
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {paginatedProjects.map((p: any) => (
                   <StudioProjectCard
@@ -354,6 +359,7 @@ export default function StudioHomePage() {
                     project={p}
                     type={p._type}
                     config={config}
+                    onExport={() => setExportingProject(p)}
                     onDelete={p._type === "video" ? reloadVideos : reloadProjects}
                   />
               ))}

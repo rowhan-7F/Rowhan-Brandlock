@@ -49,10 +49,11 @@ type Props = {
   type: ProjectType;     // "carousel" | "video"
   config?: any;          // requis pour carrousel (SlideRenderer)
   rightSlot?: React.ReactNode;  // ex: bouton delete, badge urgent, etc
+  onExport?: () => void;  // CTA export (carrousel approuve)
   className?: string;
 };
 
-export default function ProjectCardCore({ project, type, config, rightSlot, className = "" }: Props) {
+export default function ProjectCardCore({ project, type, config, rightSlot, onExport, className = "" }: Props) {
   const statusConfig = STATUS_CONFIG[project.status] || STATUS_CONFIG.draft;
   const isVideo = type === "video";
 
@@ -175,6 +176,16 @@ export default function ProjectCardCore({ project, type, config, rightSlot, clas
             {timeAgo(project.updated_at || project.created_at)}
           </div>
         </div>
+        {type === "carousel" && project.status === "approved" && onExport && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onExport(); }}
+            className="mt-2 w-full py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider bg-green-600 text-white hover:bg-green-700 transition"
+            title="Carrousel approuve - exporter"
+          >
+            Exporter
+          </button>
+        )}
       </div>
     </div>
   );

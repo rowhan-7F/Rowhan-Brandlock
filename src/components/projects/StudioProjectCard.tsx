@@ -21,9 +21,10 @@ type Props = {
   type: ProjectType;
   config?: any;
   onDelete?: () => void;
+  onExport?: () => void;
 };
 
-export default function StudioProjectCard({ project, type, config, onDelete }: Props) {
+export default function StudioProjectCard({ project, type, config, onDelete, onExport }: Props) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
 
@@ -91,6 +92,7 @@ export default function StudioProjectCard({ project, type, config, onDelete }: P
         type={type}
         config={config}
         rightSlot={deleteButton}
+        onExport={onExport}
       />
     </div>
   );

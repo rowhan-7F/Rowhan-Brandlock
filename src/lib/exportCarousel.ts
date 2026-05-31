@@ -31,7 +31,10 @@ export type ExportOptions = {
 
 async function imageUrlToDataUrl(url: string): Promise<string> {
   try {
-    const response = await fetch(url, { mode: "cors" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch(url, { mode: "cors", signal: controller.signal });
+    clearTimeout(timer);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
@@ -61,8 +64,10 @@ async function prefetchImagesInContainer(container: HTMLElement): Promise<void> 
     img.crossOrigin = "anonymous";
     if (!img.complete) {
       await new Promise<void>((resolve) => {
-        img.onload = () => resolve();
-        img.onerror = () => resolve();
+        const done = () => resolve();
+        img.onload = done;
+        img.onerror = done;
+        setTimeout(done, 6000);
       });
     }
   }
