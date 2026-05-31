@@ -161,6 +161,34 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
     // ====================================
     //  Ã‰TAPE 2.6 â€” B-rolls (optionnel, plusieurs possibles)
     // ====================================
+    // ====================================
+    //  Musique de fond (optionnel)
+    // ====================================
+    let localMusicPath: string | undefined;
+    let musicVolume: number | undefined;
+    const musicAudio = (project.state_json as any)?.music_audio;
+    if (musicAudio?.url) {
+      const musicMatch = musicAudio.url.match(/\/storage\/v1\/object\/public\/video-music\/(.+)$/);
+      if (musicMatch) {
+        const mExt = (musicAudio.filename || "music.mp3").split(".").pop() || "mp3";
+        try {
+          const { localPath: mPath } = await downloadFromStorage({
+            jobId,
+            bucket: "video-music",
+            storagePath: musicMatch[1],
+            outputFilename: `music.${mExt}`,
+          });
+          localMusicPath = mPath;
+          musicVolume = typeof (audioMixState as any)?.music_volume === "number" ? (audioMixState as any).music_volume : 0.15;
+          log.info(`Music loaded: ${musicAudio.filename} (volume=${musicVolume})`);
+        } catch (err: any) {
+          log.warn(`Music download failed: ${err.message}`);
+        }
+      } else {
+        log.warn(`Music URL invalid format, skipping: ${musicAudio.url}`);
+      }
+    }
+
     const stateBrolls = project.state_json?.brolls;
     const localBrolls: BurnSubsBroll[] = [];
 
@@ -290,6 +318,8 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
       voiceoverPath: localVoiceoverPath,
       audioMix,
       brolls: localBrolls,
+      musicPath: localMusicPath,
+      musicVolume,
     });
 
     clearInterval(progressTicker);

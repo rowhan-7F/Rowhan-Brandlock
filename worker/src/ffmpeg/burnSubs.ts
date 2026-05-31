@@ -1,11 +1,10 @@
 // ============================================================
-//  Burn subs + (optionnel) mix voice-off + (optionnel) overlay b-rolls
+//  Burn subs + (optionnel) mix voice-off + musique + overlay b-rolls
 //  Output : MP4 H.264 / AAC en 1 passage FFmpeg complex filter
-//
 //  Ordre du filter_complex :
-//    1. Audio mix (si voice-off)
-//    2. B-rolls overlays chainés sur la vidéo brute
-//    3. Subs burnés EN DERNIER → toujours au-dessus de tout
+//    1. Audio mix (voice-off et/ou musique)
+//    2. B-rolls overlays chaines sur la video brute
+//    3. Subs burnes EN DERNIER -> toujours au-dessus de tout
 // ============================================================
 
 import { spawn } from "node:child_process";
@@ -40,6 +39,8 @@ type BurnSubsInput = {
   voiceoverPath?: string;
   audioMix?: { main_volume: number; voiceover_volume: number };
   brolls?: BurnSubsBroll[];
+  musicPath?: string;
+  musicVolume?: number;
 };
 
 type BurnSubsResult = {
@@ -50,10 +51,6 @@ type BurnSubsResult = {
 
 const MAX_OUTPUT_SIZE_BYTES = 500 * 1024 * 1024;
 const OVERLAY_PADDING = 30;
-
-// ============================================================
-//  Helpers
-// ============================================================
 
 function buildOverlayPosition(position: BRollPosition): { x: string; y: string } {
   switch (position) {
@@ -66,30 +63,19 @@ function buildOverlayPosition(position: BRollPosition): { x: string; y: string }
     case "bottom-left":
       return { x: `${OVERLAY_PADDING}`, y: `main_h-h-${OVERLAY_PADDING}` };
     case "bottom-right":
-      return {
-        x: `main_w-w-${OVERLAY_PADDING}`,
-        y: `main_h-h-${OVERLAY_PADDING}`,
-      };
+      return { x: `main_w-w-${OVERLAY_PADDING}`, y: `main_h-h-${OVERLAY_PADDING}` };
     case "center":
       return { x: `(main_w-w)/2`, y: `(main_h-h)/2` };
   }
 }
 
-function buildScaleFilter(
-  broll: BurnSubsBroll,
-  videoWidth: number,
-  videoHeight: number
-): string {
+function buildScaleFilter(broll: BurnSubsBroll, videoWidth: number, videoHeight: number): string {
   if (broll.position === "fullscreen") {
     return `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`;
   }
   const targetW = Math.round(videoWidth * broll.scale);
   return `scale=${targetW}:-2`;
 }
-
-// ============================================================
-//  Main
-// ============================================================
 
 export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
   const {
@@ -101,56 +87,35 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
     voiceoverPath,
     audioMix,
     brolls = [],
+    musicPath,
+    musicVolume,
   } = input;
 
   const outputPath = path.join(outputDir, "final.mp4");
   const hasVoiceover = !!(voiceoverPath && audioMix);
   const hasBrolls = brolls.length > 0;
-  const useComplexFilter = hasVoiceover || hasBrolls;
+  const hasMusic = !!(musicPath && typeof musicVolume === "number");
+  const useComplexFilter = hasVoiceover || hasBrolls || hasMusic;
 
-  if (hasBrolls && hasVoiceover) {
-    log.ffmpeg(
-      `Burn ${brolls.length} b-roll${brolls.length > 1 ? "s" : ""} + voice-off + subs (top)...`
-    );
-  } else if (hasBrolls) {
-    log.ffmpeg(
-      `Burn ${brolls.length} b-roll${brolls.length > 1 ? "s" : ""} + subs (top)...`
-    );
-  } else if (hasVoiceover) {
-    log.ffmpeg(
-      `Burn voice-off mix + subs (top) (main=${audioMix!.main_volume}, vo=${audioMix!.voiceover_volume})...`
-    );
-  } else {
-    log.ffmpeg("Burn subtitles into video...");
-  }
+  const featuresLog: string[] = [];
+  if (hasBrolls) featuresLog.push(`${brolls.length} b-roll${brolls.length > 1 ? "s" : ""}`);
+  if (hasVoiceover) featuresLog.push(`voice-off (main=${audioMix!.main_volume}, vo=${audioMix!.voiceover_volume})`);
+  if (hasMusic) featuresLog.push(`musique (vol=${musicVolume})`);
+  log.ffmpeg(featuresLog.length > 0 ? `Burn subs + ${featuresLog.join(" + ")}...` : "Burn subtitles into video...");
 
   const assBasename = path.basename(assPath);
-
-  // ============================================================
-  //  Build args
-  // ============================================================
   let args: string[] = [];
 
   if (!useComplexFilter) {
-    // Mode simple : juste burn subs (back-compat)
     args = [
       "-i", videoPath,
       "-vf", `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black,subtitles='${assBasename}'`,
-      "-c:v", "libx264",
-      "-preset", "medium",
-      "-crf", "20",
-      "-c:a", "aac",
-      "-b:a", "192k",
-      "-ar", "48000",
-      "-ac", "2",
-      "-movflags", "+faststart",
-      "-y",
-      outputPath,
+      "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+      "-movflags", "+faststart", "-y", outputPath,
     ];
   } else {
-    // Mode complex : audio mix + overlays b-rolls + subs en dernier
     args.push("-i", videoPath); // Input 0 : main video
-
     if (voiceoverPath) {
       args.push("-i", voiceoverPath); // Input 1
     }
@@ -165,129 +130,98 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
       }
     }
 
-    // ============================================================
-    //  Build filter_complex
-    //  Ordre : [audio mix] → [b-rolls overlays] → [subs burn EN DERNIER]
-    // ============================================================
+    // Dernier input : musique de fond (bouclee pour couvrir toute la duree)
+    const musicInputIdx = brollStartIdx + brolls.length;
+    if (hasMusic) {
+      args.push("-stream_loop", "-1", "-i", musicPath!);
+    }
+
     const filterParts: string[] = [];
 
-  // Sprint fix : scale + pad la video source pour matcher le format cible
-  filterParts.push(`[0:v]scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black[v_base]`);
+    // Scale + pad la video source pour matcher le format cible
+    filterParts.push(`[0:v]scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black[v_base]`);
 
-    // 1. Audio mix (si voice-off)
+    // 1. Audio mix (voice-off et/ou musique)
+    const audioLabels: string[] = [];
     if (hasVoiceover) {
       filterParts.push(`[0:a]volume=${audioMix!.main_volume}[a_main]`);
       filterParts.push(`[1:a]volume=${audioMix!.voiceover_volume}[a_vo]`);
-      filterParts.push(
-        `[a_main][a_vo]amix=inputs=2:duration=first:dropout_transition=0[a_out]`
-      );
+      audioLabels.push("[a_main]", "[a_vo]");
+    } else if (hasMusic) {
+      filterParts.push(`[0:a]volume=1.0[a_main]`);
+      audioLabels.push("[a_main]");
+    }
+    if (hasMusic) {
+      filterParts.push(`[${musicInputIdx}:a]volume=${musicVolume}[a_music]`);
+      audioLabels.push("[a_music]");
+    }
+    const hasAudioOut = audioLabels.length > 0;
+    if (hasAudioOut) {
+      filterParts.push(`${audioLabels.join("")}amix=inputs=${audioLabels.length}:duration=first:dropout_transition=0[a_out]`);
     }
 
-    // 2. Chain b-rolls overlays sur vidéo BRUTE (subs pas encore appliquées)
+    // 2. Chain b-rolls overlays sur video brute
     let lastVideoLabel = "v_base";
     for (let i = 0; i < brolls.length; i++) {
       const broll = brolls[i];
       const inputIdx = brollStartIdx + i;
       const labelScaled = `v_b${i}`;
       const labelOverlay = `v_o${i}`;
-
       const scaleFilter = buildScaleFilter(broll, videoWidth, videoHeight);
       filterParts.push(`[${inputIdx}:v]${scaleFilter}[${labelScaled}]`);
-
       const pos = buildOverlayPosition(broll.position);
-      filterParts.push(
-        `[${lastVideoLabel}][${labelScaled}]overlay=enable='between(t,${broll.start_time.toFixed(
-          2
-        )},${broll.end_time.toFixed(2)})':x=${pos.x}:y=${pos.y}[${labelOverlay}]`
-      );
-
+      filterParts.push(`[${lastVideoLabel}][${labelScaled}]overlay=enable='between(t,${broll.start_time.toFixed(2)},${broll.end_time.toFixed(2)})':x=${pos.x}:y=${pos.y}[${labelOverlay}]`);
       lastVideoLabel = labelOverlay;
     }
 
-    // 3. Burn subs EN DERNIER → toujours au-dessus de tout
+    // 3. Burn subs EN DERNIER
     filterParts.push(`[${lastVideoLabel}]subtitles='${assBasename}'[v_out]`);
 
-    // Map
-    args.push(
-      "-filter_complex", filterParts.join(";"),
-      "-map", "[v_out]"
-    );
+    args.push("-filter_complex", filterParts.join(";"), "-map", "[v_out]");
 
-    if (hasVoiceover) {
+    if (hasAudioOut) {
       args.push("-map", "[a_out]");
     } else {
       args.push("-map", "0:a?");
     }
 
     args.push(
-      "-c:v", "libx264",
-      "-preset", "medium",
-      "-crf", "20",
-      "-c:a", "aac",
-      "-b:a", "192k",
-      "-ar", "48000",
-      "-ac", "2",
-      "-movflags", "+faststart",
-      "-y",
-      outputPath
+      "-c:v", "libx264", "-preset", "medium", "-crf", "20",
+      "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+      "-movflags", "+faststart", "-y", outputPath
     );
   }
 
-  // ============================================================
-  //  Run FFmpeg
-  // ============================================================
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn("ffmpeg", args, { cwd: outputDir });
-
     let stderr = "";
-    ffmpeg.stderr.on("data", (data) => {
-      stderr += data.toString();
-    });
-
-    ffmpeg.on("error", (err) => {
-      reject(new Error(`FFmpeg spawn error: ${err.message}`));
-    });
-
+    ffmpeg.stderr.on("data", (data) => { stderr += data.toString(); });
+    ffmpeg.on("error", (err) => { reject(new Error(`FFmpeg spawn error: ${err.message}`)); });
     ffmpeg.on("close", async (code) => {
       if (code !== 0) {
-        reject(
-          new Error(
-            `FFmpeg burnSubs exited with code ${code}\nstderr:\n${stderr.slice(-3000)}`
-          )
-        );
+        reject(new Error(`FFmpeg burnSubs exited with code ${code}\nstderr:\n${stderr.slice(-3000)}`));
         return;
       }
-
       try {
         const stats = await fs.stat(outputPath);
         const sizeBytes = stats.size;
         const sizeMb = (sizeBytes / 1024 / 1024).toFixed(2);
-
         if (sizeBytes > MAX_OUTPUT_SIZE_BYTES) {
           reject(new Error(`Output too large: ${sizeMb} MB > 500 MB safety limit`));
           return;
         }
-
         const durationMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+\.\d+)/);
         let durationSeconds: number | undefined;
         if (durationMatch) {
           const [, hh, mm, ss] = durationMatch;
-          durationSeconds =
-            parseInt(hh, 10) * 3600 + parseInt(mm, 10) * 60 + parseFloat(ss);
+          durationSeconds = parseInt(hh, 10) * 3600 + parseInt(mm, 10) * 60 + parseFloat(ss);
         }
-
         const features: string[] = [];
         if (hasBrolls) features.push(`${brolls.length} b-roll(s)`);
         if (hasVoiceover) features.push("voice-off mix");
+        if (hasMusic) features.push("musique");
         features.push("subs on top");
-        const featuresStr = ` [${features.join(", ")}]`;
-
-        log.ffmpeg(
-          `Video rendered: ${sizeMb} MB${
-            durationSeconds ? ` (${durationSeconds.toFixed(1)}s)` : ""
-          }${featuresStr}`
-        );
-
+        log.ffmpeg(`Video rendered: ${sizeMb} MB${durationSeconds ? ` (${durationSeconds.toFixed(1)}s)` : ""} [${features.join(", ")}]`);
         resolve({ outputPath, sizeBytes, durationSeconds });
       } catch (err: any) {
         reject(new Error(`Failed to stat output file: ${err.message}`));
