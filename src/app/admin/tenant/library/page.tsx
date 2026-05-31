@@ -63,6 +63,7 @@ function AdminLibraryPageInner() {
   const [loadingMore, setLoadingMore] = useState(false);
   const imagesRef = useRef<LibraryImage[]>([]);
   const loadingRef = useRef(false);
+  const autoTabDone = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   // ============================================================
@@ -101,6 +102,13 @@ function AdminLibraryPageInner() {
           return next;
         });
         setCounts(data.counts || { pending: 0, approved: 0, total: 0 });
+        // Au 1er chargement : si aucune image a valider, basculer sur "Toutes"
+        if (reset && !autoTabDone.current) {
+          autoTabDone.current = true;
+          if ((data.counts?.pending ?? 0) === 0 && filter === "pending") {
+            setFilter("all");
+          }
+        }
         setHasMore(batch.length === 60);
         setError(null);
       } catch (err: any) {
@@ -315,7 +323,7 @@ function AdminLibraryPageInner() {
         {/* FILTRES + RECHERCHE */}
         <div className="mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
           {/* Boutons filtres */}
-          <div className="flex items-center gap-1.5 bg-white rounded-xl border border-neutral-200 p-1 shrink-0">
+          <div className="grid grid-cols-3 gap-1.5 bg-white rounded-xl border border-neutral-200 p-1 w-full sm:flex sm:items-center sm:w-auto sm:shrink-0">
             <FilterButton
               active={filter === "pending"}
               onClick={() => setFilter("pending")}
@@ -492,14 +500,14 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition ${
+      className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition w-full sm:w-auto ${
         active
           ? "bg-neutral-900 text-white"
           : "text-neutral-600 hover:bg-neutral-100"
       }`}
     >
       {icon}
-      {label}
+      <span className="hidden sm:inline">{label}</span>
       {count > 0 && (
         <span
           className={`text-[10px] px-1.5 py-0.5 rounded ${

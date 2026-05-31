@@ -249,15 +249,14 @@ export default function AdminMobileFeed({
 
   // Sprint 9.3 : Charger reviews quand active project change
   useEffect(() => {
-    if (!activeProject?.state_json?.slides) {
-      setSlideReviews({});
-      return;
-    }
-    const initial: Record<string, SlideReview> = {};
-    activeProject.state_json.slides.forEach((s: any) => {
-      if (s.review) initial[s.id] = s.review;
+    if (!activeProject?.state_json?.slides) return;
+    setSlideReviews((prev) => {
+      const merged = { ...prev };
+      activeProject.state_json.slides.forEach((s: any) => {
+        if (s.review && !merged[s.id]) merged[s.id] = s.review;
+      });
+      return merged;
     });
-    setSlideReviews(initial);
   }, [activeProjectId]);
 
   const saveSlideReviewsToDB = useCallback(async (override?: Record<string, SlideReview>) => {
@@ -328,8 +327,9 @@ export default function AdminMobileFeed({
   }, [activeProject, saveSlideReviewsToDB, onRefresh]);
 
   const totalSlides = activeProject?.state_json?.slides?.length || 0;
-  const okCount = Object.values(slideReviews).filter(r => r.status === "ok").length;
-  const needsChangesCount = Object.values(slideReviews).filter(r => r.status === "needs_changes").length;
+  const activeSlideIds: string[] = activeProject?.state_json?.slides?.map((s: any) => s.id) ?? [];
+  const okCount = activeSlideIds.filter((id) => slideReviews[id]?.status === "ok").length;
+  const needsChangesCount = activeSlideIds.filter((id) => slideReviews[id]?.status === "needs_changes").length;
   const allReviewed = totalSlides > 0 && okCount + needsChangesCount === totalSlides;
   const canApproveAll = allReviewed && needsChangesCount === 0;
   const canRequestChanges = needsChangesCount > 0;

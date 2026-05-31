@@ -109,6 +109,7 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
   // Refs pour gérer le debounce sans dépendances obsolètes
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestStateJsonRef = useRef<ProjectState | null>(null);
+  const projectStatusRef = useRef<string | null>(null);
   const projectIdRef = useRef<string>(projectId);
   const tenantIdRef = useRef<string | null>(tenantId);
 
@@ -191,6 +192,7 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
       }
 
       latestStateJsonRef.current = stateJson;
+      projectStatusRef.current = (data as any)?.status ?? null;
 
       setState({
         status: "ready",
@@ -212,6 +214,9 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
     const tId = tenantIdRef.current;
 
     if (!stateJson || !pId || !tId) return;
+
+    // Projet verrouille (approuve/archive) : aucun auto-save
+    if (projectStatusRef.current === "approved" || projectStatusRef.current === "archived") return;
 
     setState((s) => ({ ...s, saveStatus: "saving" as SaveStatus }));
 
@@ -251,6 +256,8 @@ export function useStudioProject(projectId: string, tenantId: string | null) {
   // === Update state_json + déclenche debounce ===
   const updateStateJson = useCallback(
     (updater: (prev: ProjectState) => ProjectState) => {
+      // Projet verrouille : ni update local ni debounce
+      if (projectStatusRef.current === "approved" || projectStatusRef.current === "archived") return;
       setState((s) => {
         if (s.status !== "ready" || !s.project) return s;
         const newStateJson = updater(s.project.state_json);
