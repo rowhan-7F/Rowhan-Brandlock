@@ -305,7 +305,7 @@ export default function StudioVideoPage() {
   const brollsCount = Array.isArray(sj.brolls) ? sj.brolls.length : 0;
   const hasMusic = !!sj.music_audio;
   const hasIntroOutro = !!sj.intro_id || !!sj.outro_id;
-  const isDraft = project.status === "draft" || !project.source_video_url;
+  const isDraft = !project.source_video_url;
   const isReadOnly = project.status === "approved" || project.status === "archived";
 
   const toggle = (k: string) => setOpenSection((p) => (p === k ? null : k));
@@ -373,7 +373,7 @@ export default function StudioVideoPage() {
             )}
             <div className="flex-1 px-3 py-3 space-y-2">
               <VideoSectionAccordion number="01" title="Intro / Outro" icon={<Scissors size={13} />} subtitle={hasIntroOutro ? "Configure" : "Optionnel"} done={hasIntroOutro} isOpen={openSection === "01"} onToggle={() => toggle("01")}>
-                <BrandAssetsSelector project={project} onSaved={loadAll} />
+                <RoGate active={isReadOnly}><BrandAssetsSelector project={project} onSaved={loadAll} /></RoGate>
               </VideoSectionAccordion>
 
               <VideoSectionAccordion number="02" title="Source" icon={<Film size={13} />} subtitle={`${dims.label} - ${project.source_duration_seconds ? formatDuration(project.source_duration_seconds) : "--"}`} done={!!project.source_video_url} isOpen={openSection === "02"} onToggle={() => toggle("02")}>
@@ -384,11 +384,11 @@ export default function StudioVideoPage() {
                   {project.source_dimensions ? <SourceDetailRow label="Dimensions" value={`${project.source_dimensions.width}x${project.source_dimensions.height}${project.source_dimensions.width !== dims.width ? "  (ratio different)" : ""}`} /> : null}
                   {project.source_size_bytes ? <SourceDetailRow label="Taille" value={formatFileSize(project.source_size_bytes)} /> : null}
                 </div>
-                <SourceInfoPanel project={project} onProjectUpdated={loadAll} />
+                <RoGate active={isReadOnly}><SourceInfoPanel project={project} onProjectUpdated={loadAll} /></RoGate>
               </VideoSectionAccordion>
 
               <VideoSectionAccordion number="03" title={hasTranscript ? "Sous-titres" : "Audio & sous-titres"} icon={hasTranscript ? <Subtitles size={13} /> : <Mic size={13} />} subtitle={hasTranscript ? `${liveSegments.length} segments` : hasVoiceover ? "Voix-off ajoutee" : "Non transcrit"} done={hasTranscript} isOpen={openSection === "03"} onToggle={() => toggle("03")}>
-                <AudioSubsPanel project={project} onProjectUpdated={loadAll} />
+                <RoGate active={isReadOnly}><AudioSubsPanel project={project} onProjectUpdated={loadAll} /></RoGate>
               </VideoSectionAccordion>
 
               <VideoSectionAccordion number="04" title="Musique" icon={<Music size={13} />} subtitle={hasMusic ? "Ajoutee" : "Optionnel"} done={hasMusic} isOpen={openSection === "04"} onToggle={() => toggle("04")}>
@@ -396,11 +396,11 @@ export default function StudioVideoPage() {
               </VideoSectionAccordion>
 
               <VideoSectionAccordion number="05" title="Elements" icon={<Layers size={13} />} subtitle={`${brollsCount} element${brollsCount > 1 ? "s" : ""}`} done={brollsCount > 0} isOpen={openSection === "05"} onToggle={() => toggle("05")}>
-                <BrollsPanel project={project} onProjectUpdated={loadAll} />
+                <RoGate active={isReadOnly}><BrollsPanel project={project} onProjectUpdated={loadAll} /></RoGate>
               </VideoSectionAccordion>
 
               <VideoSectionAccordion number="06" title="Rendu final" icon={<Sparkles size={13} />} subtitle={project.status === "completed" ? "Video prete" : hasTranscript ? "Pret a rendre" : "Sous-titres requis"} done={project.status === "completed"} isOpen={openSection === "06"} onToggle={() => toggle("06")}>
-                <RenderBar project={project} onProjectUpdated={loadAll} />
+                <RoGate active={isReadOnly}><RenderBar project={project} onProjectUpdated={loadAll} /></RoGate>
               </VideoSectionAccordion>
             </div>
           </aside>
@@ -440,6 +440,11 @@ export default function StudioVideoPage() {
       )}
     </div>
   );
+}
+
+function RoGate({ active, children }: { active: boolean; children: React.ReactNode }) {
+  if (!active) return <>{children}</>;
+  return <div className="pointer-events-none opacity-60 select-none">{children}</div>;
 }
 
 function SourceDetailRow({ label, value }: { label: string; value?: string }) {

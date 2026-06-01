@@ -173,7 +173,7 @@ export default function VideoDropzone({
             source_format: ext,
             source_dimensions: { width: meta.width, height: meta.height },
             source_size_bytes: file.size,
-            thumbnail_url: thumbErr ? null : thumbUrlData.publicUrl,
+            thumbnail_url: thumbErr ? null : (thumbUrlData.publicUrl + "?v=" + Date.now()),
             status: "uploaded",
           }),
         });
