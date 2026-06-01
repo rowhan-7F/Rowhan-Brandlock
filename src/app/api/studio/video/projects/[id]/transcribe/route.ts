@@ -73,7 +73,7 @@ export async function POST(
     }
 
     // Check project status — must be "uploaded" or "transcribed" (re-transcribe)
-    if (project.status !== "uploaded" && project.status !== "transcribed") {
+    if (project.status === "approved") {
       return NextResponse.json(
         {
           error: `Cannot transcribe project in status '${project.status}'.`,

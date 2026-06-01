@@ -298,12 +298,17 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
         confidence: w.confidence,
       }));
 
+    const chunkedSegments =
+      reconstructedWords.length > 0
+        ? chunkWordsIntoCues(reconstructedWords, MAX_CUE_CHARS)
+        : legacySegments;
+
     const updatedStateJson = {
       ...(project.state_json || {}),
       transcript: {
         raw: whisperResult.text,
         edited: sanitized,
-        segments: legacySegments,
+        segments: chunkedSegments,
         words: legacyWords,
         language: whisperResult.language || "fr",
         duration_seconds: whisperResult.duration_seconds,
@@ -355,6 +360,43 @@ export async function processTranscribeJob(input: TranscribeJobInput): Promise<v
 // ============================================================
 //  Helper â€” Update progress sans casser le job si update Ã©choue
 // ============================================================
+
+// Cible de longueur d'un cue (caracteres). Plus petit = cues plus courts / plus de segments.
+const MAX_CUE_CHARS = 68;
+
+type CueWord = { word: string; start_ms: number; end_ms: number };
+
+function buildCue(ws: CueWord[]): { start: number; end: number; text: string } {
+  const text = ws.map((w) => w.word).join(" ").replace(/\s+/g, " ").trim();
+  return { start: ws[0].start_ms / 1000, end: ws[ws.length - 1].end_ms / 1000, text };
+}
+
+function chunkWordsIntoCues(words: CueWord[], maxChars: number): { start: number; end: number; text: string }[] {
+  const cues: { start: number; end: number; text: string }[] = [];
+  let cur: CueWord[] = [];
+  let curLen = 0;
+  for (const w of words) {
+    const wl = (w.word || "").trim();
+    if (!wl) continue;
+    const piece: CueWord = { word: wl, start_ms: w.start_ms, end_ms: w.end_ms };
+    const addLen = curLen === 0 ? wl.length : curLen + 1 + wl.length;
+    if (curLen > 0 && addLen > maxChars) {
+      cues.push(buildCue(cur));
+      cur = [piece];
+      curLen = wl.length;
+    } else {
+      cur.push(piece);
+      curLen = addLen;
+    }
+    if (/[.!?]$/.test(wl) && curLen >= maxChars * 0.5) {
+      cues.push(buildCue(cur));
+      cur = [];
+      curLen = 0;
+    }
+  }
+  if (cur.length > 0) cues.push(buildCue(cur));
+  return cues;
+}
 
 async function updateProgress(
   jobId: string,

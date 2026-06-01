@@ -47,3 +47,7 @@ worker/whisper-cpp/bin/
 worker/whisper-cpp/models/
 worker/whisper-cpp/samples/
 build-log.txt
+
+# Backups locaux de patchs
+*.backup-*
+*.backup

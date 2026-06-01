@@ -469,6 +469,14 @@ function endsOnLinkWord(line: string): boolean {
  * ⭐ Évite de finir line1 sur un mot de liaison FR ("de", "le", "et"...)
  *    via un malus de 100 dans le scoring.
  */
+// Respecte les retours a la ligne manuels (\n) puis equilibre chaque morceau.
+function layoutAssLines(text: string, maxCharsPerLine: number): string {
+  const norm = (text || "").replace(/[^\S\n]+/g, " ").replace(/[ \t]*\n[ \t]*/g, "\n").trim();
+  const forced = norm.split("\n").map((s) => s.trim()).filter((s) => s.length > 0);
+  const parts = forced.length > 0 ? forced : [norm];
+  return parts.map((p) => wrapToTwoLines(escapeAssText(p), maxCharsPerLine)).join("\\N");
+}
+
 function wrapToTwoLines(text: string, maxCharsPerLine: number): string {
   if (text.length <= maxCharsPerLine) return text;
 
@@ -829,8 +837,8 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
     if (!seg.text || seg.text.trim().length === 0) continue;
     const start = formatAssTime(seg.start);
     const end = formatAssTime(seg.end);
-    const escaped = escapeAssText(seg.text);
-    const wrapped = wrapToTwoLines(escaped, config.maxCharsPerLine);
+    // echappement gere ligne par ligne dans layoutAssLines
+    const wrapped = layoutAssLines(seg.text, config.maxCharsPerLine);
     lines.push(`Dialogue: 0,${start},${end},Default,,0,0,0,,${wrapped}`);
   }
 

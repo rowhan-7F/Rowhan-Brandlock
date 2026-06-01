@@ -11,34 +11,63 @@ type Props = {
   subsBurnedIn?: boolean;
 };
 
-// Taille FIXE par format + nb max de caracteres par ligne.
-// Le texte passe a la ligne autant de fois que necessaire (jamais de shrink).
-const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; maxCharsPerLine: number }> = {
-  "9_16": { fontSize: 36, marginBottomPct: 0.12, maxCharsPerLine: 36 },
-  "1_1":  { fontSize: 30, marginBottomPct: 0.12, maxCharsPerLine: 44 },
-  "16_9": { fontSize: 26, marginBottomPct: 0.12, maxCharsPerLine: 88 },
+// Taille FIXE + marge laterale en %.
+const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; sideMarginPct: number }> = {
+  "9_16": { fontSize: 36, marginBottomPct: 0.12, sideMarginPct: 0.06 },
+  "1_1":  { fontSize: 30, marginBottomPct: 0.12, sideMarginPct: 0.06 },
+  "16_9": { fontSize: 26, marginBottomPct: 0.12, sideMarginPct: 0.06 },
 };
 
-// Wrap en N lignes : chaque ligne <= maxChars -> jamais de debordement lateral.
-function wrapLines(text: string, maxChars: number): string[] {
-  const clean = text.replace(/\\N/g, " ").replace(/\s+/g, " ").trim();
+// Coupe le texte en lignes EQUILIBREES : au plus proche du milieu, et si une
+// ponctuation (, . ; : ! ?) finit un mot a +-2 mots du milieu, on coupe la.
+function balancedWrap(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const clean = text.trim();
   if (!clean) return [];
-  const words = clean.split(" ");
-  const lines: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    let word = w;
-    while (word.length > maxChars) {
-      if (cur) { lines.push(cur); cur = ""; }
-      lines.push(word.slice(0, maxChars));
-      word = word.slice(maxChars);
-    }
-    if (!cur) cur = word;
-    else if ((cur + " " + word).length <= maxChars) cur += " " + word;
-    else { lines.push(cur); cur = word; }
+  if (ctx.measureText(clean).width <= maxWidth) return [clean];
+
+  const words = clean.split(/\s+/);
+  if (words.length < 2) return [clean];
+
+  const spaceW = ctx.measureText(" ").width;
+  const cum: number[] = [];
+  let acc = 0;
+  for (let i = 0; i < words.length; i++) {
+    acc += (i === 0 ? 0 : spaceW) + ctx.measureText(words[i]).width;
+    cum[i] = acc;
   }
-  if (cur) lines.push(cur);
-  return lines.length ? lines : [clean];
+  const half = cum[words.length - 1] / 2;
+
+  // 1) frontiere de mot la plus proche du milieu (equilibre)
+  let bestIdx = 0;
+  let bestDelta = Infinity;
+  for (let i = 0; i < words.length - 1; i++) {
+    const d = Math.abs(cum[i] - half);
+    if (d < bestDelta) { bestDelta = d; bestIdx = i; }
+  }
+
+  // 2) snap sur une ponctuation a +-2 mots du milieu si elle existe
+  let cutIdx = bestIdx;
+  if (!/[,.;:!?]$/.test(words[bestIdx])) {
+    let snapped = -1;
+    for (let off = 1; off <= 2 && snapped < 0; off++) {
+      for (const j of [bestIdx - off, bestIdx + off]) {
+        if (j >= 0 && j < words.length - 1 && /[,.;:!?]$/.test(words[j])) { snapped = j; break; }
+      }
+    }
+    if (snapped >= 0) cutIdx = snapped;
+  }
+
+  const l1 = words.slice(0, cutIdx + 1).join(" ");
+  const l2 = words.slice(cutIdx + 1).join(" ");
+  return [...balancedWrap(ctx, l1, maxWidth), ...balancedWrap(ctx, l2, maxWidth)];
+}
+
+// Respecte les retours a la ligne manuels (\n), puis equilibre chaque morceau.
+function layoutLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const forced = text.split("\n").map((s) => s.trim()).filter((s) => s.length > 0);
+  const out: string[] = [];
+  for (const part of forced) out.push(...balancedWrap(ctx, part, maxWidth));
+  return out.length ? out : [text.trim()];
 }
 
 export default function VideoSubsPreview({ videoUrl, segments, format, externalVideoRef, subsBurnedIn }: Props) {
@@ -79,7 +108,8 @@ export default function VideoSubsPreview({ videoUrl, segments, format, externalV
         if (!seg && video.paused) {
           seg = segs.reduce((b, s) => (Math.abs(s.start - t) < Math.abs(b.start - t) ? s : b), segs[0]);
         }
-        const text = seg ? (seg.text || "").replace(/\s+/g, " ").trim() : "";
+        const raw = seg ? (seg.text || "") : "";
+        const text = raw.replace(/[^\S\n]+/g, " ").replace(/[ \t]*\n[ \t]*/g, "\n").trim();
         if (text) {
           const scale = canvas.height / targetDims.height;
           const fontSize = Math.max(14, Math.round(config.fontSize * scale));
@@ -87,7 +117,8 @@ export default function VideoSubsPreview({ videoUrl, segments, format, externalV
           ctx.textAlign = "center";
           ctx.textBaseline = "alphabetic";
 
-          const lines = wrapLines(text, config.maxCharsPerLine);
+          const maxWidth = canvas.width * (1 - 2 * config.sideMarginPct);
+          const lines = layoutLines(ctx, text, maxWidth);
           const lineHeight = fontSize * 1.28;
           const x = canvas.width / 2;
           const marginBottom = canvas.height * config.marginBottomPct;
