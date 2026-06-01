@@ -12,9 +12,9 @@ type Props = {
 };
 
 const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; maxCharsPerLine: number; sideMarginPct: number }> = {
-  "9_16": { fontSize: 72, marginBottomPct: 0.12, maxCharsPerLine: 22, sideMarginPct: 0.08 },
-  "1_1":  { fontSize: 60, marginBottomPct: 0.12, maxCharsPerLine: 26, sideMarginPct: 0.07 },
-  "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 50, sideMarginPct: 0.06 },
+  "9_16": { fontSize: 72, marginBottomPct: 0.12, maxCharsPerLine: 18, sideMarginPct: 0.08 },
+  "1_1":  { fontSize: 60, marginBottomPct: 0.12, maxCharsPerLine: 22, sideMarginPct: 0.07 },
+  "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 44, sideMarginPct: 0.06 },
 };
 
 function wrapTwoLines(text: string, maxChars: number): string[] {
@@ -86,7 +86,7 @@ export default function VideoSubsPreview({ videoUrl, segments, format, externalV
           const maxW = canvas.width * (1 - 2 * config.sideMarginPct);
           let widest = 0;
           for (const l of lines) { const w = ctx.measureText(l).width; if (w > widest) widest = w; }
-          if (widest > maxW && widest > 0) {
+          if (false) {
             fontSize = Math.max(10, Math.floor(fontSize * (maxW / widest)));
             ctx.font = `bold ${fontSize}px Arial, Helvetica, sans-serif`;
           }
