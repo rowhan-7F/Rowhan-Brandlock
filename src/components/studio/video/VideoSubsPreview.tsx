@@ -11,29 +11,34 @@ type Props = {
   subsBurnedIn?: boolean;
 };
 
-const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; maxCharsPerLine: number; sideMarginPct: number }> = {
-  "9_16": { fontSize: 72, marginBottomPct: 0.12, maxCharsPerLine: 18, sideMarginPct: 0.08 },
-  "1_1":  { fontSize: 60, marginBottomPct: 0.12, maxCharsPerLine: 22, sideMarginPct: 0.07 },
-  "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 44, sideMarginPct: 0.06 },
+// Taille FIXE par format + nb max de caracteres par ligne.
+// Le texte passe a la ligne autant de fois que necessaire (jamais de shrink).
+const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; maxCharsPerLine: number }> = {
+  "9_16": { fontSize: 72, marginBottomPct: 0.12, maxCharsPerLine: 18 },
+  "1_1":  { fontSize: 60, marginBottomPct: 0.12, maxCharsPerLine: 22 },
+  "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 44 },
 };
 
-function wrapTwoLines(text: string, maxChars: number): string[] {
+// Wrap en N lignes : chaque ligne <= maxChars -> jamais de debordement lateral.
+function wrapLines(text: string, maxChars: number): string[] {
   const clean = text.replace(/\\N/g, " ").replace(/\s+/g, " ").trim();
-  if (clean.length <= maxChars) return [clean];
+  if (!clean) return [];
   const words = clean.split(" ");
-  if (words.length <= 1) return [clean];
-  let best = -1;
-  let bestScore = Infinity;
-  for (let i = 1; i < words.length; i++) {
-    const l1 = words.slice(0, i).join(" ");
-    const l2 = words.slice(i).join(" ");
-    if (l1.length > maxChars || l2.length > maxChars) continue;
-    const score = Math.abs(l1.length - l2.length);
-    if (score < bestScore) { bestScore = score; best = i; }
+  const lines: string[] = [];
+  let cur = "";
+  for (const w of words) {
+    let word = w;
+    while (word.length > maxChars) {
+      if (cur) { lines.push(cur); cur = ""; }
+      lines.push(word.slice(0, maxChars));
+      word = word.slice(maxChars);
+    }
+    if (!cur) cur = word;
+    else if ((cur + " " + word).length <= maxChars) cur += " " + word;
+    else { lines.push(cur); cur = word; }
   }
-  if (best > 0) return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
-  const mid = Math.ceil(words.length / 2);
-  return [words.slice(0, mid).join(" "), words.slice(mid).join(" ")];
+  if (cur) lines.push(cur);
+  return lines.length ? lines : [clean];
 }
 
 export default function VideoSubsPreview({ videoUrl, segments, format, externalVideoRef, subsBurnedIn }: Props) {
@@ -77,21 +82,13 @@ export default function VideoSubsPreview({ videoUrl, segments, format, externalV
         const text = seg ? (seg.text || "").replace(/\s+/g, " ").trim() : "";
         if (text) {
           const scale = canvas.height / targetDims.height;
-          let fontSize = Math.max(14, Math.round(config.fontSize * scale));
+          const fontSize = Math.max(14, Math.round(config.fontSize * scale));
           ctx.font = `bold ${fontSize}px Arial, Helvetica, sans-serif`;
           ctx.textAlign = "center";
           ctx.textBaseline = "alphabetic";
 
-          const lines = wrapTwoLines(text, config.maxCharsPerLine);
-          const maxW = canvas.width * (1 - 2 * config.sideMarginPct);
-          let widest = 0;
-          for (const l of lines) { const w = ctx.measureText(l).width; if (w > widest) widest = w; }
-          if (false) {
-            fontSize = Math.max(10, Math.floor(fontSize * (maxW / widest)));
-            ctx.font = `bold ${fontSize}px Arial, Helvetica, sans-serif`;
-          }
-
-          const lineHeight = fontSize * 1.25;
+          const lines = wrapLines(text, config.maxCharsPerLine);
+          const lineHeight = fontSize * 1.28;
           const x = canvas.width / 2;
           const marginBottom = canvas.height * config.marginBottomPct;
           let y = canvas.height - marginBottom;
