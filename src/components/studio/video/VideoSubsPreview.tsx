@@ -14,9 +14,9 @@ type Props = {
 // Taille FIXE par format + nb max de caracteres par ligne.
 // Le texte passe a la ligne autant de fois que necessaire (jamais de shrink).
 const FORMAT_CONFIG: Record<VideoFormat, { fontSize: number; marginBottomPct: number; maxCharsPerLine: number }> = {
-  "9_16": { fontSize: 72, marginBottomPct: 0.12, maxCharsPerLine: 18 },
-  "1_1":  { fontSize: 60, marginBottomPct: 0.12, maxCharsPerLine: 22 },
-  "16_9": { fontSize: 52, marginBottomPct: 0.12, maxCharsPerLine: 44 },
+  "9_16": { fontSize: 36, marginBottomPct: 0.12, maxCharsPerLine: 36 },
+  "1_1":  { fontSize: 30, marginBottomPct: 0.12, maxCharsPerLine: 44 },
+  "16_9": { fontSize: 26, marginBottomPct: 0.12, maxCharsPerLine: 88 },
 };
 
 // Wrap en N lignes : chaque ligne <= maxChars -> jamais de debordement lateral.
