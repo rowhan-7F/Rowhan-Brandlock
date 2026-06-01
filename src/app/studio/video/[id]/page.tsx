@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Loader2, ArrowLeft, Film, Mic, Music, Layers, Scissors, Sparkles, Subtitles } from "lucide-react";
+import { Loader2, ArrowLeft, Film, Mic, Music, Layers, Scissors, Sparkles, Subtitles, ChevronRight, ChevronLeft } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/lib/toast";
 import { confirmDialog } from "@/lib/confirmDialog";
@@ -43,6 +43,7 @@ export default function StudioVideoPage() {
   const [signedSourceUrl, setSignedSourceUrl] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<string | null>("03");
   const [submittingVideo, setSubmittingVideo] = useState(false);
+  const [showSubs, setShowSubs] = useState(true);
 
   // Etape 2 : sous-titres editables live
   const [liveSegments, setLiveSegments] = useState<Seg[]>([]);
@@ -419,13 +420,23 @@ export default function StudioVideoPage() {
             </div>
           </main>
 
+          {!showSubs && (
+            <button type="button" onClick={() => setShowSubs(true)} className="w-9 border-l border-neutral-200 bg-white hover:bg-neutral-50 flex flex-col items-center justify-center gap-3 shrink-0 transition" title="Afficher les sous-titres">
+              <ChevronLeft size={16} className="text-neutral-400" />
+              <span className="text-[9px] font-black uppercase tracking-widest text-neutral-400" style={{ writingMode: "vertical-rl" }}>Sous-titres</span>
+            </button>
+          )}
+          {showSubs && (
           <aside className="w-[340px] border-l border-neutral-200 bg-white overflow-y-auto flex flex-col shrink-0">
             <div className="px-5 py-4 border-b border-neutral-200 sticky top-0 bg-white z-10 flex items-center gap-2">
               <Subtitles size={14} className="text-neutral-500" />
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="text-[10px] font-black uppercase tracking-widest text-neutral-400">Sous-titres</div>
                 <div className="text-sm font-bold text-neutral-900 mt-0.5">{liveSegments.length} segment{liveSegments.length > 1 ? "s" : ""}</div>
               </div>
+              <button type="button" onClick={() => setShowSubs(false)} className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-700 hover:bg-neutral-100 transition shrink-0" title="Masquer les sous-titres">
+                <ChevronRight size={16} />
+              </button>
             </div>
             <div className="flex-1 px-3 py-3">
               <SubtitleEditor
@@ -436,6 +447,7 @@ export default function StudioVideoPage() {
               />
             </div>
           </aside>
+          )}
         </div>
       )}
     </div>
