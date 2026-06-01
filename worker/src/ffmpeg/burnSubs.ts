@@ -71,7 +71,7 @@ function buildOverlayPosition(position: BRollPosition): { x: string; y: string }
 
 function buildScaleFilter(broll: BurnSubsBroll, videoWidth: number, videoHeight: number): string {
   if (broll.position === "fullscreen") {
-    return `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black`;
+    return `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=increase,crop=${videoWidth}:${videoHeight}`;
   }
   const targetW = Math.round(videoWidth * broll.scale);
   return `scale=${targetW}:-2`;
@@ -109,7 +109,7 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
   if (!useComplexFilter) {
     args = [
       "-i", videoPath,
-      "-vf", `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black,subtitles='${assBasename}'`,
+      "-vf", `scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=increase,crop=${videoWidth}:${videoHeight},subtitles='${assBasename}'`,
       "-c:v", "libx264", "-preset", "medium", "-crf", "20",
       "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
       "-movflags", "+faststart", "-y", outputPath,
@@ -139,7 +139,7 @@ export async function burnSubs(input: BurnSubsInput): Promise<BurnSubsResult> {
     const filterParts: string[] = [];
 
     // Scale + pad la video source pour matcher le format cible
-    filterParts.push(`[0:v]scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=decrease,pad=${videoWidth}:${videoHeight}:(ow-iw)/2:(oh-ih)/2:color=black[v_base]`);
+    filterParts.push(`[0:v]scale=${videoWidth}:${videoHeight}:force_original_aspect_ratio=increase,crop=${videoWidth}:${videoHeight}[v_base]`);
 
     // 1. Audio mix (voice-off et/ou musique)
     const audioLabels: string[] = [];

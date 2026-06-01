@@ -41,6 +41,7 @@ export default function StudioVideoPage() {
   const [error, setError] = useState<string | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const [signedSourceUrl, setSignedSourceUrl] = useState<string | null>(null);
+  const [finalSignedUrl, setFinalSignedUrl] = useState<string | null>(null);
   const [openSection, setOpenSection] = useState<string | null>("03");
   const [submittingVideo, setSubmittingVideo] = useState(false);
   const [showSubs, setShowSubs] = useState(true);
@@ -82,6 +83,20 @@ export default function StudioVideoPage() {
     })();
     return () => { cancelled = true; };
   }, [project?.source_video_url]);
+
+  // Signed URL du rendu final (bucket video-exports) quand le projet est completed
+  useEffect(() => {
+    if (project?.status !== "completed") { setFinalSignedUrl(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const path = `${project.tenant_id}/${project.id}/final.mp4`;
+        const { data } = await supabase.storage.from("video-exports").createSignedUrl(path, 3600);
+        if (!cancelled) setFinalSignedUrl(data?.signedUrl || null);
+      } catch { if (!cancelled) setFinalSignedUrl(null); }
+    })();
+    return () => { cancelled = true; };
+  }, [project?.status, project?.id, project?.tenant_id]);
 
   // Sync liveSegments depuis le projet (au chargement / apres transcription)
   useEffect(() => {
@@ -139,7 +154,9 @@ export default function StudioVideoPage() {
         return;
       }
       if (projData.source_video_url && projData.source_format) {
-        const sourcePath = `${projData.tenant_id}/${projData.id}/source.${projData.source_format}`;
+        let sourcePath = `${projData.tenant_id}/${projData.id}/source.${projData.source_format}`;
+        const _srcMatch = (projData.source_video_url as string).match(/video-sources\/(.+?)(\?|$)/);
+        if (_srcMatch) sourcePath = decodeURIComponent(_srcMatch[1]);
         const { data: signedData } = await supabase.storage
           .from("video-sources")
           .createSignedUrl(sourcePath, 3600);
@@ -413,6 +430,7 @@ export default function StudioVideoPage() {
                 segments={liveSegments as any}
                 format={project.format}
                 externalVideoRef={videoPreviewRef}
+                subsBurnedIn={false}
               />
             </div>
             <div className="mt-6 max-w-[920px] mx-auto">

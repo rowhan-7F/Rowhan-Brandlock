@@ -109,9 +109,9 @@ export async function POST(
       );
     }
 
-    if (project.status === "completed") {
+    if (project.status === "approved" || project.status === "archived") {
       return NextResponse.json(
-        { error: `Upload impossible : projet deja rendu (status "${project.status}")` },
+        { error: `Upload impossible : projet verrouille (status "${project.status}")` },
         { status: 400 }
       );
     }

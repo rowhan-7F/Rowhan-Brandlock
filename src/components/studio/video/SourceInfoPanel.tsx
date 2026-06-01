@@ -17,7 +17,7 @@ export default function SourceInfoPanel({ project, onProjectUpdated }: Props) {
   const [showReplace, setShowReplace] = useState(false);
   const dims = VIDEO_FORMAT_DIMENSIONS[project.format];
   const hasSource = !!project.source_video_url;
-  const isLocked = project.status === "completed";
+  const isLocked = project.status === "approved" || project.status === "archived";
 
   if (isLocked) {
     return (

@@ -277,7 +277,7 @@ export async function processRenderJob(input: RenderJobInput): Promise<void> {
 
     const { assPath, segmentCount } = await generateAss({
       segments: transcript.segments,
-      words: transcript.words,
+      preformatted: true,
       outputDir: jobTmpDir,
       videoWidth: targetDims.width,
       videoHeight: targetDims.height,

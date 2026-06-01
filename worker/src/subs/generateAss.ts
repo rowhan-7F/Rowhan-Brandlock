@@ -49,6 +49,7 @@ type GenerateAssInput = {
   videoDurationSeconds?: number | null;
   offsetSeconds?: number;
   anchors?: Anchor[];
+  preformatted?: boolean;
 };
 
 type GenerateAssResult = {
@@ -733,7 +734,12 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
   // Stratégie 1 : word-level (timing parfait)
   // Stratégie 2 : fallback sur segments approximatifs
   let splitSegments: WhisperSegment[];
-  if (input.words && input.words.length > 0) {
+  if (input.preformatted) {
+    splitSegments = segments
+      .map((s) => ({ start: s.start, end: s.end, text: normalizeUnicode(s.text || "") }))
+      .filter((s) => s.text.length > 0);
+    console.log(`[generateAss] Preformatted (WYSIWYG): ${splitSegments.length} segments, no re-chunk`);
+  } else if (input.words && input.words.length > 0) {
     splitSegments = buildSegmentsFromWords(input.words, config.maxCharsPerSegment);
     console.log(
       `[generateAss] Using ${input.words.length} word timestamps -> Output: ${splitSegments.length} sub-segments`
@@ -762,7 +768,7 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
 
   // Subdiviser les sous-segments trop longs (cap = 4.0s)
   const beforeSubdivide = splitSegments.length;
-  splitSegments = subdivideLongSegments(splitSegments, MAX_REAL_DURATION_PER_SEGMENT);
+  if (!input.preformatted) splitSegments = subdivideLongSegments(splitSegments, MAX_REAL_DURATION_PER_SEGMENT);
   if (splitSegments.length !== beforeSubdivide) {
     console.log(
       `[generateAss] Subdivision: ${beforeSubdivide} → ${splitSegments.length} segments (cap=${MAX_REAL_DURATION_PER_SEGMENT}s)`
@@ -771,12 +777,12 @@ export async function generateAss(input: GenerateAssInput): Promise<GenerateAssR
 
   // ⭐ Anti-orphelin : fusionne les sub-segments trop courts avec leurs voisins
   const beforeMerge = splitSegments.length;
-  splitSegments = mergeOrphanSegments(splitSegments);
+  if (!input.preformatted) splitSegments = mergeOrphanSegments(splitSegments);
   // ⭐ 2eme pass : force merge des micro-orphelins (1-2 mots)
-  splitSegments = mergeStrictMicroOrphans(splitSegments);
+  if (!input.preformatted) splitSegments = mergeStrictMicroOrphans(splitSegments);
 
   // 3eme pass : merge 2 sub-segments courts en 1 bloc 2 lignes
-  splitSegments = mergeShortLinesIntoTwoLineBlocks(splitSegments, config.maxCharsPerLine, config.maxCharsPerSegment);
+  if (!input.preformatted) splitSegments = mergeShortLinesIntoTwoLineBlocks(splitSegments, config.maxCharsPerLine, config.maxCharsPerSegment);
   if (splitSegments.length !== beforeMerge) {
     console.log(
       `[generateAss] Merge orphans: ${beforeMerge} → ${splitSegments.length} segments`
