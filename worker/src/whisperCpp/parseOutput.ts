@@ -158,6 +158,7 @@ export function reconstructWordsFromTokens(
       };
     } else {
       // Continue le mot courant (sub-token ou ponctuation)
+      if (!current) continue;
       current.parts.push(tok.text);
 
       // ⭐ NE PAS update end_ms si c'est juste de la ponctuation isolée
