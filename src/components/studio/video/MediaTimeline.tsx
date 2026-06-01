@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Rnd } from "react-rnd";
-import { Film, ImageIcon as ImageLucide, Clock } from "lucide-react";
+import { Film, ImageIcon as ImageLucide, Clock, Music } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/lib/toast";
 import { VideoProject, BRoll } from "@/lib/video/types";
@@ -15,6 +15,7 @@ const SUB_COLOR = "#6366F1";
 const RULER_HEIGHT = 22;
 const SUB_RAIL = 42;
 const EL_RAIL = 56;
+const MUSIC_RAIL = 34;
 const SNAP_STEP_SEC = 0.5;
 const PATCH_DEBOUNCE_MS = 400;
 
@@ -30,6 +31,7 @@ type Props = {
 export default function MediaTimeline({ project, videoRef, segments, onSegmentsChange, readOnly, onProjectUpdated }: Props) {
   const brolls: BRoll[] = Array.isArray(project.state_json?.brolls) ? project.state_json.brolls : [];
   const sourceDuration = project.source_duration_seconds ?? 30;
+  const musicAudio: any = (project.state_json as any)?.music_audio || null;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -145,7 +147,7 @@ export default function MediaTimeline({ project, videoRef, segments, onSegmentsC
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isScrubbing, sourceDuration, containerWidth]);
 
-  const totalHeight = RULER_HEIGHT + SUB_RAIL + EL_RAIL;
+  const totalHeight = RULER_HEIGHT + SUB_RAIL + EL_RAIL + MUSIC_RAIL;
   const playheadX = secToPx(currentTime);
   const tickStep = sourceDuration < 30 ? 5 : sourceDuration < 90 ? 10 : 15;
   const ticks: number[] = [];
@@ -183,6 +185,14 @@ export default function MediaTimeline({ project, videoRef, segments, onSegmentsC
             <div className="absolute left-0 right-0 bg-neutral-100 border-t border-neutral-200" style={{ top: RULER_HEIGHT + SUB_RAIL, height: EL_RAIL }} />
             <span className="absolute left-1 text-[8px] font-black uppercase tracking-wider text-indigo-300 pointer-events-none" style={{ top: RULER_HEIGHT + 2 }}>Sous-titres</span>
             <span className="absolute left-1 text-[8px] font-black uppercase tracking-wider text-neutral-300 pointer-events-none" style={{ top: RULER_HEIGHT + SUB_RAIL + 2 }}>Elements</span>
+            <div className="absolute left-0 right-0 bg-amber-50/40 border-t border-neutral-200" style={{ top: RULER_HEIGHT + SUB_RAIL + EL_RAIL, height: MUSIC_RAIL }} />
+            <span className="absolute left-1 text-[8px] font-black uppercase tracking-wider text-amber-300 pointer-events-none" style={{ top: RULER_HEIGHT + SUB_RAIL + EL_RAIL + 2 }}>Musique</span>
+            {musicAudio && (
+              <div className="absolute rounded-md flex items-center gap-1 px-2 overflow-hidden" style={{ left: 2, right: 2, top: RULER_HEIGHT + SUB_RAIL + EL_RAIL + 6, height: MUSIC_RAIL - 12, backgroundColor: "#F59E0BCC", border: "1.5px solid #F59E0B" }}>
+                <Music size={10} className="text-white shrink-0" />
+                <span className="text-[9px] font-bold text-white truncate">{musicAudio.filename}</span>
+              </div>
+            )}
 
             {segments.map((seg, i) => {
               const xPx = secToPx(seg.start);
@@ -247,7 +257,7 @@ export default function MediaTimeline({ project, videoRef, segments, onSegmentsC
           </>
         )}
 
-        {segments.length === 0 && brolls.length === 0 && containerWidth > 0 && (
+        {segments.length === 0 && brolls.length === 0 && !musicAudio && containerWidth > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="text-xs text-neutral-400">Transcris (section 03) et ajoute des elements (section 05)</div>
           </div>
